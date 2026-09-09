@@ -1,0 +1,13 @@
+mmzkworks-unitypackages
+
+This repository uses the following third-party software.
+
+UniTask
+Copyright (c) 2019 Yoshifumi Kawai / Cysharp, Inc.
+https://github.com/Cysharp/UniTask
+Licensed under the MIT License.
+
+UniRx
+Copyright (c) 2018 Yoshifumi Kawai
+https://github.com/neuecc/UniRx
+Licensed under the MIT License.

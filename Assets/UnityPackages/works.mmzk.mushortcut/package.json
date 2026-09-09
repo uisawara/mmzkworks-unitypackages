@@ -1,0 +1,11 @@
+{
+  "name": "works.mmzk.mushortcut",
+  "version": "0.1.0",
+  "displayName": "muShortcut",
+  "description": "Hierarchy/Project shortcut selection tool",
+  "unity": "2022.3",
+  "license": "MIT",
+  "author": {
+    "name": "mmzkworks"
+  }
+}
