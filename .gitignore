@@ -115,6 +115,8 @@ Desktop.ini
 *~
 !**/Samples~/
 !**/Samples~/**
+!**/Documentation~/
+!**/Documentation~/**
 
 # Local editor tool data
 /[Aa]ssets/[Ss]ettings/mushortcut/

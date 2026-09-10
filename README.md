@@ -1,5 +1,5 @@
 ## UPM Packages
 
-- https://github.com/uisawara/mmzkworks-unitypackages.git?path=Assets/UnityPackages/works.mmzk.muhierarchy
-- https://github.com/uisawara/mmzkworks-unitypackages.git?path=Assets/UnityPackages/works.mmzk.muasmdefgraph
-- https://github.com/uisawara/mmzkworks-unitypackages.git?path=Assets/UnityPackages/works.mmzk.mushortcut
+- [muHierarchy](Assets/UnityPackages/works.mmzk.muhierarchy/README.md)
+- [muAsmdefgraph](Assets/UnityPackages/works.mmzk.muasmdefgraph/README.md)
+- [muShortcut](Assets/UnityPackages/works.mmzk.mushortcut/README.md)
