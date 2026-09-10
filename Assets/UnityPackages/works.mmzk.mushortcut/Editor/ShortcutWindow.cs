@@ -140,7 +140,7 @@ namespace Mmzkworks.mushortcut.Editor
         private static void Open()
         {
             var window = CreateInstance<ShortcutWindow>();
-            window.titleContent = new GUIContent("mushortcut");
+            window.titleContent = new GUIContent("Shortcuts");
             window.Show();
         }
 
