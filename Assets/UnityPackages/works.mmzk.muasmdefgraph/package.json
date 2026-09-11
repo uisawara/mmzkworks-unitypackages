@@ -1,6 +1,6 @@
 {
   "name": "works.mmzk.muasmdefgraph",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "displayName": "muAsmdefgraph",
   "description": "Unity editor extension for visualizing Assembly Definition dependencies as a graph",
   "unity": "2022.3",

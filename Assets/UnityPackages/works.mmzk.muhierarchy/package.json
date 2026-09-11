@@ -1,6 +1,6 @@
 {
   "name": "works.mmzk.muhierarchy",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "displayName": "muHierarchy",
   "description": "Unity editor extensions (Hierarchy enhancements: prefab/component icons, tag background coloring, etc.)",
   "unity": "2022.3",
