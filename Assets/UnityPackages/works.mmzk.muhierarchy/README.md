@@ -1,70 +1,72 @@
+English | [日本語](README.ja.md)
+
 # muHierarchy
 
-Unity の Hierarchy Window を、もう少し見やすくする Editor 拡張です。
+An Editor extension that makes Unity's Hierarchy Window a bit easier to read.
 
-Prefab の状態や Component のアイコン、Tag / Layer の色分けなどが Hierarchy 上に並びます。見たい情報は `Tools/muHierarchy` から表示を切り替えられます。
+Prefab status, Component icons, and Tag / Layer coloring appear in the Hierarchy. Switch what you see from `Tools/muHierarchy`.
 
-![Hierarchy の基本表示](Documentation~/img/component.png)
+![Hierarchy overview](Documentation~/img/component.png)
 
-Unity 2022.3 以降。MIT License。
+Unity 2022.3 or later. MIT License.
 
-## インストール
+## Installation
 
-Unity の Package Manager から、Git URL で追加します。
+Add it from Unity Package Manager with a Git URL.
 
 ```
 https://github.com/uisawara/mmzkworks-unitypackages.git?path=Assets/UnityPackages/works.mmzk.muhierarchy
 ```
 
-## Component アイコン
+## Component icons
 
-デフォルトの Component View では、各オブジェクトが持っている Component のアイコンが右側に並びます。Camera、Canvas、Particle など、名前を開かなくても種類が分かります。
+In the default Component View, icons for each object's Components appear on the right. You can tell Cameras, Canvases, Particles, and so on without expanding the name.
 
-## Prefab の未適用
+## Unapplied prefab changes
 
-Prefab インスタンスに未適用の変更があると、黄色い警告が出ます。Apply 忘れに気づきやすくなります。
+When a Prefab instance has unapplied changes, a yellow warning appears. That makes it easier to notice a missed Apply.
 
-![Prefab 未適用の警告](Documentation~/img/prefab-unapplied.png)
+![Unapplied prefab warning](Documentation~/img/prefab-unapplied.png)
 
 ## Missing Script
 
-Missing Script があるオブジェクトには、赤いエラーアイコンが付きます。親にも伝わるので、折りたたんだままでも探せます。
+Objects with a Missing Script get a red error icon. It also propagates to parents, so you can find them even when the hierarchy is collapsed.
 
-![Missing Script の表示](Documentation~/img/missing-script.png)
+![Missing Script display](Documentation~/img/missing-script.png)
 
 ## Asmdef View
 
-`Tools/muHierarchy/View Mode/Asmdef View` に切り替えると、付いているスクリプトの Assembly Definition 名が見えます。どの asmdef のコードか、Hierarchy から確認できます。
+Switch to `Tools/muHierarchy/View Mode/Asmdef View` to see the Assembly Definition name of attached scripts. You can check which asmdef the code belongs to from the Hierarchy.
 
-[muAsmdefgraph](../works.mmzk.muasmdefgraph/README.md) と組み合わせると、asmdef 同士の参照グラフも把握しやすくなります。
+Combined with [muAsmdefgraph](../works.mmzk.muasmdefgraph/README.md), it is easier to follow references between asmdefs.
 
 ![Asmdef View](Documentation~/img/asmdef-view.png)
 
 ## Reference View
 
-`Tools/muHierarchy/View Mode/Reference View` では、オブジェクト同士の参照を線でつなぎます。親子や外部参照、Asset 参照の向きが一覧できます。
-また、参照の有無がアイコン表示されます。
+In `Tools/muHierarchy/View Mode/Reference View`, object references are drawn as lines. Parent/child, external references, and asset reference direction are listed at a glance.
+Whether an object has references is also shown with icons.
 
 ![Reference View](Documentation~/img/reference-view.png)
 
-※簡易的な表示です。Inspector に見える参照が、すべて Hierarchy に乗るわけではありません。
+This is a simplified view. Not every reference visible in the Inspector appears in the Hierarchy.
 
-## その他機能
+## Other features
 
-### セクション見出し
+### Section headers
 
-`SYSTEM` / `UI` / `LEVEL` のような見出し行は、Tag の背景色でセクションとして分けられます。
+Header rows such as `SYSTEM` / `UI` / `LEVEL` can be separated by Tag background color.
 
 ### Component Name View
 
-付いている Component の型名を右側に並べます。
+Lists attached Component type names on the right.
 
 ### Prefab Path View
 
-Prefab インスタンスの元アセットパスを表示します。
+Shows the source asset path of Prefab instances.
 
 ### Mesh / Material / Shader View
 
-使っている Mesh、Material、Shader の名前を表示します。
+Shows the names of the Mesh, Material, and Shader in use.
 
-どれも `Tools/muHierarchy` から切り替えられます。
+All of these can be switched from `Tools/muHierarchy`.

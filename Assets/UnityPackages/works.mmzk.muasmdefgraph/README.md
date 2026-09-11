@@ -1,41 +1,43 @@
+English | [日本語](README.ja.md)
+
 # muAsmdefgraph
 
-Assembly Definition の参照関係を、グラフで見られる Editor 拡張です。
+An Editor extension that shows Assembly Definition references as a graph.
 
-どの asmdef がどれを参照しているか、ノードと線で把握できます。
+You can see which asmdef references which other ones as nodes and lines.
 
-![Asmdef の参照グラフ](Documentation~/img/graph.png)
+![Asmdef reference graph](Documentation~/img/graph.png)
 
-Unity 2022.3 以降。MIT License。
+Unity 2022.3 or later. MIT License.
 
-## インストール
+## Installation
 
-Unity の Package Manager から、Git URL で追加します。
+Add it from Unity Package Manager with a Git URL.
 
 ```
 https://github.com/uisawara/mmzkworks-unitypackages.git?path=Assets/UnityPackages/works.mmzk.muasmdefgraph
 ```
 
-## 開き方
+## How to open
 
-Project で `.asmdef` を選んで `Assets/Open Asmdef Graph` から開けます。
+Select a `.asmdef` in the Project window and open it from `Assets/Open Asmdef Graph`.
 
-Hierarchy の GameObject からは、`GameObject/muAsmdefgraph/Open Component Asmdef Graph` で、付いているスクリプトの asmdef グラフを開けます。
+From a GameObject in the Hierarchy, `GameObject/muAsmdefgraph/Open Component Asmdef Graph` opens the asmdef graph for its attached scripts.
 
-[muHierarchy](../works.mmzk.muhierarchy/README.md) の Asmdef View と組み合わせると、シーン上のオブジェクトと asmdef の対応も追いやすくなります。
+Combined with [muHierarchy](../works.mmzk.muhierarchy/README.md) Asmdef View, it is easier to follow which scene objects belong to which asmdef.
 
-## グラフ
+## Graph
 
-ノードをドラッグして並べ替え、パンとズームで全体を見渡せます。ノードをダブルクリックすると、Project 上の asmdef を選べます。
+Drag nodes to rearrange them, and pan and zoom to see the whole graph. Double-click a node to select the asmdef in the Project window.
 
-配置やコメントは、開いているルートごとに保存されます。
+Layout and comments are saved per open root.
 
-## その他機能
+## Other features
 
 ### DLL / unresolved
 
-ツールバーの `Show DLLs` と `Show unresolved` で、プリコンパイル参照や解決できなかった参照の表示を切り替えられます。
+Use `Show DLLs` and `Show unresolved` on the toolbar to toggle precompiled and unresolved references.
 
-### コメント
+### Comments
 
-グラフ上にコメント枠を置いて、関連するノードをまとめておけます。
+Place comment boxes on the graph to group related nodes.

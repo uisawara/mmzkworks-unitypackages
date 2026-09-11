@@ -1,37 +1,39 @@
+English | [日本語](README.ja.md)
+
 # muShortcut
 
-よく使う Hierarchy や Project のオブジェクトを、手元に置いておける Editor 拡張です。
+An Editor extension that keeps frequently used Hierarchy and Project objects at hand.
 
-シーンやフォルダを探さずに、ワンクリックで選べます。ウィンドウは `Tools/muShortcut/Shortcuts` から開きます。
+Pick them with one click instead of searching scenes or folders. Open the window from `Tools/muShortcut/Shortcuts`.
 
-<img src="Documentation~/img/shortcuts.png" alt="ショートカット一覧" width="50%">
+<img src="Documentation~/img/shortcuts.png" alt="Shortcut list" width="50%">
 
-Unity 2022.3 以降。MIT License。
+Unity 2022.3 or later. MIT License.
 
-## インストール
+## Installation
 
-Unity の Package Manager から、Git URL で追加します。
+Add it from Unity Package Manager with a Git URL.
 
 ```
 https://github.com/uisawara/mmzkworks-unitypackages.git?path=Assets/UnityPackages/works.mmzk.mushortcut
 ```
 
-## ショートカット
+## Shortcuts
 
-Hierarchy や Project のオブジェクトを、ウィンドウへドラッグ＆ドロップして追加します。
+Drag and drop Hierarchy or Project objects onto the window to add them.
 
-クリックすると選択されます。Project のアセットは Ping され、フォルダなら中身も開けます。
+Click to select. Project assets are pinged, and folders can be opened.
 
-## ページ
+## Pages
 
-◀ ▶ でページを切り替えられます。ページ番号を右クリックすると、追加や削除ができます。用途ごとに分けておけます。
+Switch pages with ◀ ▶. Right-click a page number to add or remove pages. Split them by purpose.
 
-## その他機能
+## Other features
 
-### 表示切り替え
+### View modes
 
-アイコン表示とリスト表示を切り替えられます。アイコン表示ではサイズも変えられます。
+Switch between icon view and list view. Icon size can be changed in icon view.
 
-### ラベル
+### Labels
 
-`Add Label` で見出しを置けます。色付きの区切りとして使えます。
+Use `Add Label` to place a heading. Use it as a colored divider.
