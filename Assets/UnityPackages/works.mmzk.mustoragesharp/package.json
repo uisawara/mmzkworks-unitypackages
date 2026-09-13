@@ -1,0 +1,11 @@
+{
+  "name": "works.mmzk.mustoragesharp",
+  "version": "0.3.0",
+  "displayName": "muStorageSharp",
+  "description": "Flexible storage for files, memory, cache, encryption, and zip packs",
+  "unity": "2022.3",
+  "license": "MIT",
+  "author": {
+    "name": "mmzkworks"
+  }
+}

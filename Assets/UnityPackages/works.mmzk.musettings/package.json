@@ -1,0 +1,11 @@
+{
+  "name": "works.mmzk.musettings",
+  "version": "0.1.0",
+  "displayName": "muSettings",
+  "description": "Load and persist muProperty trees from command-line args, environment variables, and JSON",
+  "unity": "2022.3",
+  "license": "MIT",
+  "author": {
+    "name": "mmzkworks"
+  }
+}
