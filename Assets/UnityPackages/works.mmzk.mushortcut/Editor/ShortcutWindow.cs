@@ -53,11 +53,45 @@ namespace Mmzkworks.mushortcut.Editor
         private const string RelativeDir = "Assets/Settings/mushortcut";
         private const string FileName = "shortcuts.json";
 
-        private static string RelativePath => Path.Combine(RelativeDir, FileName).Replace('\\', '/');
+        // Changes are coalesced and written after this idle period, so rapid edits
+        // (typing in a label, dragging the color picker, reordering) don't hit the disk / AssetDatabase each time.
+        private const double SaveDelaySeconds = 0.5;
+
+        internal static string RelativePath => Path.Combine(RelativeDir, FileName).Replace('\\', '/');
         private static string FullPath => Path.Combine(Application.dataPath, "Settings/mushortcut", FileName);
 
-        public static ShortcutData Load()
+        // Single in-memory model shared by all windows
+        private static ShortcutData _data;
+        private static string _lastSyncedJson;
+        private static bool _dirty;
+        private static double _saveDueTime;
+        private static bool _updateHooked;
+
+        /// <summary>Incremented whenever the in-memory model is replaced (e.g. the file was changed externally).</summary>
+        public static int Version { get; private set; }
+
+        public static List<ShortcutPage> Pages
         {
+            get
+            {
+                if (_data == null)
+                {
+                    _data = Load(out _lastSyncedJson);
+                    Version++;
+                }
+                return _data.pages;
+            }
+        }
+
+        static ShortcutStorage()
+        {
+            AssemblyReloadEvents.beforeAssemblyReload += Flush;
+            EditorApplication.quitting += Flush;
+        }
+
+        private static ShortcutData Load(out string json)
+        {
+            json = null;
             if (!File.Exists(FullPath))
             {
                 var newData = new ShortcutData();
@@ -66,7 +100,12 @@ namespace Mmzkworks.mushortcut.Editor
                 return newData;
             }
 
-            var json = File.ReadAllText(FullPath, Encoding.UTF8);
+            json = File.ReadAllText(FullPath, Encoding.UTF8);
+            return Parse(json);
+        }
+
+        private static ShortcutData Parse(string json)
+        {
             var data = JsonUtility.FromJson<ShortcutData>(json);
             if (data == null)
                 data = new ShortcutData();
@@ -86,55 +125,142 @@ namespace Mmzkworks.mushortcut.Editor
                     data.pages = new List<ShortcutPage> { new ShortcutPage { pageName = "Page 1" } };
                 }
             }
+            data.items = null;
             #pragma warning restore CS0618
 
             return data;
         }
 
-        public static void Save(List<ShortcutPage> pages)
+        /// <summary>Marks the model as changed. The file is written after a short idle period.</summary>
+        public static void MarkDirty()
         {
+            _dirty = true;
+            _saveDueTime = EditorApplication.timeSinceStartup + SaveDelaySeconds;
+            if (!_updateHooked)
+            {
+                EditorApplication.update += OnEditorUpdate;
+                _updateHooked = true;
+            }
+
+            ShortcutWindow.RepaintAllWindows();
+        }
+
+        private static void OnEditorUpdate()
+        {
+            if (_dirty && EditorApplication.timeSinceStartup < _saveDueTime)
+            {
+                return;
+            }
+            Flush();
+        }
+
+        public static void Flush()
+        {
+            if (_updateHooked)
+            {
+                EditorApplication.update -= OnEditorUpdate;
+                _updateHooked = false;
+            }
+
+            if (!_dirty || _data == null)
+            {
+                return;
+            }
+            _dirty = false;
+
+            var json = JsonUtility.ToJson(_data, true);
+            if (json == _lastSyncedJson)
+            {
+                return;
+            }
+
             var dir = Path.GetDirectoryName(FullPath);
             if (!string.IsNullOrEmpty(dir))
             {
                 Directory.CreateDirectory(dir);
             }
 
-            var data = new ShortcutData { pages = pages };
-            var json = JsonUtility.ToJson(data, true);
+            // Set before importing so the postprocessor recognizes this as our own write
+            _lastSyncedJson = json;
             File.WriteAllText(FullPath, json, new UTF8Encoding(false));
             AssetDatabase.ImportAsset(RelativePath);
-            
-            // Notify all open windows to reload data
-            ShortcutWindow.RefreshAllWindows();
+        }
+
+        /// <summary>Called when the settings file was imported. Reloads only if its content differs from what we hold.</summary>
+        internal static void OnFileImported()
+        {
+            if (_data == null || !File.Exists(FullPath))
+            {
+                return;
+            }
+
+            var json = File.ReadAllText(FullPath, Encoding.UTF8);
+            if (json == _lastSyncedJson)
+            {
+                return;
+            }
+
+            // Changed externally (VCS update, manual edit, etc.): the file wins over pending edits
+            _data = Parse(json);
+            _lastSyncedJson = json;
+            _dirty = false;
+            Version++;
+            ShortcutWindow.RepaintAllWindows();
+        }
+    }
+
+    internal sealed class ShortcutStoragePostprocessor : AssetPostprocessor
+    {
+        private static void OnPostprocessAllAssets(string[] importedAssets, string[] deletedAssets, string[] movedAssets, string[] movedFromAssetPaths)
+        {
+            var path = ShortcutStorage.RelativePath;
+            foreach (var imported in importedAssets)
+            {
+                if (imported == path)
+                {
+                    ShortcutStorage.OnFileImported();
+                    return;
+                }
+            }
         }
     }
 
     public sealed class ShortcutWindow : EditorWindow
     {
+        private static readonly List<ShortcutWindow> OpenWindows = new List<ShortcutWindow>();
+
         private Vector2 _scroll;
-        private List<ShortcutPage> _pages = new List<ShortcutPage>();
         private int _currentPageIndex = 0;
         private ReorderableList _list;
         private ViewMode _viewMode = ViewMode.List;
         private float _iconSize = 64f;
         private int _selectedIconIndex = -1; // For icon view selection
+        private int _dataVersion = -1;
+
+        private static List<ShortcutPage> Pages => ShortcutStorage.Pages;
         
         // Performance optimization: cache resolved objects
-        private Dictionary<string, UnityEngine.Object> _objectCache = new Dictionary<string, UnityEngine.Object>();
-        private Dictionary<string, Texture2D> _iconCache = new Dictionary<string, Texture2D>();
-        private int _cacheFrameCount = -1;
+        private readonly Dictionary<string, UnityEngine.Object> _objectCache = new Dictionary<string, UnityEngine.Object>();
+        // Negative cache: GlobalObjectIdentifierToObjectSlow is expensive, so don't retry unresolvable ids on every repaint
+        private readonly Dictionary<string, double> _missingRetryTime = new Dictionary<string, double>();
+        private const double MissingRetryInterval = 2.0;
+        private readonly Dictionary<string, Texture2D> _iconCache = new Dictionary<string, Texture2D>();
         
         // GUIStyle cache
         private GUIStyle _iconLabelStyle;
         private GUIStyle _listLabelStyle;
-        private Dictionary<Color, GUIStyle> _labelTextFieldStyles = new Dictionary<Color, GUIStyle>();
+        private GUIStyle _iconLabelTextFieldStyle;
+        private GUIStyle _listLabelTextFieldStyle;
+        private GUIContent _iconViewContent;
+        private GUIContent _listViewContent;
         
-        // GUIContent cache
-        private Dictionary<string, GUIContent> _contentCache = new Dictionary<string, GUIContent>();
+        // GUIContent cache (with the object it was built for, to detect changes)
+        private readonly Dictionary<string, KeyValuePair<UnityEngine.Object, GUIContent>> _contentCache =
+            new Dictionary<string, KeyValuePair<UnityEngine.Object, GUIContent>>();
         
         // AssetPreview fetch state
-        private Dictionary<string, int> _previewRequestFrame = new Dictionary<string, int>();
-        private const int PreviewRetryInterval = 30; // Retry every 30 frames
+        private readonly Dictionary<string, double> _previewRequestTime = new Dictionary<string, double>();
+        private const double PreviewRetryInterval = 0.5;
 
         [MenuItem("Tools/muShortcut/Shortcuts")]
         private static void Open()
@@ -144,50 +270,59 @@ namespace Mmzkworks.mushortcut.Editor
             window.Show();
         }
 
-        internal static void RefreshAllWindows()
+        internal static void RepaintAllWindows()
         {
-            // Use delayCall to ensure the save operation is complete before refreshing
-            EditorApplication.delayCall += () =>
+            foreach (var window in OpenWindows)
             {
-                var windows = Resources.FindObjectsOfTypeAll<ShortcutWindow>();
-                foreach (var window in windows)
+                if (window != null)
                 {
-                    if (window != null)
-                    {
-                        window.ReloadData();
-                    }
+                    window.Repaint();
                 }
-            };
+            }
         }
 
-        private void ReloadData()
+        private void SyncWithStorage()
         {
-            var data = ShortcutStorage.Load();
-            var oldPageCount = _pages.Count;
-            
-            _pages = data.pages ?? new List<ShortcutPage>();
-            if (_pages.Count == 0)
+            var pages = Pages; // may load on first access
+            if (_dataVersion == ShortcutStorage.Version)
             {
-                _pages.Add(new ShortcutPage { pageName = "Page 1" });
+                return;
+            }
+            _dataVersion = ShortcutStorage.Version;
+
+            if (pages.Count == 0)
+            {
+                pages.Add(new ShortcutPage { pageName = "Page 1" });
             }
             
             // Preserve current page index if possible
-            _currentPageIndex = Mathf.Clamp(_currentPageIndex, 0, _pages.Count - 1);
+            _currentPageIndex = Mathf.Clamp(_currentPageIndex, 0, pages.Count - 1);
             
-            // Clear caches when data is reloaded
             ClearCaches();
-            
             EnsureList(GetCurrentPage()?.items);
-            Repaint();
         }
 
         private void ClearCaches()
         {
             _objectCache.Clear();
+            _missingRetryTime.Clear();
             _iconCache.Clear();
             _contentCache.Clear();
-            _previewRequestFrame.Clear();
-            _cacheFrameCount = -1;
+            _previewRequestTime.Clear();
+        }
+
+        private void InvalidateMissingCache()
+        {
+            if (_missingRetryTime.Count > 0)
+            {
+                _missingRetryTime.Clear();
+                Repaint();
+            }
+        }
+
+        private void OnSceneOpened(UnityEngine.SceneManagement.Scene scene, UnityEditor.SceneManagement.OpenSceneMode mode)
+        {
+            InvalidateMissingCache();
         }
 
         private GUIStyle GetIconLabelStyle()
@@ -217,51 +352,36 @@ namespace Mmzkworks.mushortcut.Editor
             return _listLabelStyle;
         }
 
+        // One style per view; the text color is updated per item instead of allocating a style per color
         private GUIStyle GetLabelTextFieldStyle(Color color)
         {
-            if (!_labelTextFieldStyles.TryGetValue(color, out var style))
+            if (_iconLabelTextFieldStyle == null)
             {
-                style = new GUIStyle(EditorStyles.textField)
+                _iconLabelTextFieldStyle = new GUIStyle(EditorStyles.textField)
                 {
-                    normal = { textColor = color },
-                    focused = { textColor = color },
                     alignment = TextAnchor.MiddleCenter
                 };
-                _labelTextFieldStyles[color] = style;
             }
-            return style;
+            _iconLabelTextFieldStyle.normal.textColor = color;
+            _iconLabelTextFieldStyle.focused.textColor = color;
+            return _iconLabelTextFieldStyle;
         }
 
         private GUIStyle GetLabelTextFieldStyleForList(Color color)
         {
-            // List view style (slightly different alpha for cache key; alignment differs from icon view)
             // Icon view uses MiddleCenter, List view uses default (left-aligned)
-            var key = new Color(color.r, color.g, color.b, color.a + 0.001f);
-            if (!_labelTextFieldStyles.TryGetValue(key, out var style))
+            if (_listLabelTextFieldStyle == null)
             {
-                style = new GUIStyle(EditorStyles.textField)
-                {
-                    normal = { textColor = color },
-                    focused = { textColor = color }
-                    // alignment remains default (left)
-                };
-                _labelTextFieldStyles[key] = style;
+                _listLabelTextFieldStyle = new GUIStyle(EditorStyles.textField);
             }
-            return style;
+            _listLabelTextFieldStyle.normal.textColor = color;
+            _listLabelTextFieldStyle.focused.textColor = color;
+            return _listLabelTextFieldStyle;
         }
 
         private void OnGUI()
         {
-            // Clear caches periodically to prevent memory leaks
-            if (Time.frameCount != _cacheFrameCount)
-            {
-                _cacheFrameCount = Time.frameCount;
-                // Clean up invalid cache entries every 60 frames
-                if (Time.frameCount % 60 == 0)
-                {
-                    CleanupCaches();
-                }
-            }
+            SyncWithStorage();
 
             var windowDropArea = new Rect(0, 0, position.width, position.height);
             HandleDragAndDrop(windowDropArea);
@@ -297,30 +417,10 @@ namespace Mmzkworks.mushortcut.Editor
             EditorGUILayout.EndScrollView();
         }
 
-        private void CleanupCaches()
-        {
-            // Remove invalid objects from cache
-            var keysToRemove = new List<string>();
-            foreach (var kvp in _objectCache)
-            {
-                if (kvp.Value == null)
-                {
-                    keysToRemove.Add(kvp.Key);
-                }
-            }
-            foreach (var key in keysToRemove)
-            {
-                _objectCache.Remove(key);
-                _iconCache.Remove(key);
-                _contentCache.Remove(key);
-                _previewRequestFrame.Remove(key);
-            }
-        }
-
         private void HandleDeleteKey()
         {
             var evt = Event.current;
-            if (evt.type == EventType.KeyDown && evt.keyCode == KeyCode.Delete)
+            if (evt.type == EventType.KeyDown && evt.keyCode == KeyCode.Delete && !EditorGUIUtility.editingTextField)
             {
                 var currentPage = GetCurrentPage();
                 if (currentPage == null || currentPage.items.Count == 0)
@@ -334,7 +434,7 @@ namespace Mmzkworks.mushortcut.Editor
                     if (_list.index >= 0 && _list.index < currentPage.items.Count)
                     {
                         currentPage.items.RemoveAt(_list.index);
-                        ShortcutStorage.Save(_pages);
+                        ShortcutStorage.MarkDirty();
                         if (_list.index >= currentPage.items.Count)
                         {
                             _list.index = currentPage.items.Count - 1;
@@ -348,7 +448,7 @@ namespace Mmzkworks.mushortcut.Editor
                     if (_selectedIconIndex >= 0 && _selectedIconIndex < currentPage.items.Count)
                     {
                         currentPage.items.RemoveAt(_selectedIconIndex);
-                        ShortcutStorage.Save(_pages);
+                        ShortcutStorage.MarkDirty();
                         if (_selectedIconIndex >= currentPage.items.Count)
                         {
                             _selectedIconIndex = currentPage.items.Count - 1;
@@ -365,12 +465,12 @@ namespace Mmzkworks.mushortcut.Editor
             using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar))
             {
                 // Left arrow button (loop: first page -> last page)
-                EditorGUI.BeginDisabledGroup(_pages.Count == 0);
+                EditorGUI.BeginDisabledGroup(Pages.Count == 0);
                 if (GUILayout.Button("◀", EditorStyles.toolbarButton, GUILayout.Width(30)))
                 {
-                    if (_pages.Count > 0)
+                    if (Pages.Count > 0)
                     {
-                        _currentPageIndex = _currentPageIndex > 0 ? _currentPageIndex - 1 : _pages.Count - 1;
+                        _currentPageIndex = _currentPageIndex > 0 ? _currentPageIndex - 1 : Pages.Count - 1;
                         EnsureList(GetCurrentPage()?.items);
                     }
                 }
@@ -381,12 +481,12 @@ namespace Mmzkworks.mushortcut.Editor
                 pageLabelRect = GUILayoutUtility.GetLastRect();
 
                 // Right arrow button (loop: last page -> first page)
-                EditorGUI.BeginDisabledGroup(_pages.Count == 0);
+                EditorGUI.BeginDisabledGroup(Pages.Count == 0);
                 if (GUILayout.Button("▶", EditorStyles.toolbarButton, GUILayout.Width(30)))
                 {
-                    if (_pages.Count > 0)
+                    if (Pages.Count > 0)
                     {
-                        _currentPageIndex = _currentPageIndex < _pages.Count - 1 ? _currentPageIndex + 1 : 0;
+                        _currentPageIndex = _currentPageIndex < Pages.Count - 1 ? _currentPageIndex + 1 : 0;
                         EnsureList(GetCurrentPage()?.items);
                     }
                 }
@@ -399,23 +499,23 @@ namespace Mmzkworks.mushortcut.Editor
                 var menu = new GenericMenu();
                 menu.AddItem(new GUIContent("Add Page"), false, () =>
                 {
-                    var newPageName = $"Page {_pages.Count + 1}";
-                    _pages.Add(new ShortcutPage { pageName = newPageName });
-                    _currentPageIndex = _pages.Count - 1;
-                    ShortcutStorage.Save(_pages);
+                    var newPageName = $"Page {Pages.Count + 1}";
+                    Pages.Add(new ShortcutPage { pageName = newPageName });
+                    _currentPageIndex = Pages.Count - 1;
+                    ShortcutStorage.MarkDirty();
                     EnsureList(GetCurrentPage()?.items);
                 });
                 menu.AddSeparator("");
-                if (_pages.Count > 1)
+                if (Pages.Count > 1)
                 {
                     menu.AddItem(new GUIContent("Delete Page"), false, () =>
                     {
-                        _pages.RemoveAt(_currentPageIndex);
-                        if (_currentPageIndex >= _pages.Count)
+                        Pages.RemoveAt(_currentPageIndex);
+                        if (_currentPageIndex >= Pages.Count)
                         {
-                            _currentPageIndex = _pages.Count - 1;
+                            _currentPageIndex = Pages.Count - 1;
                         }
-                        ShortcutStorage.Save(_pages);
+                        ShortcutStorage.MarkDirty();
                         EnsureList(GetCurrentPage()?.items);
                     });
                 }
@@ -432,23 +532,14 @@ namespace Mmzkworks.mushortcut.Editor
         {
             using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar))
             {
-                // View mode buttons with icons
-                var iconContent = EditorGUIUtility.IconContent("d_Grid.Default");
-                if (iconContent == null || iconContent.image == null)
+                if (_iconViewContent == null)
                 {
-                    iconContent = EditorGUIUtility.IconContent("Grid.Default");
+                    _iconViewContent = CreateIconViewContent();
+                    // List view icon: built-in names vary by Unity version; use fallback to avoid console errors
+                    _listViewContent = new GUIContent("≡", "List view");
                 }
-                if (iconContent == null || iconContent.image == null)
-                {
-                    iconContent = new GUIContent("■", "Icon view");
-                }
-                else
-                {
-                    iconContent.tooltip = "Icon view";
-                }
-
-                // List view icon: built-in names vary by Unity version; use fallback to avoid console errors
-                var listContent = new GUIContent("≡", "List view");
+                var iconContent = _iconViewContent;
+                var listContent = _listViewContent;
 
                 if (GUILayout.Toggle(_viewMode == ViewMode.Icon, iconContent, EditorStyles.toolbarButton, GUILayout.Width(30)))
                 {
@@ -484,19 +575,33 @@ namespace Mmzkworks.mushortcut.Editor
                             labelText = "Label",
                             labelColor = Color.yellow
                         });
-                        ShortcutStorage.Save(_pages);
+                        ShortcutStorage.MarkDirty();
                     }
                 }
             }
         }
 
+        private static GUIContent CreateIconViewContent()
+        {
+            var iconContent = EditorGUIUtility.IconContent("d_Grid.Default");
+            if (iconContent == null || iconContent.image == null)
+            {
+                iconContent = EditorGUIUtility.IconContent("Grid.Default");
+            }
+            if (iconContent == null || iconContent.image == null)
+            {
+                return new GUIContent("■", "Icon view");
+            }
+            return new GUIContent(iconContent.image, "Icon view");
+        }
+
         private ShortcutPage GetCurrentPage()
         {
-            if (_currentPageIndex < 0 || _currentPageIndex >= _pages.Count)
+            if (_currentPageIndex < 0 || _currentPageIndex >= Pages.Count)
             {
                 return null;
             }
-            return _pages[_currentPageIndex];
+            return Pages[_currentPageIndex];
         }
 
         private void HandleDragAndDrop(Rect dropArea)
@@ -555,13 +660,15 @@ namespace Mmzkworks.mushortcut.Editor
                     globalId = globalId,
                     displayName = obj.name
                 });
+                // We already have the object; avoid resolving it again via GlobalObjectIdentifierToObjectSlow
+                _objectCache[globalId] = obj;
+                _missingRetryTime.Remove(globalId);
                 hasChanges = true;
             }
 
             if (hasChanges)
             {
-                ShortcutStorage.Save(_pages);
-                Repaint();
+                ShortcutStorage.MarkDirty();
             }
         }
 
@@ -591,8 +698,16 @@ namespace Mmzkworks.mushortcut.Editor
                 _objectCache.Remove(globalId);
             }
 
+            // Unresolvable ids (unloaded scene, deleted asset) are retried only occasionally
+            var now = EditorApplication.timeSinceStartup;
+            if (_missingRetryTime.TryGetValue(globalId, out var retryTime) && now < retryTime)
+            {
+                return null;
+            }
+
             if (!GlobalObjectId.TryParse(globalId, out var id))
             {
+                _missingRetryTime[globalId] = double.MaxValue;
                 return null;
             }
 
@@ -600,6 +715,11 @@ namespace Mmzkworks.mushortcut.Editor
             if (obj != null)
             {
                 _objectCache[globalId] = obj;
+                _missingRetryTime.Remove(globalId);
+            }
+            else
+            {
+                _missingRetryTime[globalId] = now + MissingRetryInterval;
             }
             return obj;
         }
@@ -608,22 +728,12 @@ namespace Mmzkworks.mushortcut.Editor
         {
             var cacheKey = item.globalId;
             
-            // Try get from cache
-            if (_contentCache.TryGetValue(cacheKey, out var cachedContent))
+            // Reuse while it was built for the same object (or both missing)
+            if (_contentCache.TryGetValue(cacheKey, out var cached) && ReferenceEquals(cached.Key, obj))
             {
-                // Verify object unchanged
-                if (obj != null && cachedContent.image != null)
-                {
-                    return cachedContent;
-                }
-                // Use cache for Missing too
-                if (obj == null && cachedContent.text != null && cachedContent.text.Contains("(Missing)"))
-                {
-                    return cachedContent;
-                }
+                return cached.Value;
             }
             
-            // Create new when not in cache or invalid
             GUIContent content;
             if (obj != null)
             {
@@ -636,20 +746,25 @@ namespace Mmzkworks.mushortcut.Editor
                 content = new GUIContent(label + " (Missing)");
             }
             
-            // Store in cache
-            _contentCache[cacheKey] = content;
+            _contentCache[cacheKey] = new KeyValuePair<UnityEngine.Object, GUIContent>(obj, content);
             return content;
         }
 
         private void OnEnable()
         {
-            ClearCaches();
-            ReloadData();
+            OpenWindows.Add(this);
+            _dataVersion = -1;
+            UnityEditor.SceneManagement.EditorSceneManager.sceneOpened += OnSceneOpened;
+            EditorApplication.projectChanged += InvalidateMissingCache;
         }
 
         private void OnDisable()
         {
+            OpenWindows.Remove(this);
+            UnityEditor.SceneManagement.EditorSceneManager.sceneOpened -= OnSceneOpened;
+            EditorApplication.projectChanged -= InvalidateMissingCache;
             ClearCaches();
+            ShortcutStorage.Flush();
         }
 
         private void DrawIconView(List<ShortcutItem> items)
@@ -709,7 +824,7 @@ namespace Mmzkworks.mushortcut.Editor
                 {
                     item.labelColor = nextColor;
                     item.labelText = nextText;
-                    ShortcutStorage.Save(_pages);
+                    ShortcutStorage.MarkDirty();
                 }
             }
             else
@@ -737,12 +852,13 @@ namespace Mmzkworks.mushortcut.Editor
                     else
                     {
                         // Check retry interval
-                        var shouldRetry = !_previewRequestFrame.TryGetValue(item.globalId, out var lastFrame) ||
-                                         (Time.frameCount - lastFrame) >= PreviewRetryInterval;
+                        var now = EditorApplication.timeSinceStartup;
+                        var shouldRetry = !_previewRequestTime.TryGetValue(item.globalId, out var lastTime) ||
+                                         (now - lastTime) >= PreviewRetryInterval;
                         
                         if (shouldRetry)
                         {
-                            _previewRequestFrame[item.globalId] = Time.frameCount;
+                            _previewRequestTime[item.globalId] = now;
                             
                             // Prefer GetMiniThumbnail (available immediately)
                             icon = AssetPreview.GetMiniThumbnail(obj);
@@ -831,7 +947,7 @@ namespace Mmzkworks.mushortcut.Editor
                     if (currentPage != null)
                     {
                         currentPage.items.RemoveAt(index);
-                        ShortcutStorage.Save(_pages);
+                        ShortcutStorage.MarkDirty();
                     }
                 });
                 menu.ShowAsContext();
@@ -867,7 +983,7 @@ namespace Mmzkworks.mushortcut.Editor
                 elementHeight = 18f
             };
             _list.drawElementCallback = DrawElement;
-            _list.onReorderCallback = _ => ShortcutStorage.Save(_pages);
+            _list.onReorderCallback = _ => ShortcutStorage.MarkDirty();
         }
 
         private void DrawElement(Rect rect, int index, bool isActive, bool isFocused)
@@ -907,7 +1023,7 @@ namespace Mmzkworks.mushortcut.Editor
                 {
                     item.labelColor = nextColor;
                     item.labelText = nextText;
-                    ShortcutStorage.Save(_pages);
+                    ShortcutStorage.MarkDirty();
                 }
             }
             else
@@ -966,7 +1082,7 @@ namespace Mmzkworks.mushortcut.Editor
                     if (currentPage != null)
                     {
                         currentPage.items.RemoveAt(index);
-                        ShortcutStorage.Save(_pages);
+                        ShortcutStorage.MarkDirty();
                     }
                 });
                 menu.ShowAsContext();
