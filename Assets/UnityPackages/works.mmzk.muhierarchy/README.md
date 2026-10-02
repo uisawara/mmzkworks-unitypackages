@@ -32,6 +32,8 @@ When a Prefab instance has unapplied changes, a yellow warning appears. That mak
 
 Objects with a Missing Script get a red error icon. It also propagates to parents, so you can find them even when the hierarchy is collapsed.
 
+With [muValidation](../works.mmzk.muvalidation/README.md) installed, objects whose validation attributes report errors get the same error icon, and those with only warnings get the warning icon (in place of the Prefab icon). Hover to see the messages. Without muValidation, nothing changes.
+
 ![Missing Script display](Documentation~/img/missing-script.png)
 
 ## Asmdef View

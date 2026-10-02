@@ -32,6 +32,8 @@ Prefab インスタンスに未適用の変更があると、黄色い警告が�
 
 Missing Script があるオブジェクトには、赤いエラーアイコンが付きます。親にも伝わるので、折りたたんだままでも探せます。
 
+[muValidation](../works.mmzk.muvalidation/README.ja.md) を入れている場合は、Validation 属性がエラーを報告したオブジェクトにも同じエラーアイコンが、警告だけなら(Prefab アイコンの代わりに)警告アイコンが付きます。マウスを乗せるとメッセージが出ます。muValidation がなければ、表示は変わりません。
+
 ![Missing Script の表示](Documentation~/img/missing-script.png)
 
 ## Asmdef View
