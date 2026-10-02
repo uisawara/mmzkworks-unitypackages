@@ -1,0 +1,11 @@
+{
+  "name": "works.mmzk.muunityextensions",
+  "version": "0.0.1",
+  "displayName": "muUnityExtensions",
+  "description": "Extension methods for Unity types (GameObject, Vector2/3, Rect, Texture2D, RenderTexture)",
+  "unity": "2022.3",
+  "license": "MIT",
+  "author": {
+    "name": "mmzkworks"
+  }
+}
