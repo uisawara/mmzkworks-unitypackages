@@ -7,10 +7,11 @@ namespace Mmzkworks.muValidation.Editor
 {
     /// <summary>
     /// Runs validation attributes on components of GameObjects in loaded scenes and Prefab Mode,
-    /// for display in the Hierarchy window.
+    /// and SceneRules on the GameObjects themselves, for display in the Hierarchy window.
     ///
-    /// Only GameObjects with validated components are visited: they are found per validated component type,
-    /// and their problems are added up the parent chain to give per-object child counts.
+    /// Only GameObjects with validated components are visited (all GameObjects if there are SceneRules):
+    /// they are found per validated component type, and their problems are added up the parent chain to give
+    /// per-object child counts.
     /// Property changes re-validate just the changed object (plus objects whose validations depend on other
     /// objects); structural changes rebuild the index. Play Mode is skipped unless enabled from the menu.
     /// </summary>
@@ -60,6 +61,8 @@ namespace Mmzkworks.muValidation.Editor
             EditorSceneManager.sceneClosed += OnSceneClosed;
             EditorSceneManager.newSceneCreated -= OnNewSceneCreated;
             EditorSceneManager.newSceneCreated += OnNewSceneCreated;
+            EditorSceneManager.sceneSaved -= OnSceneSaved;
+            EditorSceneManager.sceneSaved += OnSceneSaved;
             Undo.undoRedoPerformed -= Invalidate;
             Undo.undoRedoPerformed += Invalidate;
             EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
@@ -180,6 +183,26 @@ namespace Mmzkworks.muValidation.Editor
         private static HashSet<GameObject> FindValidatedObjects()
         {
             var result = new HashSet<GameObject>();
+            var stage = PrefabStageUtility.GetCurrentPrefabStage();
+            var stageRoot = stage != null ? stage.prefabContentsRoot : null;
+
+            // SceneRules apply to every GameObject.
+            if (SceneRulesRegistry.HasRules)
+            {
+                foreach (var transform in Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+                {
+                    if (!EditorUtility.IsPersistent(transform) && (transform.hideFlags & HideFlags.HideInHierarchy) == 0)
+                    {
+                        result.Add(transform.gameObject);
+                    }
+                }
+
+                if (stageRoot != null)
+                {
+                    foreach (var transform in stageRoot.GetComponentsInChildren<Transform>(true)) result.Add(transform.gameObject);
+                }
+            }
+
             var types = AttributeValidator.ValidatedComponentTypes;
             if (types.Length == 0) return result;
 
@@ -193,10 +216,9 @@ namespace Mmzkworks.muValidation.Editor
             }
 
             // Prefab Mode objects live in a preview scene that FindObjectsByType does not search.
-            var stage = PrefabStageUtility.GetCurrentPrefabStage();
-            if (stage != null && stage.prefabContentsRoot != null)
+            if (stageRoot != null)
             {
-                foreach (var component in stage.prefabContentsRoot.GetComponentsInChildren<MonoBehaviour>(true))
+                foreach (var component in stageRoot.GetComponentsInChildren<MonoBehaviour>(true))
                 {
                     if (component != null && AttributeValidator.HasValidations(component.GetType())) result.Add(component.gameObject);
                 }
@@ -220,6 +242,7 @@ namespace Mmzkworks.muValidation.Editor
                 AttributeValidator.Validate(component, type.Name, result);
             }
 
+            SceneRulesRegistry.Validate(go, result);
             return ValidationSummary.From(result);
         }
 
@@ -238,8 +261,8 @@ namespace Mmzkworks.muValidation.Editor
             if (dependsOnOthers) DependentObjects.Add(go);
             else DependentObjects.Remove(go);
 
-            // Keep entries only for GameObjects with validated components.
-            if (HasValidatedComponent(go)) OwnResults[id] = summary;
+            // Keep entries only for GameObjects with validated components (all GameObjects if there are SceneRules).
+            if (SceneRulesRegistry.HasRules || HasValidatedComponent(go)) OwnResults[id] = summary;
             else OwnResults.Remove(id);
 
             if (previous.Severity == summary.Severity) return;
@@ -338,6 +361,12 @@ namespace Mmzkworks.muValidation.Editor
         private static void OnSceneOpened(UnityEngine.SceneManagement.Scene scene, OpenSceneMode mode) => Invalidate();
 
         private static void OnSceneClosed(UnityEngine.SceneManagement.Scene scene) => Invalidate();
+
+        // Save As changes the scene path, and with it which SceneRules apply.
+        private static void OnSceneSaved(UnityEngine.SceneManagement.Scene scene)
+        {
+            if (SceneRulesRegistry.HasRules) Invalidate();
+        }
 
         private static void OnNewSceneCreated(UnityEngine.SceneManagement.Scene scene, NewSceneSetup setup, NewSceneMode mode) => Invalidate();
 

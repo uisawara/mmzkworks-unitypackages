@@ -4,8 +4,8 @@ using UnityEngine;
 
 namespace Mmzkworks.muValidation.Editor
 {
-    [CustomEditor(typeof(FileNameRule))]
-    public class FileNameRuleEditor : UnityEditor.Editor
+    [CustomEditor(typeof(FileNameRules))]
+    public class FileNameRulesEditor : UnityEditor.Editor
     {
         private List<KeyValuePair<string, string>> _violations;
         private Vector2 _scroll;
@@ -21,7 +21,7 @@ namespace Mmzkworks.muValidation.Editor
             DrawDefaultInspector();
             if (EditorGUI.EndChangeCheck()) _violations = null;
 
-            DrawResolvedFolders((FileNameRule)target);
+            DrawResolvedFolders((FileNameRules)target);
 
             EditorGUILayout.Space();
             using (new EditorGUILayout.HorizontalScope())
@@ -29,12 +29,12 @@ namespace Mmzkworks.muValidation.Editor
                 EditorGUILayout.LabelField("Violations", EditorStyles.boldLabel);
                 if (GUILayout.Button("Refresh", GUILayout.Width(70)))
                 {
-                    FileNameRuleRegistry.Invalidate();
+                    FileNameRulesRegistry.Invalidate();
                     _violations = null;
                 }
             }
 
-            _violations ??= FileNameRuleRegistry.CollectViolations((FileNameRule)target);
+            _violations ??= FileNameRulesRegistry.CollectViolations((FileNameRules)target);
 
             if (_violations.Count == 0)
             {
@@ -59,7 +59,7 @@ namespace Mmzkworks.muValidation.Editor
             EditorGUILayout.EndScrollView();
         }
 
-        private static void DrawResolvedFolders(FileNameRule asset)
+        private static void DrawResolvedFolders(FileNameRules asset)
         {
             if (asset.rules == null || asset.rules.Length == 0) return;
 

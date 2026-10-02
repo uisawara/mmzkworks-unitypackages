@@ -4,7 +4,7 @@ using UnityEngine;
 namespace Mmzkworks.muValidation.Editor
 {
     /// <summary>
-    /// Draws a mark over the icon of assets in the Project window that violate their FileNameRule
+    /// Draws a mark over the icon of assets in the Project window that violate their FileNameRules
     /// or fail attribute validation, and over folders containing such assets:
     /// a red ✗ for errors, a yellow ! for warnings only. Hovering the icon shows the reasons.
     /// </summary>

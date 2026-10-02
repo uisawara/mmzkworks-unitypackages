@@ -8,10 +8,10 @@ namespace Mmzkworks.muValidation.Editor
 {
     /// <summary>
     /// Set of file path rules. Each rule names a folder relative to this asset and the file paths allowed in it.
-    /// Several FileNameRule assets may be placed in the same folder; their rules are combined.
+    /// Several FileNameRules assets may be placed in the same folder; their rules are combined.
     /// </summary>
-    [CreateAssetMenu(fileName = "FileNameRule", menuName = "muValidation/File Name Rule")]
-    public class FileNameRule : ScriptableObject
+    [CreateAssetMenu(fileName = "FileNameRules", menuName = "muValidation/File Name Rules")]
+    public class FileNameRules : ScriptableObject
     {
         [Serializable]
         public class Rule
@@ -122,7 +122,7 @@ namespace Mmzkworks.muValidation.Editor
                 }
             }
 
-            FileNameRuleRegistry.Invalidate();
+            FileNameRulesRegistry.Invalidate();
         }
     }
 }
