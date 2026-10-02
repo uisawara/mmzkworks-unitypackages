@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e2667dfe778ed460ebe6a6cabf63fdf8, type: 3}
+  m_Name: FolderSettings
+  m_EditorClassIdentifier: works.mmzk.muproject.Editor::Mmzkworks.muProject.Editor.FolderSettings
+  folderIcons:
+  - pathPattern: /Editor$
+    icon: {fileID: 2800000, guid: 7981398af5c4302439c0f9ec6b7738a7, type: 3}
+  - pathPattern: /Tests$
+    icon: {fileID: 2800000, guid: 547cd0078b604b44ebba333204595790, type: 3}
+  - pathPattern: /Runtime$
+    icon: {fileID: 2800000, guid: 28f64fae08f008845954058a500548c2, type: 3}
