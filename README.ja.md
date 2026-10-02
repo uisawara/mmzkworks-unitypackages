@@ -8,3 +8,4 @@
 - [muValidation](Assets/UnityPackages/works.mmzk.muvalidation/README.ja.md)
 - [muProject](Assets/UnityPackages/works.mmzk.muproject/README.ja.md)
 - [muDatastore](Assets/UnityPackages/works.mmzk.mudatastore/README.ja.md)
+- [muPrimitive](Assets/UnityPackages/works.mmzk.muprimitive/README.ja.md)
