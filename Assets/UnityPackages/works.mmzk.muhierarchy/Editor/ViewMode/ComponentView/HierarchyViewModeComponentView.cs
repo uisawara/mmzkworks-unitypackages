@@ -44,6 +44,10 @@ namespace Mmzkworks.muHierarchy.Editor
             bool hasChildOverrides = HasChildPrefabOverrides(go);
             bool showWarning = hasOverrides || hasChildOverrides;
             bool hasMissingScripts = HasMissingScripts(go, true);
+            string validationMessage = null;
+            var validationSeverity = showPrefabIcon
+                ? MuValidationBridge.GetSeverity(go, out validationMessage)
+                : MuValidationBridge.Severity.None;
 
             if (showLayer || showTag)
             {
@@ -97,7 +101,7 @@ namespace Mmzkworks.muHierarchy.Editor
             float iconRightX = selectionRect.xMax - iconSize;
 
             bool shouldShowPrefabAreaIcon = showPrefabIcon &&
-                (hasMissingScripts || ((isPrefabInstance || hasChildOverrides) && showWarning));
+                (hasMissingScripts || validationSeverity != MuValidationBridge.Severity.None || ((isPrefabInstance || hasChildOverrides) && showWarning));
             if (shouldShowPrefabAreaIcon)
             {
                 var iconRect = new Rect(
@@ -106,17 +110,36 @@ namespace Mmzkworks.muHierarchy.Editor
                     iconSize,
                     iconSize
                 );
-                if (hasMissingScripts)
+                string prefabTooltip = null;
+                if (isPrefabInstance || hasChildOverrides)
                 {
-                    DrawStatusIconAtRect(iconRect, ctx.IconError, "Missing script");
-                    return;
+                    if (isPrefabChild)
+                        prefabTooltip = hasChildOverrides ? "Prefab child (has overrides in children)" : "Prefab child";
+                    else
+                        prefabTooltip = showWarning ? "Prefab (has overrides)" : "Prefab (no overrides)";
                 }
-                string prefabTooltip;
-                if (isPrefabChild)
-                    prefabTooltip = hasChildOverrides ? "Prefab child (has overrides in children)" : "Prefab child";
+
+                if (hasMissingScripts || validationSeverity == MuValidationBridge.Severity.Error)
+                {
+                    string errorTooltip = hasMissingScripts && validationMessage != null
+                        ? "Missing script\n" + validationMessage
+                        : hasMissingScripts ? "Missing script" : validationMessage;
+                    DrawStatusIconAtRect(iconRect, ctx.IconError, errorTooltip);
+                    if (hasMissingScripts)
+                        return;
+                }
+                else if (validationSeverity == MuValidationBridge.Severity.Warning)
+                {
+                    // Takes the slot of the Prefab icon; keep the Prefab state in the tooltip.
+                    string warningTooltip = showWarning && prefabTooltip != null
+                        ? validationMessage + "\n" + prefabTooltip
+                        : validationMessage;
+                    DrawStatusIconAtRect(iconRect, ctx.IconPrefabApplyWarning, warningTooltip);
+                }
                 else
-                    prefabTooltip = showWarning ? "Prefab (has overrides)" : "Prefab (no overrides)";
-                DrawPrefabIconAtRect(iconRect, ctx.IconPrefab, ctx.IconPrefabApplyWarning, ctx.IconPrefabEmpty, true, false, prefabTooltip);
+                {
+                    DrawPrefabIconAtRect(iconRect, ctx.IconPrefab, ctx.IconPrefabApplyWarning, ctx.IconPrefabEmpty, true, false, prefabTooltip);
+                }
             }
 
             if (showComponentIcons)
