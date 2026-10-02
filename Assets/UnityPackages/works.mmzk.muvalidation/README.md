@@ -4,7 +4,8 @@ English | [日本語](README.ja.md)
 
 An Editor extension that finds invalid assets and objects, and marks them in the Project window.
 
-- **File names**: place `FileNameRule` assets with allowed file path patterns. Files that break them get a ✗ mark on their icon.
+- **File names**: place `FileNameRules` assets with allowed file path patterns. Files that break them get a ✗ mark on their icon.
+- **Scenes**: assign `SceneRules` assets to scene folders to check scene objects for default names (`Cube`, `GameObject`...), forbidden tags and layers, and the layers allowed per tag and component.
 - **Object content**: put validation attributes on ScriptableObject / Component classes and fields. Assets and prefabs with errors get a red ✗ mark, or a yellow ! mark when there are only warnings.
 - **Folders**: a folder that contains assets with errors (at any depth) also gets a ✗ mark, or a ! mark if they have only warnings. Turn it off with `Tools > muValidation > Show Errors On Folders`.
 
@@ -22,18 +23,18 @@ https://github.com/uisawara/mmzkworks-unitypackages.git?path=Assets/UnityPackage
 
 ## Usage
 
-1. Right-click the target folder in the Project window and select `Create > muValidation > File Name Rule`.
+1. Right-click the target folder in the Project window and select `Create > muValidation > File Name Rules`.
 2. Add rules in the Inspector.
 3. Files that break the rule show a ✗ mark on their icon.
 
-The Inspector of a `FileNameRule` also lists the files that break it. Click one to ping it.
+The Inspector of a `FileNameRules` also lists the files that break it. Click one to ping it.
 
 ## Rule settings
 
 | Field | Description |
 | --- | --- |
 | Rules | List of rules. Each has a `Path` and `Patterns` (below) |
-| Rules > Path | Folder relative to the `FileNameRule` asset, e.g. `Textures` or `../Shared`. Empty means the asset's own folder |
+| Rules > Path | Folder relative to the `FileNameRules` asset, e.g. `Textures` or `../Shared`. Empty means the asset's own folder |
 | Rules > Patterns | Regex for allowed files, matched against the path relative to `Path`, e.g. `T_Hero.png` or `Sub/T_Hero.png`. Use `^...$` for a full match. Empty allows any file |
 | Allow Other Files | Allow files under the asset's folder that no rule covers |
 | Validate Folders | Also check folders, not only files |
@@ -51,10 +52,59 @@ With `Allow Other Files` off, files outside `Textures` and `Models` are errors t
 
 - A rule covers its folder and all subfolders. Patterns see the subfolder part, so `^T_.*` does not allow `Sub/T_Hero.png`. Use `^([^/]+/)*T_.*`, or add a rule for `Textures/Sub`.
 - When rules for several folders cover a file, the rule for the deepest folder decides.
-- Rules for the same folder are combined: the file is allowed if it matches any of them. This also applies across several `FileNameRule` assets.
-- Several `FileNameRule` assets can be placed in the same folder.
-- For files that no rule covers, the `FileNameRule` assets in the nearest ancestor folder decide. If any of them has `Allow Other Files` off, the file is an error.
-- The `FileNameRule` asset itself is not checked.
+- Rules for the same folder are combined: the file is allowed if it matches any of them. This also applies across several `FileNameRules` assets.
+- Several `FileNameRules` assets can be placed in the same folder.
+- For files that no rule covers, the `FileNameRules` assets in the nearest ancestor folder decide. If any of them has `Allow Other Files` off, the file is an error.
+- The `FileNameRules` asset itself is not checked.
+
+## Scene rules
+
+Check GameObjects in scenes against rules for default names, tags and layers. Rules and the scenes they apply to are set in two kinds of assets, so different folders of scenes can follow different rules.
+
+1. Create a `SceneRules` asset with `Create > muValidation > Scene Rules` and set the rules.
+2. Create a `SceneRulesAssignments` asset with `Create > muValidation > Scene Rules Assignments`, and assign the `SceneRules` to folders.
+
+`Assets/Settings/` is the recommended place for both. A `SceneRules` that no assignment refers to is not applied.
+
+### SceneRules
+
+| Field | Description |
+| --- | --- |
+| Severity | Report problems as errors or warnings |
+| Default Names | Names Unity gives new objects (`GameObject`, `Cube`, `Main Camera`...) and whether objects may keep them. Filled with Unity's names when the asset is created; `Reset Default Names` in the Inspector fills it again. Duplicates such as `Cube (1)` count as the same name |
+| Forbidden Tags | Tags that GameObjects may not use |
+| Forbidden Layers | Layers that GameObjects may not be on |
+| Tag Layers | Per tag, the layers GameObjects with that tag may be on |
+| Component Layers | Per component type (full name, e.g. `UnityEngine.Camera`; pick one with `Select`), the layers GameObjects with that component may be on. `Include Subclasses` also applies it to derived types |
+
+The Inspector shows the paths the asset is assigned to, and lists the objects in open scenes that break it. Click one to ping it.
+
+### SceneRulesAssignments
+
+| Field | Description |
+| --- | --- |
+| Assignments > Path | Folder from the project root, e.g. `Assets/Scenes/Stages`, or a scene path. `Assets` (or empty) covers all scenes |
+| Assignments > Rules | `SceneRules` applied to scenes under the path |
+
+Example:
+
+| Path | Rules |
+| --- | --- |
+| `Assets` | `CommonSceneRules` |
+| `Assets/Scenes/UI` | `UISceneRules` |
+
+Scenes under `Assets/Scenes/UI` get both `CommonSceneRules` and `UISceneRules`; other scenes get only `CommonSceneRules`.
+
+- When several assignments cover a scene, all their rules apply. A `SceneRules` assigned twice is applied once. Several `SceneRulesAssignments` assets are combined.
+- Prefab Mode uses the prefab's path, e.g. `Assets/Prefabs/UI/Menu.prefab` is covered by `Assets/Prefabs/UI`. Unsaved scenes are covered only by `Assets`.
+- The Inspector shows how many scenes each path covers, and warns about paths that do not exist.
+- With [muHierarchy](../works.mmzk.muhierarchy/README.md), the header row of each scene in the Hierarchy window gets an info icon when rules apply to it. Click it to select the applied `SceneRules` asset (choose from a menu when several apply).
+
+### Scope
+
+- Checks GameObjects in open scenes, in the enabled scenes in Build Settings (Validation window and build check), and in Prefab Mode. Prefab assets are not checked.
+- Each applied `SceneRules` reports its own problems. A name is an error if any of them forbids it.
+- When any `SceneRules` with rules is assigned, every GameObject is validated, not only those with validated components.
 
 ## Validation attributes
 
@@ -164,7 +214,7 @@ If the result depends on other objects (their names, existence and so on), overr
 
 `Tools > muValidation > Validation` lists every problem in one place.
 
-- Covers assets (file name rules and validation attributes) and GameObjects in open scenes and Prefab Mode. Turn each on or off with the `Assets` / `Scenes` buttons.
+- Covers assets (FileNameRules and validation attributes) and GameObjects in open scenes and Prefab Mode (validation attributes and SceneRules). Turn each on or off with the `Assets` / `Scenes` buttons.
 - Filter by errors or warnings, and search by path or message.
 - Click a row to ping the object. Double-click to select it (assets are also opened). The full message shows at the bottom.
 - Results are collected when the window opens and when you press `Refresh`.
@@ -190,8 +240,8 @@ Change it in `Project Settings > muValidation`. Settings are saved to `ProjectSe
 
 ## With muHierarchy
 
-When [muHierarchy](../works.mmzk.muhierarchy/README.md) is also installed, scene objects whose validation attributes report errors get the red error icon in the Hierarchy window, and those with only warnings get the yellow warning icon (ComponentView, with the Prefab icon shown). Like Missing Script, it also shows on parents. Hover to see the messages.
+When [muHierarchy](../works.mmzk.muhierarchy/README.md) is also installed, scene objects whose validation attributes or SceneRules report errors get the red error icon in the Hierarchy window, and those with only warnings get the yellow warning icon (ComponentView, with the Prefab icon shown). Like Missing Script, it also shows on parents. Hover to see the messages.
 
-Results are cached. Editing an object re-validates only that object; adding, deleting or moving objects rebuilds the results, visiting only objects with validated components.
+Results are cached. Editing an object re-validates only that object; adding, deleting or moving objects rebuilds the results, visiting only objects with validated components (all objects if there are SceneRules).
 
 Scene objects are not validated in Play Mode by default. Turn it on with `Tools > muValidation > Validate In Play Mode`; results then refresh at most every 0.5 seconds.

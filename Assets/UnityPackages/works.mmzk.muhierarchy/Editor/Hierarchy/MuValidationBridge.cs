@@ -19,10 +19,13 @@ namespace Mmzkworks.muHierarchy.Editor
 
         private const string TypeName = "Mmzkworks.muValidation.Editor.SceneValidation, works.mmzk.muvalidation.Editor";
         private const string MethodName = "GetSeverityIncludingChildren";
+        private const string SceneRulesTypeName = "Mmzkworks.muValidation.Editor.SceneRulesRegistry, works.mmzk.muvalidation.Editor";
+        private const string SceneRulesMethodName = "GetRulePaths";
 
         private delegate int GetSeverityDelegate(GameObject go, out string message);
 
         private static GetSeverityDelegate _getSeverity;
+        private static Func<string, string[]> _getSceneRulePaths;
         private static bool _resolved;
 
         /// <summary>
@@ -46,9 +49,36 @@ namespace Mmzkworks.muHierarchy.Editor
             }
         }
 
+        /// <summary>
+        /// Returns the asset paths of the muValidation SceneRules that apply to the scene.
+        /// Empty if none apply or muValidation is not installed.
+        /// </summary>
+        public static string[] GetSceneRulePaths(string scenePath)
+        {
+            if (!_resolved) Resolve();
+            if (_getSceneRulePaths == null) return Array.Empty<string>();
+
+            try
+            {
+                return _getSceneRulePaths(scenePath) ?? Array.Empty<string>();
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+                return Array.Empty<string>();
+            }
+        }
+
         private static void Resolve()
         {
             _resolved = true;
+
+            var rulePaths = Type.GetType(SceneRulesTypeName)?.GetMethod(SceneRulesMethodName, BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(string) }, null);
+            if (rulePaths != null && rulePaths.ReturnType == typeof(string[]))
+            {
+                _getSceneRulePaths = (Func<string, string[]>)Delegate.CreateDelegate(typeof(Func<string, string[]>), rulePaths);
+            }
+
             var parameterTypes = new[] { typeof(GameObject), typeof(string).MakeByRefType() };
             var method = Type.GetType(TypeName)?.GetMethod(MethodName, BindingFlags.Public | BindingFlags.Static, null, parameterTypes, null);
             if (method == null || method.ReturnType != typeof(int)) return;
