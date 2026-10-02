@@ -1,0 +1,104 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a3f2af661e524a3f84836b75e4f73d49, type: 3}
+  m_Name: SceneRules-Prop
+  m_EditorClassIdentifier: 
+  severity: 2
+  defaultNames:
+  - name: GameObject
+    allowed: 0
+  - name: Cube
+    allowed: 0
+  - name: Sphere
+    allowed: 0
+  - name: Capsule
+    allowed: 0
+  - name: Cylinder
+    allowed: 0
+  - name: Plane
+    allowed: 0
+  - name: Quad
+    allowed: 0
+  - name: Terrain
+    allowed: 0
+  - name: Camera
+    allowed: 0
+  - name: Main Camera
+    allowed: 1
+  - name: Directional Light
+    allowed: 1
+  - name: Point Light
+    allowed: 0
+  - name: Spot Light
+    allowed: 0
+  - name: Area Light
+    allowed: 0
+  - name: Reflection Probe
+    allowed: 0
+  - name: Light Probe Group
+    allowed: 0
+  - name: Audio Source
+    allowed: 0
+  - name: Particle System
+    allowed: 0
+  - name: Canvas
+    allowed: 1
+  - name: EventSystem
+    allowed: 1
+  - name: Panel
+    allowed: 0
+  - name: Image
+    allowed: 0
+  - name: RawImage
+    allowed: 0
+  - name: Text
+    allowed: 0
+  - name: Text (TMP)
+    allowed: 0
+  - name: Text (Legacy)
+    allowed: 0
+  - name: Button
+    allowed: 0
+  - name: Button (Legacy)
+    allowed: 0
+  - name: Toggle
+    allowed: 0
+  - name: Slider
+    allowed: 0
+  - name: Scrollbar
+    allowed: 0
+  - name: Dropdown
+    allowed: 0
+  - name: InputField
+    allowed: 0
+  - name: InputField (TMP)
+    allowed: 0
+  - name: Scroll View
+    allowed: 0
+  - name: Sprite
+    allowed: 0
+  forbiddenTags:
+  - Untagged
+  forbiddenLayers:
+    serializedVersion: 2
+    m_Bits: 1
+  tagLayers:
+  - tag: MainCamera
+    allowedLayers:
+      serializedVersion: 2
+      m_Bits: 1
+  componentLayers:
+  - componentType: UnityEngine.Camera
+    includeSubclasses: 1
+    allowedLayers:
+      serializedVersion: 2
+      m_Bits: 1

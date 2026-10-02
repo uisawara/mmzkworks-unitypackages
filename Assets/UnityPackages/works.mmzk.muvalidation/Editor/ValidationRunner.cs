@@ -45,7 +45,7 @@ namespace Mmzkworks.muValidation.Editor
     public static class ValidationRunner
     {
         /// <summary>
-        /// Validates every asset under Assets (file name rules and validation attributes).
+        /// Validates every asset under Assets (FileNameRules and validation attributes).
         /// Returns false if the user canceled the progress bar.
         /// </summary>
         public static bool CollectAssets(List<ValidationIssue> into, bool showProgress)
@@ -77,7 +77,7 @@ namespace Mmzkworks.muValidation.Editor
         }
 
         /// <summary>
-        /// Validates GameObjects in all loaded scenes and the open Prefab Mode stage.
+        /// Validates GameObjects in all loaded scenes and the open Prefab Mode stage (validation attributes and SceneRules).
         /// </summary>
         public static void CollectOpenScenes(List<ValidationIssue> into)
         {
@@ -145,7 +145,7 @@ namespace Mmzkworks.muValidation.Editor
             }
         }
 
-        // Validates the validated components under root, one issue per GameObject.
+        // Validates the validated components and SceneRules under root, one issue per GameObject.
         private static void CollectHierarchy(GameObject root, string locationPrefix, string scenePath, List<ValidationIssue> into)
         {
             var results = new Dictionary<GameObject, ValidationResult>();
@@ -162,6 +162,19 @@ namespace Mmzkworks.muValidation.Editor
                 }
 
                 AttributeValidator.Validate(component, type.Name, result);
+            }
+
+            if (SceneRulesRegistry.HasRules)
+            {
+                foreach (var transform in root.GetComponentsInChildren<Transform>(true))
+                {
+                    if (!results.TryGetValue(transform.gameObject, out var result))
+                    {
+                        results[transform.gameObject] = result = new ValidationResult();
+                    }
+
+                    SceneRulesRegistry.Validate(transform.gameObject, result);
+                }
             }
 
             foreach (var pair in results)

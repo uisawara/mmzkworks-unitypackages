@@ -5,7 +5,7 @@ using UnityEditor;
 namespace Mmzkworks.muValidation.Editor
 {
     /// <summary>
-    /// Combines FileNameRule and validation attribute results per asset, and counts errors and warnings under each folder.
+    /// Combines FileNameRules and validation attribute results per asset, and counts errors and warnings under each folder.
     /// Folder counts come from a scan of the whole Assets folder, spread over several editor frames
     /// so a large project does not freeze the Editor.
     /// </summary>
@@ -67,7 +67,7 @@ namespace Mmzkworks.muValidation.Editor
         /// </summary>
         public static ValidationSummary GetSummary(string guid)
         {
-            var fileName = FileNameRuleRegistry.GetError(guid);
+            var fileName = FileNameRulesRegistry.GetError(guid);
             var fileNameSummary = fileName == null ? ValidationSummary.Valid : ValidationSummary.Error(fileName);
             return ValidationSummary.Combine(fileNameSummary, AssetValidation.GetSummary(guid));
         }
@@ -172,7 +172,7 @@ namespace Mmzkworks.muValidation.Editor
                 : null;
             if (counts == null) return;
 
-            for (var folder = FileNameRule.GetParentFolder(path); !string.IsNullOrEmpty(folder); folder = FileNameRule.GetParentFolder(folder))
+            for (var folder = FileNameRules.GetParentFolder(path); !string.IsNullOrEmpty(folder); folder = FileNameRules.GetParentFolder(folder))
             {
                 counts.TryGetValue(folder, out var count);
                 count += delta;
@@ -184,7 +184,8 @@ namespace Mmzkworks.muValidation.Editor
         /// <summary>
         /// Single entry point for asset changes, so the caches are updated in a fixed order:
         /// - Moves / deletes change paths and folder contents: clear everything and rescan folders.
-        /// - A changed FileNameRule affects many files: clear file name results and rescan folders.
+        /// - A changed FileNameRules affects many files: clear file name results and rescan folders.
+        /// - A changed SceneRules / SceneRulesAssignments affects scene objects: rebuild the SceneRules list and scene results.
         /// - Otherwise only the imported assets are re-checked. Cached results of other assets are kept
         ///   and recheck their dependency hash on next use.
         /// </summary>
@@ -196,9 +197,17 @@ namespace Mmzkworks.muValidation.Editor
             private static void OnPostprocessAllAssets(string[] imported, string[] deleted, string[] moved, string[] movedFrom)
             {
                 var structural = deleted.Length > 0 || moved.Length > 0;
-                var ruleChanged = structural || imported.Any(path => AssetDatabase.GetMainAssetTypeAtPath(path) == typeof(FileNameRule));
+                var ruleChanged = structural || imported.Any(path => AssetDatabase.GetMainAssetTypeAtPath(path) == typeof(FileNameRules));
 
-                if (ruleChanged) FileNameRuleRegistry.Invalidate();
+                if (ruleChanged) FileNameRulesRegistry.Invalidate();
+                if (structural || imported.Any(path =>
+                {
+                    var type = AssetDatabase.GetMainAssetTypeAtPath(path);
+                    return type == typeof(SceneRules) || type == typeof(SceneRulesAssignments);
+                }))
+                {
+                    SceneRulesRegistry.Invalidate();
+                }
 
                 if (structural)
                 {

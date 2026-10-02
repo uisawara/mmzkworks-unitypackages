@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0962ff141c2d4cb895f15b6655c403bf, type: 3}
+  m_Name: SceneRulesAssignments
+  m_EditorClassIdentifier: 
+  assignments:
+  - path: Assets/Scenes/System
+    rules:
+    - {fileID: 11400000, guid: d22ac33479164b418c73c41b1c6007f9, type: 2}
+  - path: Assets/Scenes/Actors
+    rules:
+    - {fileID: 11400000, guid: 08b7671af855abe4e8a3a86e93f70b9b, type: 2}
+  - path: Assets/Scenes/Props
+    rules:
+    - {fileID: 11400000, guid: 6065b27f65a3e90408f8a09fe43f70d8, type: 2}
+  - path: Assets/Scenes/Levels
+    rules:
+    - {fileID: 11400000, guid: 6044f963794528a4ea0f31721892df11, type: 2}

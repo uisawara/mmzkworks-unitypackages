@@ -9,7 +9,7 @@ using UnityEngine.SceneManagement;
 namespace Mmzkworks.muValidation.Editor
 {
     /// <summary>
-    /// Lists all validation results: assets (file name rules and validation attributes) and
+    /// Lists all validation results: assets (FileNameRules and validation attributes) and
     /// GameObjects in open scenes / Prefab Mode. Click a row to ping it, double-click to select it.
     /// Also shows the issues that stopped a build (see <see cref="ShowIssues"/>).
     /// </summary>

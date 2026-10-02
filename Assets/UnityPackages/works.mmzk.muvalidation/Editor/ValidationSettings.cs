@@ -13,7 +13,7 @@ namespace Mmzkworks.muValidation.Editor
         [Tooltip("Run validation before every player build.")]
         public bool validateBeforeBuild = true;
 
-        [Tooltip("Validate all assets under Assets (file name rules and validation attributes).")]
+        [Tooltip("Validate all assets under Assets (FileNameRules and validation attributes).")]
         public bool includeAssets = true;
 
         [Tooltip("Validate the enabled scenes in Build Settings. Scenes that are not open are opened temporarily.")]

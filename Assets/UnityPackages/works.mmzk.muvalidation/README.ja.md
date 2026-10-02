@@ -4,7 +4,8 @@
 
 問題のあるアセットやオブジェクトを見つけ、Project ウィンドウで印を付ける Editor 拡張です。
 
-- **ファイル名**: 許容するファイルパスのパターンを書いた `FileNameRule` アセットを置きます。ルールに合わないファイルは、アイコンに ✗ マークが付きます。
+- **ファイル名**: 許容するファイルパスのパターンを書いた `FileNameRules` アセットを置きます。ルールに合わないファイルは、アイコンに ✗ マークが付きます。
+- **シーン**: `SceneRules` アセットをシーンのフォルダに割り当てると、シーン上のオブジェクトのデフォルト名(`Cube`、`GameObject` など)、禁止した Tag・レイヤー、Tag・Component ごとに使えるレイヤーをチェックします。
 - **オブジェクトの内容**: ScriptableObject / Component のクラスやフィールドに Validation 属性を付けます。エラーのあるアセットや prefab には赤い ✗ マーク、警告だけなら黄色い ! マークが付きます。
 - **フォルダ**: エラーのあるアセットを(階層の深さに関係なく)含むフォルダにも ✗ マークが付きます。警告だけなら ! マークです。`Tools > muValidation > Show Errors On Folders` でオフにできます。
 
@@ -22,18 +23,18 @@ https://github.com/uisawara/mmzkworks-unitypackages.git?path=Assets/UnityPackage
 
 ## 使い方
 
-1. Project ウィンドウで対象フォルダを右クリックし、`Create > muValidation > File Name Rule` を選びます。
+1. Project ウィンドウで対象フォルダを右クリックし、`Create > muValidation > File Name Rules` を選びます。
 2. Inspector でルールを追加します。
 3. ルールに合わないファイルのアイコンに ✗ マークが付きます。
 
-`FileNameRule` の Inspector には、ルールに合わないファイルの一覧も出ます。クリックするとそのファイルを Ping します。
+`FileNameRules` の Inspector には、ルールに合わないファイルの一覧も出ます。クリックするとそのファイルを Ping します。
 
 ## ルールの設定
 
 | 項目 | 説明 |
 | --- | --- |
 | Rules | ルールの一覧。それぞれに `Path` と `Patterns` を指定します |
-| Rules > Path | `FileNameRule` アセットから見た相対パスのフォルダ。例: `Textures`、`../Shared`。空ならアセットと同じフォルダ |
+| Rules > Path | `FileNameRules` アセットから見た相対パスのフォルダ。例: `Textures`、`../Shared`。空ならアセットと同じフォルダ |
 | Rules > Patterns | 許容するファイルの正規表現。`Path` からの相対パスに対して判定します。例: `T_Hero.png`、`Sub/T_Hero.png`。完全一致は `^...$`。空ならすべて許容 |
 | Allow Other Files | アセットのフォルダ以下で、どのルールにも該当しないファイルを許容する |
 | Validate Folders | ファイルだけでなくフォルダもチェックする |
@@ -51,10 +52,59 @@ https://github.com/uisawara/mmzkworks-unitypackages.git?path=Assets/UnityPackage
 
 - ルールは、そのフォルダとすべてのサブフォルダに適用されます。パターンはサブフォルダ部分も含めて判定するので、`^T_.*` は `Sub/T_Hero.png` を許容しません。`^([^/]+/)*T_.*` と書くか、`Textures/Sub` 用のルールを追加します。
 - 複数のフォルダのルールがファイルに該当するときは、一番深いフォルダのルールで判定します。
-- 同じフォルダのルールはまとめて判定し、どれかに一致すれば許容します。複数の `FileNameRule` アセットにまたがっていても同じです。
-- 同じフォルダに `FileNameRule` アセットを複数置けます。
-- どのルールにも該当しないファイルは、一番近い親フォルダにある `FileNameRule` アセットで判定します。そのどれかで `Allow Other Files` がオフなら、エラーになります。
-- `FileNameRule` アセット自体はチェックしません。
+- 同じフォルダのルールはまとめて判定し、どれかに一致すれば許容します。複数の `FileNameRules` アセットにまたがっていても同じです。
+- 同じフォルダに `FileNameRules` アセットを複数置けます。
+- どのルールにも該当しないファイルは、一番近い親フォルダにある `FileNameRules` アセットで判定します。そのどれかで `Allow Other Files` がオフなら、エラーになります。
+- `FileNameRules` アセット自体はチェックしません。
+
+## シーンルール
+
+シーン上の GameObject を、デフォルト名・Tag・レイヤーのルールでチェックします。ルールの中身と、それを適用するシーンを別々のアセットで設定するので、フォルダごとに違うルールを適用できます。
+
+1. `Create > muValidation > Scene Rules` で `SceneRules` アセットを作り、ルールを設定します。
+2. `Create > muValidation > Scene Rules Assignments` で `SceneRulesAssignments` アセットを作り、フォルダに `SceneRules` を割り当てます。
+
+どちらも推奨の置き場所は `Assets/Settings/` です。どこからも割り当てられていない `SceneRules` は適用されません。
+
+### SceneRules
+
+| 項目 | 説明 |
+| --- | --- |
+| Severity | 問題をエラーとして報告するか、警告として報告するか |
+| Default Names | Unity が新しいオブジェクトに付ける名前(`GameObject`、`Cube`、`Main Camera` など)と、その名前のままでよいか。アセット作成時に Unity の名前が入ります。Inspector の `Reset Default Names` で入れ直せます。`Cube (1)` のような複製の名前も同じ名前として扱います |
+| Forbidden Tags | GameObject に使ってはいけない Tag |
+| Forbidden Layers | GameObject に使ってはいけないレイヤー |
+| Tag Layers | Tag ごとに、その Tag の GameObject が使えるレイヤー |
+| Component Layers | Component の型(フルネーム。例: `UnityEngine.Camera`。`Select` で選べます)ごとに、その Component を持つ GameObject が使えるレイヤー。`Include Subclasses` をオンにすると派生型にも適用します |
+
+Inspector には、割り当て先のパスと、開いているシーンでルールに合わないオブジェクトの一覧が出ます。クリックするとそのオブジェクトを Ping します。
+
+### SceneRulesAssignments
+
+| 項目 | 説明 |
+| --- | --- |
+| Assignments > Path | プロジェクトルートからのフォルダパス。例: `Assets/Scenes/Stages`。シーンのパスも指定できます。`Assets`(または空)ならすべてのシーン |
+| Assignments > Rules | そのパス以下のシーンに適用する `SceneRules` |
+
+例:
+
+| Path | Rules |
+| --- | --- |
+| `Assets` | `CommonSceneRules` |
+| `Assets/Scenes/UI` | `UISceneRules` |
+
+`Assets/Scenes/UI` 以下のシーンには `CommonSceneRules` と `UISceneRules` の両方、それ以外のシーンには `CommonSceneRules` だけを適用します。
+
+- 複数の割り当てがシーンに該当するときは、すべてのルールを適用します。同じ `SceneRules` が重複して割り当てられていても 1 回だけ適用します。`SceneRulesAssignments` アセットが複数あるときは、まとめて扱います。
+- Prefab Mode では prefab のパスで判定します。例: `Assets/Prefabs/UI/Menu.prefab` は `Assets/Prefabs/UI` の割り当てに該当します。未保存のシーンは `Assets` の割り当てだけに該当します。
+- Inspector には、パスごとに該当するシーンの数が出ます。存在しないパスには警告が出ます。
+- [muHierarchy](../works.mmzk.muhierarchy/README.ja.md) も入れると、ルールが適用されるシーンの Hierarchy ヘッダー行に情報アイコンが付きます。クリックすると、適用中の `SceneRules` アセットを選択します(複数あるときはメニューから選びます)。
+
+### 適用範囲
+
+- 開いているシーン、Build Settings で有効なシーン(Validation ウィンドウとビルド前チェック)、Prefab Mode の GameObject をチェックします。Prefab アセットはチェックしません。
+- 適用される `SceneRules` がそれぞれ問題を報告します。名前は、どれかで禁止されていればエラーです。
+- ルールを持つ `SceneRules` が割り当てられていると、検証対象の Component を持つ GameObject だけでなく、すべての GameObject を検証します。
 
 ## Validation 属性
 
@@ -164,7 +214,7 @@ public class PositiveAttribute : ValidationAttribute
 
 `Tools > muValidation > Validation` で、すべての問題を一覧できます。
 
-- アセット(ファイル名ルールと Validation 属性)と、開いているシーン・Prefab Mode の GameObject が対象です。`Assets` / `Scenes` ボタンでそれぞれ切り替えられます。
+- アセット(FileNameRules と Validation 属性)と、開いているシーン・Prefab Mode の GameObject(Validation 属性と SceneRules)が対象です。`Assets` / `Scenes` ボタンでそれぞれ切り替えられます。
 - エラー・警告での絞り込みと、パスやメッセージでの検索ができます。
 - 行をクリックするとそのオブジェクトを Ping します。ダブルクリックで選択します(アセットは開きます)。下部に全文が出ます。
 - ウィンドウを開いたときと `Refresh` を押したときに集計します。
@@ -190,8 +240,8 @@ Player のビルド前に Validation を実行します。既定ではエラー�
 
 ## muHierarchy と一緒に使う
 
-[muHierarchy](../works.mmzk.muhierarchy/README.ja.md) も入れると、Validation 属性がエラーを報告したシーン上のオブジェクトには赤いエラーアイコン、警告だけなら黄色い警告アイコンが、Hierarchy ウィンドウで付きます(ComponentView で Prefab アイコンを表示しているとき)。Missing Script と同じく、親にも付きます。マウスを乗せるとメッセージが出ます。
+[muHierarchy](../works.mmzk.muhierarchy/README.ja.md) も入れると、Validation 属性や SceneRules がエラーを報告したシーン上のオブジェクトには赤いエラーアイコン、警告だけなら黄色い警告アイコンが、Hierarchy ウィンドウで付きます(ComponentView で Prefab アイコンを表示しているとき)。Missing Script と同じく、親にも付きます。マウスを乗せるとメッセージが出ます。
 
-結果はキャッシュします。オブジェクトを編集したときはそのオブジェクトだけを再検証し、追加・削除・移動したときは、検証対象のコンポーネントを持つオブジェクトだけを集計し直します。
+結果はキャッシュします。オブジェクトを編集したときはそのオブジェクトだけを再検証し、追加・削除・移動したときは、検証対象のコンポーネントを持つオブジェクトだけを集計し直します(SceneRules があるときはすべてのオブジェクト)。
 
 Play Mode 中は既定でシーンを検証しません。`Tools > muValidation > Validate In Play Mode` でオンにすると、最短 0.5 秒ごとに更新します。

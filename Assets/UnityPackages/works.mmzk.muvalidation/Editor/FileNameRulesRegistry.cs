@@ -5,22 +5,22 @@ using UnityEditor;
 namespace Mmzkworks.muValidation.Editor
 {
     /// <summary>
-    /// Collects all FileNameRule assets and caches validation results per GUID.
+    /// Collects all FileNameRules assets and caches validation results per GUID.
     /// Results depend only on asset paths and rules, so the cache is cleared when a rule changes
     /// or assets are moved / deleted (see ValidationStatus), not on every import.
     ///
     /// A file is checked against the rules whose folder is its nearest ancestor among all rule folders;
-    /// it is valid if any of those rules allows it. If no rule covers it, the FileNameRule assets in the
+    /// it is valid if any of those rules allows it. If no rule covers it, the FileNameRules assets in the
     /// nearest ancestor folder decide whether it is allowed (allowOtherFiles).
     /// </summary>
-    public static class FileNameRuleRegistry
+    public static class FileNameRulesRegistry
     {
         private readonly struct RuleRef
         {
-            public readonly FileNameRule Asset;
-            public readonly FileNameRule.Rule Rule;
+            public readonly FileNameRules Asset;
+            public readonly FileNameRules.Rule Rule;
 
-            public RuleRef(FileNameRule asset, FileNameRule.Rule rule)
+            public RuleRef(FileNameRules asset, FileNameRules.Rule rule)
             {
                 Asset = asset;
                 Rule = rule;
@@ -30,8 +30,8 @@ namespace Mmzkworks.muValidation.Editor
         // resolved folder path -> rules targeting that folder
         private static Dictionary<string, List<RuleRef>> _rulesByFolder;
 
-        // folder path -> FileNameRule assets placed directly in that folder
-        private static Dictionary<string, List<FileNameRule>> _assetsByFolder;
+        // folder path -> FileNameRules assets placed directly in that folder
+        private static Dictionary<string, List<FileNameRules>> _assetsByFolder;
 
         // guid -> error message (null = valid / not a target)
         private static readonly Dictionary<string, string> ResultCache = new Dictionary<string, string>();
@@ -65,7 +65,7 @@ namespace Mmzkworks.muValidation.Editor
         /// <summary>
         /// Lists asset paths that violate a rule of the given asset, with their messages.
         /// </summary>
-        public static List<KeyValuePair<string, string>> CollectViolations(FileNameRule asset)
+        public static List<KeyValuePair<string, string>> CollectViolations(FileNameRules asset)
         {
             var result = new List<KeyValuePair<string, string>>();
             var folders = new HashSet<string>();
@@ -83,7 +83,7 @@ namespace Mmzkworks.muValidation.Editor
             folders.RemoveWhere(folder => !AssetDatabase.IsValidFolder(folder));
             if (folders.Count == 0) return result;
 
-            var deciders = new List<FileNameRule>();
+            var deciders = new List<FileNameRules>();
             foreach (var guid in AssetDatabase.FindAssets("", folders.ToArray()).Distinct())
             {
                 var path = AssetDatabase.GUIDToAssetPath(guid);
@@ -96,11 +96,11 @@ namespace Mmzkworks.muValidation.Editor
             return result;
         }
 
-        /// <param name="deciders">If not null, receives the FileNameRule assets that decided the result.</param>
-        private static string Evaluate(string assetPath, List<FileNameRule> deciders)
+        /// <param name="deciders">If not null, receives the FileNameRules assets that decided the result.</param>
+        private static string Evaluate(string assetPath, List<FileNameRules> deciders)
         {
             if (string.IsNullOrEmpty(assetPath) || !assetPath.StartsWith("Assets/")) return null;
-            if (AssetDatabase.GetMainAssetTypeAtPath(assetPath) == typeof(FileNameRule)) return null;
+            if (AssetDatabase.GetMainAssetTypeAtPath(assetPath) == typeof(FileNameRules)) return null;
 
             EnsureMaps();
             if (_assetsByFolder.Count == 0) return null;
@@ -108,7 +108,7 @@ namespace Mmzkworks.muValidation.Editor
             var isFolder = AssetDatabase.IsValidFolder(assetPath);
 
             // The nearest folder targeted by any rule decides.
-            for (var folder = FileNameRule.GetParentFolder(assetPath); folder != null; folder = FileNameRule.GetParentFolder(folder))
+            for (var folder = FileNameRules.GetParentFolder(assetPath); folder != null; folder = FileNameRules.GetParentFolder(folder))
             {
                 if (!_rulesByFolder.TryGetValue(folder, out var rules)) continue;
 
@@ -131,8 +131,8 @@ namespace Mmzkworks.muValidation.Editor
                 return $"Not allowed in {folder}/\n\"{relativePath}\" must match one of:\n" + string.Join("\n", patterns);
             }
 
-            // No rule covers it: the nearest FileNameRule assets decide.
-            for (var folder = FileNameRule.GetParentFolder(assetPath); folder != null; folder = FileNameRule.GetParentFolder(folder))
+            // No rule covers it: the nearest FileNameRules assets decide.
+            for (var folder = FileNameRules.GetParentFolder(assetPath); folder != null; folder = FileNameRules.GetParentFolder(folder))
             {
                 if (!_assetsByFolder.TryGetValue(folder, out var assets)) continue;
 
@@ -152,8 +152,8 @@ namespace Mmzkworks.muValidation.Editor
             if (_rulesByFolder != null && _assetsByFolder != null) return;
 
             var rulesByFolder = new Dictionary<string, List<RuleRef>>();
-            var assetsByFolder = new Dictionary<string, List<FileNameRule>>();
-            var paths = AssetDatabase.FindAssets("t:" + nameof(FileNameRule), new[] { "Assets" })
+            var assetsByFolder = new Dictionary<string, List<FileNameRules>>();
+            var paths = AssetDatabase.FindAssets("t:" + nameof(FileNameRules), new[] { "Assets" })
                 .Select(AssetDatabase.GUIDToAssetPath)
                 .OrderBy(path => path, System.StringComparer.Ordinal);
 
@@ -162,10 +162,10 @@ namespace Mmzkworks.muValidation.Editor
             {
                 foreach (var path in paths)
                 {
-                    var asset = AssetDatabase.LoadAssetAtPath<FileNameRule>(path);
+                    var asset = AssetDatabase.LoadAssetAtPath<FileNameRules>(path);
                     if (asset == null) continue;
 
-                    AddTo(assetsByFolder, FileNameRule.GetParentFolder(path), asset);
+                    AddTo(assetsByFolder, FileNameRules.GetParentFolder(path), asset);
                     if (asset.rules == null) continue;
 
                     foreach (var rule in asset.rules)
