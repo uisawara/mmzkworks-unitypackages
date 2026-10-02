@@ -2,7 +2,7 @@
 
 # muUnityExtensions
 
-Unity の型に対する拡張メソッド集です（muMisc から分離）。
+Unity の型に対する拡張メソッド集です。
 
 Unity 2022.3 以降。MIT License。
 

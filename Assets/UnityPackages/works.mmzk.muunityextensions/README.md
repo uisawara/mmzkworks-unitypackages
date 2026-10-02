@@ -2,7 +2,7 @@ English | [日本語](README.ja.md)
 
 # muUnityExtensions
 
-Extension methods for Unity types (split out from muMisc).
+Extension methods for Unity types.
 
 Unity 2022.3 or later. MIT License.
 
