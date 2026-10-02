@@ -157,6 +157,20 @@ namespace Mmzkworks.muPrimitive
 
         protected abstract void BuildMesh(Mesh mesh);
 
+        /// <summary>
+        /// 形状の内部から一様分布でランダムな点をワールド座標で返す。
+        /// random を指定するとその乱数列を使う（再現性が必要な場合）。null なら UnityEngine.Random を使う。
+        /// </summary>
+        public Vector3 GetRandomPoint(System.Random random = null)
+        {
+            return transform.TransformPoint(GetRandomLocalPoint(random));
+        }
+
+        /// <summary>
+        /// 形状の内部から一様分布でランダムな点をローカル座標で返す。
+        /// </summary>
+        public abstract Vector3 GetRandomLocalPoint(System.Random random = null);
+
         private void ApplyAppearance()
         {
             _meshRenderer.sharedMaterial = _customMaterial != null

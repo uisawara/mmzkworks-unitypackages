@@ -64,6 +64,11 @@ namespace Mmzkworks.muPrimitive
             set { _segments = Mathf.Clamp(value, 3, 256); MarkMeshDirty(); }
         }
 
+        public override Vector3 GetRandomLocalPoint(System.Random random = null)
+        {
+            return ShapeSampler.SamplePie(_innerRadius, _outerRadius, _angle, _bottom, _top, random);
+        }
+
         protected override void BuildMesh(Mesh mesh)
         {
             ShapeMeshBuilder.BuildPie(mesh, _innerRadius, _outerRadius, _angle, _bottom, _top, _segments);

@@ -81,6 +81,20 @@ line.Target = enemy.transform;
 
 Changes are applied in `LateUpdate`. Call `Refresh()` to apply them immediately.
 
+### Random points inside a shape
+
+`GetRandomPoint()` returns a uniformly distributed random point inside the shape, in world space. `GetRandomLocalPoint()` returns one in local space. Useful for spawn positions, particle emitters, and so on.
+
+```csharp
+var spawnPosition = pie.GetRandomPoint();
+
+// Pass a System.Random for reproducible results (UnityEngine.Random is used when omitted)
+var random = new System.Random(seed);
+var p = cone.GetRandomPoint(random);
+```
+
+`ShapeSampler` has the same sampling as static methods (`SamplePie`, `SampleCone`, `SampleCylinder`), so you can use it without a component. These return points in local space.
+
 ## Notes
 
 - Each shape uses the `MeshFilter` and `MeshRenderer` on the same GameObject. Shadows and probes are turned off.

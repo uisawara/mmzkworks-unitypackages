@@ -81,6 +81,20 @@ line.Target = enemy.transform;
 
 変更は `LateUpdate` で反映されます。すぐに反映したいときは `Refresh()` を呼んでください。
 
+### 形状内のランダムな座標
+
+`GetRandomPoint()` は形状の内部から一様分布でランダムな点をワールド座標で返します。ローカル座標が必要なら `GetRandomLocalPoint()` を使います。出現位置やパーティクルの発生位置などに使えます。
+
+```csharp
+var spawnPosition = pie.GetRandomPoint();
+
+// System.Random を渡すと結果を再現できる（省略時は UnityEngine.Random を使う）
+var random = new System.Random(seed);
+var p = cone.GetRandomPoint(random);
+```
+
+同じ処理は `ShapeSampler` の静的メソッド（`SamplePie` / `SampleCone` / `SampleCylinder`）でも使えるので、コンポーネントなしでも利用できます。こちらはローカル座標で返します。
+
 ## 補足
 
 - 各形状は同じ GameObject の `MeshFilter` と `MeshRenderer` を使います。影とプローブは無効にしています。

@@ -72,6 +72,13 @@ namespace Mmzkworks.muPrimitive
             return true;
         }
 
+        public override Vector3 GetRandomLocalPoint(System.Random random = null)
+        {
+            // メッシュ未更新でも現在の目標位置を使う
+            var localEnd = transform.InverseTransformPoint(TargetPosition);
+            return ShapeSampler.SampleCylinder(Vector3.zero, localEnd, _radius, random);
+        }
+
         protected override void BuildMesh(Mesh mesh)
         {
             ShapeMeshBuilder.BuildCylinder(mesh, Vector3.zero, _localEnd, _radius, _segments, _capped);
