@@ -10,3 +10,4 @@
 - [muDatastore](Assets/UnityPackages/works.mmzk.mudatastore/README.ja.md)
 - [muStorage](Assets/UnityPackages/works.mmzk.mustorage/README.ja.md)
 - [muUnityExtensions](Assets/UnityPackages/works.mmzk.muunityextensions/README.ja.md)
+- [muLogger](Assets/UnityPackages/works.mmzk.mulogger/README.ja.md)
