@@ -1,0 +1,11 @@
+{
+  "name": "works.mmzk.mudatastore",
+  "version": "0.1.0",
+  "displayName": "muDatastore",
+  "description": "Simple async key-value data store for Unity (PlayerPrefs / local file backends, JSON adapter)",
+  "unity": "2022.3",
+  "license": "MIT",
+  "author": {
+    "name": "mmzkworks"
+  }
+}

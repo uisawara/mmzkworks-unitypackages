@@ -1,0 +1,16 @@
+{
+    "name": "works.mmzk.mudatastore",
+    "rootNamespace": "Mmzkworks.muDatastore",
+    "references": [
+        "UniTask"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
