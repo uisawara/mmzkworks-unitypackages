@@ -1,0 +1,11 @@
+{
+  "name": "works.mmzk.muprimitive",
+  "version": "0.1.0",
+  "displayName": "muPrimitive",
+  "description": "Helper primitive shapes for development, debugging and simple effects (pie, cone, line cylinder)",
+  "unity": "2022.3",
+  "license": "MIT",
+  "author": {
+    "name": "mmzkworks"
+  }
+}
