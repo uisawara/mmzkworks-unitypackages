@@ -50,6 +50,8 @@ Project で Prefab を選んで `Assets/Open Ref Graph` から開けます。
 
 ツールバーの `Include Children` を有効にすると、子孫の GameObject とその Component もグラフに含めます。
 
+![子 GameObject を含めたグラフ](Documentation~/img/children.png)
+
 - 子の GameObject は左の列に Hierarchy の順で、深さに応じて字下げして並びます。親子は Hierarchy ウィンドウのようなツリー型の緑の線でつながります。
 - 子の Component の下段には、持ち主の GameObject 名が付きます。
 - 子や子の Component への参照は、参照先ノードではなく、その子のノードへの線になります。

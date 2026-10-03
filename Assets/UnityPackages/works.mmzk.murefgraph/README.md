@@ -50,6 +50,8 @@ Drag nodes to rearrange them, and pan and zoom to see the whole graph. Double-cl
 
 Turn on `Include Children` on the toolbar to add descendant GameObjects and their components to the graph.
 
+![Graph including child GameObjects](Documentation~/img/children.png)
+
 - Child GameObjects are listed in the left column in Hierarchy order, indented by depth and connected to their parent with green tree lines like the Hierarchy window.
 - The second line of a child's component shows the name of the GameObject that owns it.
 - References to a child or one of its components are drawn to that child's node instead of a separate reference node.
