@@ -7,6 +7,8 @@ English | [日本語](README.ja.md)
 
 ### Editor Extensions
 
+![Editor extensions overview](docs/img/editor-extensions.png)
+
 - [muHierarchy](Assets/UnityPackages/works.mmzk.muhierarchy/README.md) — Hierarchy window enhancements such as prefab/component icons and tag background coloring.
   - [![openupm](https://img.shields.io/npm/v/works.mmzk.muhierarchy?label=openupm&registry_uri=https://package.openupm.com)](https://openupm.com/packages/works.mmzk.muhierarchy/)
 - [muProject](Assets/UnityPackages/works.mmzk.muproject/README.md) — Project window folder icons based on folder contents or path patterns.
