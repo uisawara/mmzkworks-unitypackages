@@ -12,6 +12,7 @@ namespace Mmzkworks.muRefgraph
 
         [SerializeField] private GameObject _target;
         [SerializeField] private bool _groupByAssembly;
+        [SerializeField] private bool _includeChildren;
         [SerializeField] private bool _followSelection;
 
         private RefGraph _graph;
@@ -84,7 +85,7 @@ namespace Mmzkworks.muRefgraph
         {
             if (_graphDirty)
             {
-                _graph = _target != null ? RefGraphBuilder.Build(_target) : null;
+                _graph = _target != null ? RefGraphBuilder.Build(_target, _includeChildren) : null;
                 _graphDirty = false;
             }
 
@@ -142,15 +143,27 @@ namespace Mmzkworks.muRefgraph
                 var targetName = _target != null ? _target.name : "(no target)";
                 if (_graph != null && _target != null)
                 {
-                    int components = 0, references = 0;
+                    int children = 0, components = 0, references = 0;
                     foreach (var n in _graph.Nodes)
                     {
                         if (n.Kind == RefGraphNodeKind.Reference) references++;
-                        else if (n.Kind != RefGraphNodeKind.Root) components++;
+                        else if (n.Kind == RefGraphNodeKind.ChildObject) children++;
+                        else if (n.IsComponent) components++;
                     }
+                    if (_includeChildren)
+                        targetName += $"   Children: {children}";
                     targetName += $"   Components: {components}  References: {references}";
                 }
                 GUILayout.Label(targetName, EditorStyles.miniLabel, GUILayout.ExpandWidth(true));
+
+                var includeChildren = GUILayout.Toggle(_includeChildren, "Include Children", EditorStyles.toolbarButton, GUILayout.Width(110));
+                if (includeChildren != _includeChildren)
+                {
+                    _includeChildren = includeChildren;
+                    _state.SelectedNodes.Clear();
+                    _needsCentering = true;
+                    MarkDirty();
+                }
 
                 var groupByAssembly = GUILayout.Toggle(_groupByAssembly, "Group by Assembly", EditorStyles.toolbarButton, GUILayout.Width(120));
                 if (groupByAssembly != _groupByAssembly)

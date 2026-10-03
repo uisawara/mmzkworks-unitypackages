@@ -10,11 +10,14 @@ namespace Mmzkworks.muRefgraph
         private const int RoundedCornerSegments = 6;
         private const float NodeCornerRadiusAtDefaultHeight = 5f;
         private const float EdgeEndpointCircleRadius = 2.8f;
+        private const float ArrowSize = 9f;
+        private const float ArrowSizeMin = 6f;
         private const float SelectedBorderOffset = 1f;
         private const float AssemblyBarWidth = 5f;
 
         private static readonly Color RootFill = new Color(0.32f, 0.32f, 0.32f, 1f);
         private static readonly Color ComponentFill = new Color(0.25f, 0.25f, 0.25f, 1f);
+        private static readonly Color ChildFill = new Color(0.28f, 0.28f, 0.28f, 1f);
         private static readonly Color MissingFill = new Color(0.42f, 0.18f, 0.18f, 1f);
         private static readonly Color ReferenceFill = new Color(0.22f, 0.3f, 0.38f, 1f);
         private static readonly Color DefaultBorder = new Color(0.7f, 0.7f, 0.7f, 1f);
@@ -22,6 +25,7 @@ namespace Mmzkworks.muRefgraph
         private static readonly Color ConnectedBorder = Color.yellow;
         private static readonly Color OwnershipEdge = new Color(0.55f, 0.55f, 0.55f, 1f);
         private static readonly Color ReferenceEdge = new Color(0.85f, 0.85f, 0.85f, 1f);
+        private static readonly Color HierarchyEdge = new Color(0.45f, 0.75f, 0.45f, 1f);
         private static readonly Color InternalEdge = new Color(1f, 0.6f, 0.2f, 1f);
         private static readonly Color HighlightEdge = Color.yellow;
 
@@ -113,7 +117,7 @@ namespace Mmzkworks.muRefgraph
                         continue;
                     bool highlight = hovered != null && (e.FromId == hovered || e.ToId == hovered);
                     Handles.color = highlight ? HighlightEdge : EdgeColor(graph, e);
-                    DrawEdge(from, to);
+                    DrawEdge(from, to, IsHierarchyEdge(graph, e), zoomLevel);
                 }
             }
             finally
@@ -129,7 +133,7 @@ namespace Mmzkworks.muRefgraph
                     if (!rects.TryGetValue(n.Id, out var r))
                         continue;
                     DrawRoundedNodeFill(r, NodeFill(n.Kind));
-                    if (n.Kind == RefGraphNodeKind.Component || n.Kind == RefGraphNodeKind.MissingScript)
+                    if (n.IsComponent)
                     {
                         var bar = new Rect(r.x + 2f, r.y + CornerRadius(r), AssemblyBarWidth * zoomLevel, r.height - CornerRadius(r) * 2f);
                         EditorGUI.DrawRect(bar, AssemblyColor(n.AssemblyName));
@@ -188,7 +192,7 @@ namespace Mmzkworks.muRefgraph
             {
                 if (!rects.TryGetValue(n.Id, out var r))
                     continue;
-                float inset = (n.Kind == RefGraphNodeKind.Component || n.Kind == RefGraphNodeKind.MissingScript)
+                float inset = n.IsComponent
                     ? (AssemblyBarWidth + 4f) * zoomLevel
                     : 4f * zoomLevel;
                 float lineHeight = r.height * 0.4f;
@@ -210,8 +214,8 @@ namespace Mmzkworks.muRefgraph
                     continue;
                 if (!rects.TryGetValue(e.FromId, out var from) || !rects.TryGetValue(e.ToId, out var to))
                     continue;
-                GetEdgeEndpoints(from, to, out var p1, out var p2, out _, out _);
-                var mid = (p1 + p2) * 0.5f;
+                var path = BuildEdgePath(from, to, IsHierarchyEdge(graph, e), zoomLevel);
+                var mid = path[path.Length / 2];
                 var text = string.Join(", ", e.FieldPaths);
                 var size = style.CalcSize(new GUIContent(text));
                 var rect = new Rect(mid.x - size.x * 0.5f - 3f, mid.y - size.y * 0.5f, size.x + 6f, size.y);
@@ -238,11 +242,19 @@ namespace Mmzkworks.muRefgraph
             return string.Join("\n", lines);
         }
 
+        private static bool IsHierarchyEdge(RefGraph graph, RefGraphEdge e)
+        {
+            return graph.TryGetNode(e.FromId, out var from) && from.IsGameObject
+                && graph.TryGetNode(e.ToId, out var to) && to.IsGameObject;
+        }
+
         private static Color EdgeColor(RefGraph graph, RefGraphEdge e)
         {
-            if (e.FromId == RefGraph.RootId)
-                return OwnershipEdge;
-            if (graph.TryGetNode(e.ToId, out var to) && to.Kind != RefGraphNodeKind.Reference)
+            if (!graph.TryGetNode(e.FromId, out var from) || !graph.TryGetNode(e.ToId, out var to))
+                return ReferenceEdge;
+            if (from.IsGameObject)
+                return to.IsGameObject ? HierarchyEdge : OwnershipEdge;
+            if (to.Kind != RefGraphNodeKind.Reference)
                 return InternalEdge;
             return ReferenceEdge;
         }
@@ -252,51 +264,108 @@ namespace Mmzkworks.muRefgraph
             switch (kind)
             {
                 case RefGraphNodeKind.Root: return RootFill;
+                case RefGraphNodeKind.ChildObject: return ChildFill;
                 case RefGraphNodeKind.MissingScript: return MissingFill;
                 case RefGraphNodeKind.Reference: return ReferenceFill;
                 default: return ComponentFill;
             }
         }
 
+        private const int BezierSegments = 16;
+        private const float TreeConnectorInset = 12f;
+        private const float BackwardLoop = 20f;
+
         /// <summary>
-        /// Left-to-right edges go from the right side to the left side. Backward edges (component -> root) are mirrored,
-        /// and edges within the same column (component -> component) bulge out to the right.
+        /// Polyline for an edge. Hierarchy edges (parent -> child GameObject) are tree connectors that drop from the parent's
+        /// left edge and turn right into the child. Every other edge leaves from the right side of its source:
+        /// forward edges enter the target's left side, edges within the same column loop back into the target's right side,
+        /// and backward edges (e.g. component -> GameObject) loop into the gap next to the source, cross its column, and enter the target's right side.
         /// </summary>
-        private static void GetEdgeEndpoints(Rect from, Rect to, out Vector2 p1, out Vector2 p2, out Vector2 c1, out Vector2 c2)
+        private static Vector3[] BuildEdgePath(Rect from, Rect to, bool hierarchy, float zoomLevel)
         {
+            var pts = new List<Vector3>(BezierSegments * 2 + 3);
+            if (hierarchy)
+            {
+                float x = from.xMin + TreeConnectorInset * zoomLevel;
+                bool below = to.center.y >= from.center.y;
+                pts.Add(new Vector3(x, below ? from.yMax : from.yMin, 0f));
+                pts.Add(new Vector3(x, to.center.y, 0f));
+                pts.Add(new Vector3(to.xMin, to.center.y, 0f));
+                return pts.ToArray();
+            }
+
+            var right = Vector2.right;
             float columnTolerance = from.width * 0.5f;
+            var p1 = new Vector2(from.xMax, from.center.y);
             if (to.center.x > from.center.x + columnTolerance)
             {
-                p1 = new Vector2(from.xMax, from.center.y);
-                p2 = new Vector2(to.xMin, to.center.y);
+                var p2 = new Vector2(to.xMin, to.center.y);
                 float dist = Mathf.Max((p2.x - p1.x) * 0.35f, 40f);
-                c1 = p1 + new Vector2(dist, 0f);
-                c2 = p2 - new Vector2(dist, 0f);
+                AppendBezier(pts, p1, p1 + right * dist, p2 - right * dist, p2);
             }
             else if (to.center.x < from.center.x - columnTolerance)
             {
-                p1 = new Vector2(from.xMin, from.center.y);
-                p2 = new Vector2(to.xMax, to.center.y);
-                float dist = Mathf.Max((p1.x - p2.x) * 0.35f, 40f);
-                c1 = p1 - new Vector2(dist, 0f);
-                c2 = p2 + new Vector2(dist, 0f);
+                bool down = to.center.y >= from.center.y;
+                float gap = RefGraphLayout.NodeYSpacing * zoomLevel * 0.5f;
+                float laneY = down ? from.yMax + gap : from.yMin - gap;
+                float loop = BackwardLoop * zoomLevel;
+                var laneRight = new Vector2(from.xMax, laneY);
+                var laneLeft = new Vector2(from.xMin, laneY);
+                var p2 = new Vector2(to.xMax, to.center.y);
+                AppendBezier(pts, p1, p1 + right * loop, laneRight + right * loop, laneRight);
+                // laneRight -> laneLeft is the straight run through the gap
+                float dist = Mathf.Max((laneLeft.x - p2.x) * 0.5f, loop);
+                AppendBezier(pts, laneLeft, laneLeft - right * dist, p2 + right * dist, p2);
             }
             else
             {
-                p1 = new Vector2(from.xMax, from.center.y);
-                p2 = new Vector2(to.xMax, to.center.y);
+                var p2 = new Vector2(to.xMax, to.center.y);
                 float dist = Mathf.Max(Mathf.Abs(p2.y - p1.y) * 0.4f, 30f);
-                c1 = p1 + new Vector2(dist, 0f);
-                c2 = p2 + new Vector2(dist, 0f);
+                AppendBezier(pts, p1, p1 + right * dist, p2 + right * dist, p2);
+            }
+            return pts.ToArray();
+        }
+
+        private static void AppendBezier(List<Vector3> pts, Vector2 p0, Vector2 c0, Vector2 c1, Vector2 p1)
+        {
+            for (int i = 0; i <= BezierSegments; i++)
+            {
+                float t = i / (float)BezierSegments;
+                float u = 1f - t;
+                var p = u * u * u * p0 + 3f * u * u * t * c0 + 3f * u * t * t * c1 + t * t * t * p1;
+                pts.Add(new Vector3(p.x, p.y, 0f));
             }
         }
 
-        private static void DrawEdge(Rect from, Rect to)
+        /// <summary>Draws the edge with a small dot at the source and an arrowhead at the target, so the reference direction is visible.</summary>
+        private static void DrawEdge(Rect from, Rect to, bool hierarchy, float zoomLevel)
         {
-            GetEdgeEndpoints(from, to, out var p1, out var p2, out var c1, out var c2);
-            Handles.DrawBezier(p1, p2, c1, c2, Handles.color, null, 2f);
-            Handles.DrawSolidDisc(p1, Vector3.forward, EdgeEndpointCircleRadius);
-            Handles.DrawSolidDisc(p2, Vector3.forward, EdgeEndpointCircleRadius);
+            var path = BuildEdgePath(from, to, hierarchy, zoomLevel);
+            var tip = path[path.Length - 1];
+            var dir = ArrowDirection(path);
+            float size = Mathf.Clamp(ArrowSize * zoomLevel, ArrowSizeMin, ArrowSize * 1.5f);
+
+            // Stop the line at the arrow's base so its end does not poke through the tip
+            path[path.Length - 1] = tip - dir * (size * 0.8f);
+            Handles.DrawAAPolyLine(2f, path);
+            Handles.DrawSolidDisc(path[0], Vector3.forward, EdgeEndpointCircleRadius);
+
+            var side = new Vector3(-dir.y, dir.x, 0f) * (size * 0.5f);
+            var baseCenter = tip - dir * size;
+            Handles.DrawAAConvexPolygon(tip, baseCenter + side, baseCenter - side);
+        }
+
+        /// <summary>Direction of the path's last segment, looking back far enough to skip zero-length steps.</summary>
+        private static Vector3 ArrowDirection(Vector3[] path)
+        {
+            var tip = path[path.Length - 1];
+            for (int i = path.Length - 2; i >= 0; i--)
+            {
+                var d = tip - path[i];
+                if (d.sqrMagnitude > 1f)
+                    return d.normalized;
+            }
+            return Vector3.right;
         }
 
         private static float CornerRadius(Rect r)

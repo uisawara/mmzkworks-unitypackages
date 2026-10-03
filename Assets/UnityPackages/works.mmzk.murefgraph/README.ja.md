@@ -30,9 +30,9 @@ Project で Prefab を選んで `Assets/Open Ref Graph` から開けます。
 
 左から、対象の GameObject、Component、フィールドが参照しているオブジェクトの順に並びます。
 
-- 対象自身の Component だけを表示します（子の GameObject は含めません）。
+- 標準では対象自身の Component だけを表示します。子の GameObject も含めるには、後述の `Include Children` を有効にします。
 - 参照は 1 段だけ辿ります。同じオブジェクトを複数のフィールドで参照している場合は 1 本の線にまとめます。
-- 同じ GameObject 自身や、その別の Component を参照しているときは、オレンジの線でつなぎます。
+- 同じ GameObject 自身や、その別の Component を参照しているときは、オレンジの線でつなぎます。参照の線は常に Component の右側から出て、左へ戻る線はノードの隙間を回り込みます。
 - ノードにカーソルを合わせると、つながっている線とフィールド名が表示されます。
 
 ノードをドラッグして並べ替え、パンとズームで全体を見渡せます。ノードをダブルクリックすると、そのオブジェクトを選択します。`Home` キーで全体を中央に戻せます。
@@ -45,6 +45,14 @@ Project で Prefab を選んで `Assets/Open Ref Graph` から開けます。
 | 中ボタン / Alt + 左ドラッグ | パン |
 | ホイール | ズーム |
 | ダブルクリック | オブジェクトを選択して Ping |
+
+## Include Children
+
+ツールバーの `Include Children` を有効にすると、子孫の GameObject とその Component もグラフに含めます。
+
+- 子の GameObject は左の列に Hierarchy の順で、深さに応じて字下げして並びます。親子は Hierarchy ウィンドウのようなツリー型の緑の線でつながります。
+- 子の Component の下段には、持ち主の GameObject 名が付きます。
+- 子や子の Component への参照は、参照先ノードではなく、その子のノードへの線になります。
 
 ## Group by Assembly
 

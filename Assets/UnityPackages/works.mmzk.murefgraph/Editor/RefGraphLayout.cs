@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Mmzkworks.muRefgraph
 {
-    /// <summary>Lays out the graph in three columns: Root | Components | References.</summary>
+    /// <summary>Lays out the graph in three columns: GameObjects (root and, optionally, children) | Components | References.</summary>
     public static class RefGraphLayout
     {
         public const float NodeWidth = 220f;
@@ -14,6 +14,8 @@ namespace Mmzkworks.muRefgraph
         public const float GroupHeaderHeight = 20f;
         public const float GroupPadding = 8f;
         public const float GroupSpacing = 18f;
+        /// <summary>Horizontal indent per hierarchy depth for child GameObjects.</summary>
+        public const float TreeIndent = 24f;
 
         /// <summary>
         /// Compute screen rects for every node and, in <see cref="RefGraphLayoutMode.ByAssembly"/>, a frame per assembly group.
@@ -83,23 +85,27 @@ namespace Mmzkworks.muRefgraph
             var positions = new Dictionary<string, Vector2>();
             groups = new List<KeyValuePair<string, List<string>>>();
 
+            var gameObjects = new List<RefGraphNode>();
             var components = new List<RefGraphNode>();
             var references = new List<RefGraphNode>();
             foreach (var n in graph.Nodes)
             {
-                if (n.Kind == RefGraphNodeKind.Component || n.Kind == RefGraphNodeKind.MissingScript)
-                    components.Add(n);
-                else if (n.Kind == RefGraphNodeKind.Reference)
-                    references.Add(n);
+                if (n.IsGameObject) gameObjects.Add(n);
+                else if (n.IsComponent) components.Add(n);
+                else if (n.Kind == RefGraphNodeKind.Reference) references.Add(n);
             }
+            gameObjects.Sort((a, b) => a.Order.CompareTo(b.Order));
             components.Sort((a, b) => a.Order.CompareTo(b.Order));
             references.Sort((a, b) => a.Order.CompareTo(b.Order));
 
-            // Components column
-            float componentX = ColumnSpacing;
-            float y = 0f;
+            // Child GameObjects are indented by depth (tree style), so the columns to the right shift accordingly
+            int maxDepth = 0;
+            foreach (var g in gameObjects)
+                maxDepth = Mathf.Max(maxDepth, g.Depth);
+            float componentX = ColumnSpacing + maxDepth * TreeIndent;
             if (mode == RefGraphLayoutMode.ByAssembly)
             {
+                // Components column: grouped by assembly (name order), Inspector/Hierarchy order inside each group
                 var byAssembly = new SortedDictionary<string, List<string>>(StringComparer.Ordinal);
                 foreach (var c in components)
                 {
@@ -108,6 +114,7 @@ namespace Mmzkworks.muRefgraph
                         byAssembly[key] = list = new List<string>();
                     list.Add(c.Id);
                 }
+                float y = 0f;
                 bool first = true;
                 foreach (var kv in byAssembly)
                 {
@@ -123,55 +130,95 @@ namespace Mmzkworks.muRefgraph
                     y += GroupPadding - NodeYSpacing;
                     groups.Add(new KeyValuePair<string, List<string>>(kv.Key, kv.Value));
                 }
+
+                // GameObjects column: near the components they own, but kept in Hierarchy order so the tree reads top-down
+                StackByBarycenter(graph, gameObjects, n => n.Depth * TreeIndent, positions,
+                    (e, n) => e.FromId == n.Id ? e.ToId : null, keepOrder: true);
             }
             else
             {
+                // Each GameObject sits beside its own block of components, in Hierarchy order
+                var componentsByOwner = new Dictionary<string, List<RefGraphNode>>();
                 foreach (var c in components)
                 {
-                    positions[c.Id] = new Vector2(componentX, y);
-                    y += NodeHeight + NodeYSpacing;
+                    var owner = c.OwnerId ?? RefGraph.RootId;
+                    if (!componentsByOwner.TryGetValue(owner, out var list))
+                        componentsByOwner[owner] = list = new List<RefGraphNode>();
+                    list.Add(c);
                 }
-                if (components.Count > 0)
-                    y -= NodeYSpacing;
+                float y = 0f;
+                for (int i = 0; i < gameObjects.Count; i++)
+                {
+                    if (i > 0)
+                        y += GroupSpacing;
+                    float blockTop = y;
+                    if (componentsByOwner.TryGetValue(gameObjects[i].Id, out var owned))
+                    {
+                        foreach (var c in owned)
+                        {
+                            positions[c.Id] = new Vector2(componentX, y);
+                            y += NodeHeight + NodeYSpacing;
+                        }
+                        y -= NodeYSpacing;
+                    }
+                    float blockHeight = Mathf.Max(y - blockTop, NodeHeight);
+                    positions[gameObjects[i].Id] = new Vector2(gameObjects[i].Depth * TreeIndent, blockTop + (blockHeight - NodeHeight) * 0.5f);
+                    y = blockTop + blockHeight;
+                }
             }
-            float componentColumnHeight = Mathf.Max(y, NodeHeight);
 
-            // Root: vertically centered against the components column
-            if (graph.Root != null)
-                positions[RefGraph.RootId] = new Vector2(0f, (componentColumnHeight - NodeHeight) * 0.5f);
+            // References column: near the components that reference them
+            float referenceX = componentX + ColumnSpacing;
+            StackByBarycenter(graph, references, _ => referenceX, positions, (e, n) => e.ToId == n.Id ? e.FromId : null);
 
-            // References column: sort by the mean Y of their sources to reduce edge crossings,
-            // then stack downward without overlap, each as close to its barycenter as possible.
+            return positions;
+        }
+
+        /// <summary>
+        /// Places nodes in one column near the mean Y of their already-placed neighbours, stacking downward without overlap.
+        /// Nodes are sorted by that mean (to reduce edge crossings) unless keepOrder is set, in which case their given order is kept.
+        /// </summary>
+        /// <param name="xOf">X position of each node.</param>
+        /// <param name="neighbourOf">Returns the neighbour id of node n through edge e, or null if e does not connect to n.</param>
+        private static void StackByBarycenter(
+            RefGraph graph,
+            List<RefGraphNode> nodes,
+            Func<RefGraphNode, float> xOf,
+            Dictionary<string, Vector2> positions,
+            Func<RefGraphEdge, RefGraphNode, string> neighbourOf,
+            bool keepOrder = false)
+        {
             var barycenters = new Dictionary<string, float>();
-            foreach (var r in references)
+            foreach (var n in nodes)
             {
                 float sum = 0f;
                 int count = 0;
                 foreach (var e in graph.Edges)
                 {
-                    if (e.ToId != r.Id || !positions.TryGetValue(e.FromId, out var p))
+                    var other = neighbourOf(e, n);
+                    if (other == null || !positions.TryGetValue(other, out var p))
                         continue;
                     sum += p.y;
                     count++;
                 }
-                barycenters[r.Id] = count > 0 ? sum / count : 0f;
+                barycenters[n.Id] = count > 0 ? sum / count : 0f;
             }
-            var sortedRefs = new List<RefGraphNode>(references);
-            sortedRefs.Sort((a, b) =>
+            var sorted = new List<RefGraphNode>(nodes);
+            if (!keepOrder)
             {
-                int cmp = barycenters[a.Id].CompareTo(barycenters[b.Id]);
-                return cmp != 0 ? cmp : a.Order.CompareTo(b.Order);
-            });
-            float referenceX = ColumnSpacing * 2f;
+                sorted.Sort((a, b) =>
+                {
+                    int cmp = barycenters[a.Id].CompareTo(barycenters[b.Id]);
+                    return cmp != 0 ? cmp : a.Order.CompareTo(b.Order);
+                });
+            }
             float nextFreeY = float.MinValue;
-            foreach (var r in sortedRefs)
+            foreach (var n in sorted)
             {
-                float ry = Mathf.Max(barycenters[r.Id], nextFreeY);
-                positions[r.Id] = new Vector2(referenceX, ry);
-                nextFreeY = ry + NodeHeight + NodeYSpacing;
+                float y = Mathf.Max(barycenters[n.Id], nextFreeY);
+                positions[n.Id] = new Vector2(xOf(n), y);
+                nextFreeY = y + NodeHeight + NodeYSpacing;
             }
-
-            return positions;
         }
     }
 }

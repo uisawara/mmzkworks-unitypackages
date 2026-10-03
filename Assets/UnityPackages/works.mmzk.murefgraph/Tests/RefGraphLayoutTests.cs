@@ -119,6 +119,72 @@ namespace Mmzkworks.muRefgraph.Tests
             Assert.That(r.width, Is.EqualTo(RefGraphLayout.NodeWidth * 2f).Within(0.01f));
         }
 
+        /// <summary>Root (c:0, c:1) with a child "g:1" owning g:1/c:0, g:1/c:1.</summary>
+        private static RefGraph CreateGraphWithChild()
+        {
+            var g = new RefGraph();
+            g.AddNode(new RefGraphNode { Id = RefGraph.RootId, Kind = RefGraphNodeKind.Root, Order = 0 });
+            g.AddNode(new RefGraphNode { Id = "g:1", Kind = RefGraphNodeKind.ChildObject, Order = 1, Depth = 1 });
+            g.AddEdge(RefGraph.RootId, "g:1");
+            var comps = new[] { ("c:0", RefGraph.RootId, "B.Asm"), ("c:1", RefGraph.RootId, "A.Asm"), ("g:1/c:0", "g:1", "B.Asm"), ("g:1/c:1", "g:1", "A.Asm") };
+            for (int i = 0; i < comps.Length; i++)
+            {
+                var (id, owner, asm) = comps[i];
+                g.AddNode(new RefGraphNode { Id = id, Kind = RefGraphNodeKind.Component, AssemblyName = asm, OwnerId = owner, Order = i });
+                g.AddEdge(owner, id);
+            }
+            return g;
+        }
+
+        [Test]
+        public void ComponentOrder_WithChild_PlacesEachGameObjectBesideItsComponents()
+        {
+            var r = Compute(CreateGraphWithChild(), RefGraphLayoutMode.ComponentOrder).Rects;
+
+            // 子は深さに応じて字下げされる
+            Assert.That(r["g:1"].x, Is.EqualTo(r[RefGraph.RootId].x + RefGraphLayout.TreeIndent).Within(0.01f));
+            Assert.That(r["g:1"].xMax, Is.LessThan(r["g:1/c:0"].xMin));
+            Assert.That(r["c:1"].yMax, Is.LessThan(r["g:1/c:0"].yMin));
+            // 各 GameObject は自分の Component ブロックの縦範囲内にある
+            Assert.That(r[RefGraph.RootId].center.y, Is.InRange(r["c:0"].yMin, r["c:1"].yMax));
+            Assert.That(r["g:1"].center.y, Is.InRange(r["g:1/c:0"].yMin, r["g:1/c:1"].yMax));
+        }
+
+        [Test]
+        public void WithChild_NodesDoNotOverlap([Values] RefGraphLayoutMode mode)
+        {
+            var rects = Compute(CreateGraphWithChild(), mode).Rects.Values.ToList();
+            for (int i = 0; i < rects.Count; i++)
+            for (int j = i + 1; j < rects.Count; j++)
+                Assert.That(rects[i].Overlaps(rects[j]), Is.False, $"{rects[i]} vs {rects[j]}");
+        }
+
+        [Test]
+        public void ByAssembly_WithChild_GroupsComponentsAcrossGameObjects()
+        {
+            var result = Compute(CreateGraphWithChild(), RefGraphLayoutMode.ByAssembly);
+
+            Assert.That(result.Groups.Select(g => g.AssemblyName), Is.EqualTo(new[] { "A.Asm", "B.Asm" }));
+            foreach (var id in new[] { "c:1", "g:1/c:1" })
+                Assert.That(Contains(result.Groups[0].Rect, result.Rects[id]), Is.True, id);
+            foreach (var id in new[] { "c:0", "g:1/c:0" })
+                Assert.That(Contains(result.Groups[1].Rect, result.Rects[id]), Is.True, id);
+        }
+
+        [Test]
+        public void ByAssembly_WithChild_KeepsGameObjectsInHierarchyOrder()
+        {
+            var g = CreateGraphWithChild();
+            // 子の Component を先頭に並ぶアセンブリに寄せても、親より上には来ない
+            g.TryGetNode("g:1/c:1", out var n);
+            n.AssemblyName = "0.First";
+            g.TryGetNode("g:1/c:0", out n);
+            n.AssemblyName = "0.First";
+            var r = Compute(g, RefGraphLayoutMode.ByAssembly).Rects;
+
+            Assert.That(r[RefGraph.RootId].yMax, Is.LessThanOrEqualTo(r["g:1"].yMin));
+        }
+
         private static bool Contains(Rect outer, Rect inner)
         {
             return outer.xMin <= inner.xMin && outer.yMin <= inner.yMin && outer.xMax >= inner.xMax && outer.yMax >= inner.yMax;
