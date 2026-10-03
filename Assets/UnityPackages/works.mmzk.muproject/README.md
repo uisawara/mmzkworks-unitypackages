@@ -6,6 +6,8 @@ An Editor extension that makes the Project window easier to read.
 
 Folder icons change based on what the folder contains. For example, folders with a `package.json` (UPM packages) show a package icon.
 
+![Folder icons in the Project window](Documentation~/img/folder-icons.png)
+
 Unity 2022.3 or later. MIT License.
 
 ## Installation

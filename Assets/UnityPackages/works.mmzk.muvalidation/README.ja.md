@@ -11,6 +11,8 @@
 
 アイコンにマウスを乗せると理由が出ます。`Tools > muValidation > Validation` ですべての問題を一覧できます。
 
+![Project ウィンドウのエラー・警告マーク](Documentation~/img/project-marks.png)
+
 Unity 2022.3 以降。MIT License。
 
 ## インストール
@@ -213,6 +215,8 @@ public class PositiveAttribute : ValidationAttribute
 ## Validation ウィンドウ
 
 `Tools > muValidation > Validation` で、すべての問題を一覧できます。
+
+![Validation ウィンドウ](Documentation~/img/validation-window.png)
 
 - アセット(FileNameRules と Validation 属性)と、開いているシーン・Prefab Mode の GameObject(Validation 属性と SceneRules)が対象です。`Assets` / `Scenes` ボタンでそれぞれ切り替えられます。
 - エラー・警告での絞り込みと、パスやメッセージでの検索ができます。
