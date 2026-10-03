@@ -12,3 +12,4 @@
 - [muUnityExtensions](Assets/UnityPackages/works.mmzk.muunityextensions/README.ja.md)
 - [muLogger](Assets/UnityPackages/works.mmzk.mulogger/README.ja.md)
 - [muPrimitive](Assets/UnityPackages/works.mmzk.muprimitive/README.ja.md)
+- [muSceneManager](Assets/UnityPackages/works.mmzk.muscenemanager/README.ja.md)

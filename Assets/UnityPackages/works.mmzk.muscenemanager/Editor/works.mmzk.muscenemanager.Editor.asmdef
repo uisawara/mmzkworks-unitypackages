@@ -1,0 +1,18 @@
+{
+    "name": "works.mmzk.muscenemanager.Editor",
+    "rootNamespace": "Mmzkworks.muSceneManager.Editor",
+    "references": [
+        "works.mmzk.muscenemanager"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
