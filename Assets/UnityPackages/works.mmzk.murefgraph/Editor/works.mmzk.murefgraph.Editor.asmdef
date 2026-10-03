@@ -1,0 +1,16 @@
+{
+    "name": "works.mmzk.murefgraph.Editor",
+    "rootNamespace": "Mmzkworks.muRefgraph",
+    "references": [],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

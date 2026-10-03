@@ -12,6 +12,7 @@
 - [muHierarchy](Assets/UnityPackages/works.mmzk.muhierarchy/README.ja.md) — Prefab/コンポーネントのアイコン表示、Tag/Layer の色帯表示とその場での変更など、Hierarchy ウィンドウを拡張します。
 - [muProject](Assets/UnityPackages/works.mmzk.muproject/README.ja.md) — フォルダの中身やパスのパターンに応じて、Project ウィンドウのフォルダアイコンを表示します。
 - [muAsmdefgraph](Assets/UnityPackages/works.mmzk.muasmdefgraph/README.ja.md) — Assembly Definition の依存関係をグラフで可視化します。
+- [muRefgraph](Assets/UnityPackages/works.mmzk.murefgraph/README.ja.md) — GameObject / Prefab の Component と、フィールドが参照しているオブジェクトをグラフで表示します。アセンブリ別の並べ替えもできます。
 - [muShortcut](Assets/UnityPackages/works.mmzk.mushortcut/README.ja.md) — Hierarchy や Project ウィンドウのオブジェクトをショートカットで素早く選択できます。
 - [muValidation](Assets/UnityPackages/works.mmzk.muvalidation/README.ja.md) — パスのルール・検証属性・シーンルールに基づいて、不正なアセットを Project ウィンドウ上でマークします。
 
