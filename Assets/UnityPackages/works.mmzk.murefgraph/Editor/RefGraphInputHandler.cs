@@ -18,11 +18,16 @@ namespace Mmzkworks.muRefgraph
         public Dictionary<string, Vector2> DragStartOffsets;
         public bool IsPanning;
         public Vector2 LastMouse;
+        /// <summary>While Space is held, left drag pans.</summary>
+        public bool IsSpaceHeld;
         public bool IsMarqueeSelecting;
         public Vector2 SelectionBoxStart;
     }
 
-    /// <summary>Pan / zoom / node drag / selection / double-click handling (ported from muAsmdefgraph without comment blocks).</summary>
+    /// <summary>
+    /// Pan (middle / right / Alt + left / Space + left drag), zoom, node drag, selection and double-click handling
+    /// (ported from muAsmdefgraph without comment blocks).
+    /// </summary>
     public static class RefGraphInputHandler
     {
         private const float MinZoom = 0.3f;
@@ -43,10 +48,17 @@ namespace Mmzkworks.muRefgraph
                 return;
 
             float graphTop = graphOrigin.y;
-            bool panButton = e.button == 2 || (e.button == 0 && e.alt);
+            bool panButton = e.button == 2 || e.button == 1 || (e.button == 0 && (e.alt || state.IsSpaceHeld));
 
             switch (e.type)
             {
+                case EventType.KeyDown when e.keyCode == KeyCode.Space && GUIUtility.keyboardControl == 0:
+                case EventType.KeyUp when e.keyCode == KeyCode.Space && GUIUtility.keyboardControl == 0:
+                    state.IsSpaceHeld = e.type == EventType.KeyDown;
+                    e.Use();
+                    repaint?.Invoke();
+                    return;
+
                 case EventType.MouseDown when panButton:
                     if (e.mousePosition.y < graphTop)
                         return;
