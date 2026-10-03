@@ -1,6 +1,6 @@
 {
   "name": "works.mmzk.murefgraph",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "displayName": "muRefgraph",
   "description": "Unity editor extension for visualizing a GameObject's components and the objects their fields reference as a graph",
   "unity": "2022.3",
