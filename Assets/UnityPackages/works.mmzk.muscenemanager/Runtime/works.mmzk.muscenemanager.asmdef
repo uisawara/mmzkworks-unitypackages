@@ -1,0 +1,17 @@
+{
+    "name": "works.mmzk.muscenemanager",
+    "rootNamespace": "Mmzkworks.muSceneManager",
+    "references": [
+        "UniTask",
+        "works.mmzk.mulogger"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

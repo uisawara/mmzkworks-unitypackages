@@ -1,0 +1,24 @@
+{
+    "name": "works.mmzk.muscenemanager.Tests",
+    "rootNamespace": "Mmzkworks.muSceneManager.Tests",
+    "references": [
+        "GUID:27619889b8ba8c24980f49ee34dbb44a",
+        "GUID:0acc523941302664db1f4e527237feb3",
+        "GUID:f51ebe6a0ceec4240a699833d6309b23",
+        "GUID:133b7684d367bcd4aa9af6ebaa8cf90f",
+        "GUID:44446627b5d8a0e44aee28be67e684c1"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

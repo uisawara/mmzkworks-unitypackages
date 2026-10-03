@@ -1,0 +1,18 @@
+{
+  "name": "works.mmzk.muscenemanager",
+  "version": "0.1.0",
+  "displayName": "muSceneManager",
+  "description": "Queued main/sub scene management for Unity with UniTask, and an Inspector-friendly SceneId",
+  "unity": "2022.3",
+  "license": "MIT",
+  "author": {
+    "name": "mmzkworks"
+  },
+  "samples": [
+    {
+      "displayName": "Basic Sample",
+      "description": "Loads a main scene and sub scenes in slots using SceneId fields set from the Inspector",
+      "path": "Samples~/BasicSample"
+    }
+  ]
+}
