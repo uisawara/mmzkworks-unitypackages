@@ -56,15 +56,20 @@ namespace Mmzkworks.muHierarchy.Editor
                 ? new List<ComponentIconInfo>(CollectComponentIcons(go, ctx.DedupeComponentIcons))
                 : null;
             componentIcons?.RemoveAll(info => info.Icon == null);
+            float firstIconX = iconRightX - (iconSize + spacing);
+            float iconStep = iconSize + componentIconSpacing;
+            float iconLimitX = selectionRect.xMin + 16f;
+            int drawnIconCount = componentIcons != null
+                ? CountDrawnIcons(componentIcons.Count, firstIconX, iconStep, iconLimitX)
+                : 0;
 
             if (showLayer || showTag)
             {
                 // Keep the fixed column, but move left of the component icons when there are many of them
                 float labelRightX = fixedRightPosition;
-                if (componentIcons != null && componentIcons.Count > 0)
+                if (drawnIconCount > 0)
                 {
-                    float leftmostIconX = iconRightX - (iconSize + spacing)
-                        - (componentIcons.Count - 1) * (iconSize + componentIconSpacing);
+                    float leftmostIconX = firstIconX - (drawnIconCount - 1) * iconStep;
                     labelRightX = Mathf.Min(labelRightX, leftmostIconX - textSpacing);
                 }
 
@@ -172,9 +177,10 @@ namespace Mmzkworks.muHierarchy.Editor
 
             if (componentIcons != null)
             {
-                float x = iconRightX - (iconSize + spacing);
-                foreach (var iconInfo in componentIcons)
+                float x = firstIconX;
+                for (int i = 0; i < drawnIconCount; i++)
                 {
+                    var iconInfo = componentIcons[i];
                     var iconRect = new Rect(
                         x,
                         selectionRect.y + (selectionRect.height - iconSize) * 0.5f,
@@ -182,11 +188,26 @@ namespace Mmzkworks.muHierarchy.Editor
                         iconSize
                     );
                     DrawIcon(iconRect, iconInfo.Icon, iconInfo.Enabled, iconInfo.Tooltip);
-                    x -= (iconSize + componentIconSpacing);
-                    if (x < selectionRect.xMin + 16f)
-                        break;
+                    x -= iconStep;
                 }
             }
+        }
+
+        // Icons go right to left; the first is always drawn, later ones stop at limitX
+        private static int CountDrawnIcons(int count, float firstX, float step, float limitX)
+        {
+            if (count <= 0)
+                return 0;
+            int drawn = 1;
+            float x = firstX;
+            while (drawn < count)
+            {
+                x -= step;
+                if (x < limitX)
+                    break;
+                drawn++;
+            }
+            return drawn;
         }
 
         private readonly struct ComponentIconInfo

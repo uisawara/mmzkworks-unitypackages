@@ -145,7 +145,9 @@ namespace Mmzkworks.muHierarchy.Editor
                 includeChildren = choice == 0;
             }
 
+            // A parent and its child may both be selected; change each object once
             var objects = new List<GameObject>();
+            var seen = new HashSet<GameObject>();
             foreach (var go in targets)
             {
                 if (go == null)
@@ -153,18 +155,65 @@ namespace Mmzkworks.muHierarchy.Editor
                 if (includeChildren)
                 {
                     foreach (var t in go.GetComponentsInChildren<Transform>(true))
-                        objects.Add(t.gameObject);
+                    {
+                        if (seen.Add(t.gameObject))
+                            objects.Add(t.gameObject);
+                    }
                 }
-                else
+                else if (seen.Add(go))
                 {
                     objects.Add(go);
                 }
             }
 
+            // The menu only checked the targets; children may be restricted by SceneRules too
+            if (includeChildren && !ExcludeRestrictedChildren(objects, targets, layer))
+                return;
+            if (objects.Count == 0)
+                return;
+
             Undo.RecordObjects(objects.ToArray(), "Change Layer");
             foreach (var go in objects)
                 go.layer = layer;
             EditorApplication.RepaintHierarchyWindow();
+        }
+
+        // Removes children the layer is forbidden for, after asking. False if the user cancels.
+        private static bool ExcludeRestrictedChildren(List<GameObject> objects, GameObject[] targets, int layer)
+        {
+            const int maxListed = 5;
+            var targetSet = new HashSet<GameObject>(targets);
+            var restricted = new List<GameObject>();
+            var lines = new List<string>();
+            foreach (var go in objects)
+            {
+                if (targetSet.Contains(go))
+                    continue;
+                string restriction = MuValidationBridge.GetLayerRestriction(go, layer);
+                if (restriction == null)
+                    continue;
+                restricted.Add(go);
+                if (lines.Count < maxListed)
+                    lines.Add($"{go.name}: {restriction}");
+            }
+
+            if (restricted.Count == 0)
+                return true;
+            if (restricted.Count > maxListed)
+                lines.Add($"... and {restricted.Count - maxListed} more");
+
+            bool skip = EditorUtility.DisplayDialog(
+                "Change Layer",
+                $"{restricted.Count} child object(s) may not be on layer {HierarchyLabelColors.GetLayerDisplayName(layer)}:\n\n"
+                    + string.Join("\n", lines)
+                    + "\n\nChange the other objects and leave these unchanged?",
+                "Skip these objects", "Cancel");
+            if (!skip)
+                return false;
+
+            var restrictedSet = new HashSet<GameObject>(restricted);
+            objects.RemoveAll(restrictedSet.Contains);
+            return true;
         }
 
         private static bool HasChildren(GameObject[] targets)
