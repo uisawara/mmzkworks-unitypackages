@@ -6,6 +6,8 @@ Unity の Project ウィンドウを、もう少し見やすくする Editor 拡
 
 フォルダの中身に応じて、フォルダアイコンが変わります。たとえば `package.json` があるフォルダ(UPM パッケージ)は、パッケージのアイコンになります。
 
+![Project ウィンドウのフォルダアイコン](Documentation~/img/folder-icons.png)
+
 Unity 2022.3 以降。MIT License。
 
 ## インストール

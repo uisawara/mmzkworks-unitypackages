@@ -11,6 +11,8 @@ An Editor extension that finds invalid assets and objects, and marks them in the
 
 Hover over the icon to see why. `Tools > muValidation > Validation` lists every problem.
 
+![Error and warning marks in the Project window](Documentation~/img/project-marks.png)
+
 Unity 2022.3 or later. MIT License.
 
 ## Installation
@@ -213,6 +215,8 @@ If the result depends on other objects (their names, existence and so on), overr
 ## Validation window
 
 `Tools > muValidation > Validation` lists every problem in one place.
+
+![Validation window](Documentation~/img/validation-window.png)
 
 - Covers assets (FileNameRules and validation attributes) and GameObjects in open scenes and Prefab Mode (validation attributes and SceneRules). Turn each on or off with the `Assets` / `Scenes` buttons.
 - Filter by errors or warnings, and search by path or message.
