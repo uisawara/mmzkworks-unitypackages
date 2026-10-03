@@ -1,5 +1,8 @@
 English | [日本語](README.ja.md)
 
+> **NOTICE:**
+> This is a collection of code I have been writing over time, made public in light of the recent trend where AI can implement such things in a very short time. As I am shifting toward actively using AI, the proportion of generated code is expected to grow.
+
 ## UPM Packages
 
 ### Editor Extensions
