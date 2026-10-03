@@ -30,9 +30,9 @@ You can also open it from `Window/muRefgraph/Ref Graph` (the selected GameObject
 
 From left to right: the target GameObject, its components, and the objects referenced by their fields.
 
-- Only the target's own components are shown (child GameObjects are not included).
+- By default only the target's own components are shown. Turn on `Include Children` (below) to include child GameObjects.
 - References are followed one level. When several fields reference the same object, they are merged into one line.
-- References to the GameObject itself or to another of its components are drawn as orange lines.
+- References to the GameObject itself or to another of its components are drawn as orange lines. Reference lines always leave from the right side of a component; lines going back to the left loop around through the gap between nodes.
 - Hover over a node to highlight its lines and show the field names.
 
 Drag nodes to rearrange them, and pan and zoom to see the whole graph. Double-click a node to select that object. Press `Home` to center the graph.
@@ -45,6 +45,16 @@ Drag nodes to rearrange them, and pan and zoom to see the whole graph. Double-cl
 | Middle button / Alt + left-drag | Pan |
 | Mouse wheel | Zoom |
 | Double-click | Select and ping the object |
+
+## Include Children
+
+Turn on `Include Children` on the toolbar to add descendant GameObjects and their components to the graph.
+
+![Graph including child GameObjects](Documentation~/img/children.png)
+
+- Child GameObjects are listed in the left column in Hierarchy order, indented by depth and connected to their parent with green tree lines like the Hierarchy window.
+- The second line of a child's component shows the name of the GameObject that owns it.
+- References to a child or one of its components are drawn to that child's node instead of a separate reference node.
 
 ## Group by Assembly
 

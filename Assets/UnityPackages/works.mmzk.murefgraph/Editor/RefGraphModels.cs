@@ -6,6 +6,8 @@ namespace Mmzkworks.muRefgraph
     public enum RefGraphNodeKind
     {
         Root,
+        /// <summary>Descendant GameObject of the root (only when children are included).</summary>
+        ChildObject,
         Component,
         MissingScript,
         Reference,
@@ -29,16 +31,23 @@ namespace Mmzkworks.muRefgraph
         /// <summary>Assembly name of the component type. Component / MissingScript only.</summary>
         public string AssemblyName;
         public string Tooltip;
+        /// <summary>Id of the GameObject node that owns this component. Component / MissingScript only.</summary>
+        public string OwnerId;
         public Object Target;
-        /// <summary>Discovery order within the same kind (Inspector order for components).</summary>
+        /// <summary>Discovery order within the same kind (Hierarchy order for GameObjects, then Inspector order for components).</summary>
         public int Order;
+        /// <summary>Hierarchy depth below the root (0 for the root). GameObject nodes only.</summary>
+        public int Depth;
+
+        public bool IsGameObject => Kind == RefGraphNodeKind.Root || Kind == RefGraphNodeKind.ChildObject;
+        public bool IsComponent => Kind == RefGraphNodeKind.Component || Kind == RefGraphNodeKind.MissingScript;
     }
 
     public sealed class RefGraphEdge
     {
         public string FromId;
         public string ToId;
-        /// <summary>Serialized field paths that hold this reference. Empty for root -> component edges.</summary>
+        /// <summary>Serialized field paths that hold this reference. Empty for hierarchy (parent -> child) and ownership (GameObject -> component) edges.</summary>
         public List<string> FieldPaths = new List<string>();
     }
 

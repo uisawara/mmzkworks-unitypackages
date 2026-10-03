@@ -99,6 +99,70 @@ namespace Mmzkworks.muRefgraph.Tests
         }
 
         [Test]
+        public void Build_WithoutChildren_ChildReferenceIsExternal()
+        {
+            var child = new GameObject("Child");
+            child.transform.SetParent(_go.transform);
+            var b = _go.AddComponent<RefGraphTestBehaviour>();
+            b.other = child;
+
+            var graph = RefGraphBuilder.Build(_go);
+
+            Assert.That(graph.Nodes.Any(n => n.Kind == RefGraphNodeKind.ChildObject), Is.False);
+            var reference = graph.Nodes.Single(n => n.Kind == RefGraphNodeKind.Reference);
+            Assert.That(reference.Target, Is.SameAs(child));
+        }
+
+        [Test]
+        public void Build_WithChildren_AddsDescendantsInHierarchyOrderWithHierarchyEdges()
+        {
+            var a = new GameObject("A");
+            a.transform.SetParent(_go.transform);
+            var a1 = new GameObject("A1");
+            a1.transform.SetParent(a.transform);
+            var b = new GameObject("B");
+            b.transform.SetParent(_go.transform);
+
+            var graph = RefGraphBuilder.Build(_go, includeChildren: true);
+
+            var children = graph.Nodes.Where(n => n.Kind == RefGraphNodeKind.ChildObject).OrderBy(n => n.Order).ToList();
+            Assert.That(children.Select(n => n.Label), Is.EqualTo(new[] { "A", "A1", "B" }));
+            Assert.That(children.Select(n => n.SubLabel), Is.EqualTo(new[] { "A", "A/A1", "B" }));
+            Assert.That(children.Select(n => n.Depth), Is.EqualTo(new[] { 1, 2, 1 }));
+            Assert.That(graph.Root.Depth, Is.EqualTo(0));
+
+            string IdOf(string label) => graph.Nodes.Single(n => n.IsGameObject && n.Label == label).Id;
+            Assert.That(graph.Edges.Any(e => e.FromId == RefGraph.RootId && e.ToId == IdOf("A")), Is.True);
+            Assert.That(graph.Edges.Any(e => e.FromId == IdOf("A") && e.ToId == IdOf("A1")), Is.True);
+            Assert.That(graph.Edges.Any(e => e.FromId == RefGraph.RootId && e.ToId == IdOf("B")), Is.True);
+            Assert.That(graph.Edges.Any(e => e.FromId == RefGraph.RootId && e.ToId == IdOf("A1")), Is.False);
+
+            // 子の Component は子の GameObject に属する
+            var a1Transform = graph.Nodes.Single(n => n.IsComponent && n.Target == a1.transform);
+            Assert.That(a1Transform.OwnerId, Is.EqualTo(IdOf("A1")));
+            Assert.That(graph.Edges.Any(e => e.FromId == IdOf("A1") && e.ToId == a1Transform.Id), Is.True);
+        }
+
+        [Test]
+        public void Build_WithChildren_ReferencesToChildrenPointToTheirNodes()
+        {
+            var child = new GameObject("Child");
+            child.transform.SetParent(_go.transform);
+            var b = _go.AddComponent<RefGraphTestBehaviour>();
+            b.other = child;
+            b.selfTransform = child.transform;
+
+            var graph = RefGraphBuilder.Build(_go, includeChildren: true);
+
+            Assert.That(graph.Nodes.Any(n => n.Kind == RefGraphNodeKind.Reference), Is.False);
+            var from = RefGraphBuilder.ComponentId(1);
+            var childNode = graph.Nodes.Single(n => n.Kind == RefGraphNodeKind.ChildObject);
+            var childTransform = graph.Nodes.Single(n => n.IsComponent && n.Target == child.transform);
+            Assert.That(graph.Edges.Single(e => e.FromId == from && e.ToId == childNode.Id).FieldPaths, Is.EqualTo(new[] { "other" }));
+            Assert.That(graph.Edges.Single(e => e.FromId == from && e.ToId == childTransform.Id).FieldPaths, Is.EqualTo(new[] { "selfTransform" }));
+        }
+
+        [Test]
         public void FormatFieldPath_CollapsesArrayData()
         {
             Assert.That(RefGraphBuilder.FormatFieldPath("items.Array.data[2].target"), Is.EqualTo("items[2].target"));
