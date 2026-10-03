@@ -246,6 +246,8 @@ Player のビルド前に Validation を実行します。既定ではエラー�
 
 [muHierarchy](../works.mmzk.muhierarchy/README.ja.md) も入れると、Validation 属性や SceneRules がエラーを報告したシーン上のオブジェクトには赤いエラーアイコン、警告だけなら黄色い警告アイコンが、Hierarchy ウィンドウで付きます(ComponentView で Prefab アイコンを表示しているとき)。Missing Script と同じく、親にも付きます。マウスを乗せるとメッセージが出ます。
 
+muHierarchy の Tag / Layer ラベルをクリックして変更するときは、SceneRules で禁止されている Tag / Layer がグレーアウトされ、選べません。
+
 結果はキャッシュします。オブジェクトを編集したときはそのオブジェクトだけを再検証し、追加・削除・移動したときは、検証対象のコンポーネントを持つオブジェクトだけを集計し直します(SceneRules があるときはすべてのオブジェクト)。
 
 Play Mode 中は既定でシーンを検証しません。`Tools > muValidation > Validate In Play Mode` でオンにすると、最短 0.5 秒ごとに更新します。

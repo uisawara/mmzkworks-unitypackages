@@ -106,6 +106,40 @@ namespace Mmzkworks.muValidation.Editor
         }
 
         /// <summary>
+        /// Entry point for muHierarchy (called via reflection).
+        /// Returns why the GameObject may not take the tag under the SceneRules of its scene, or null if it may.
+        /// </summary>
+        /// <remarks>muHierarchy looks this method up by name. Keep its signature stable.</remarks>
+        public static string GetTagRestriction(GameObject go, string tag)
+        {
+            if (go == null) return null;
+            foreach (var rules in GetRulesFor(GetScenePath(go)))
+            {
+                var restriction = rules != null ? rules.GetTagRestriction(go, tag) : null;
+                if (restriction != null) return restriction;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Entry point for muHierarchy (called via reflection).
+        /// Returns why the GameObject may not move to the layer under the SceneRules of its scene, or null if it may.
+        /// </summary>
+        /// <remarks>muHierarchy looks this method up by name. Keep its signature stable.</remarks>
+        public static string GetLayerRestriction(GameObject go, int layer)
+        {
+            if (go == null) return null;
+            foreach (var rules in GetRulesFor(GetScenePath(go)))
+            {
+                var restriction = rules != null ? rules.GetLayerRestriction(go, layer) : null;
+                if (restriction != null) return restriction;
+            }
+
+            return null;
+        }
+
+        /// <summary>
         /// Returns the paths the SceneRules is assigned to.
         /// </summary>
         public static List<string> GetAssignedPaths(SceneRules rules)

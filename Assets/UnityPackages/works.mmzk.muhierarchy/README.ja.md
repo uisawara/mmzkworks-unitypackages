@@ -22,6 +22,27 @@ https://github.com/uisawara/mmzkworks-unitypackages.git?path=Assets/UnityPackage
 
 デフォルトの Component View では、各オブジェクトが持っている Component のアイコンが右側に並びます。Camera、Canvas、Particle など、名前を開かなくても種類が分かります。
 
+## Tag / Layer
+
+Component View では、どの Tag・Layer かが一目で分かります(`Untagged` と `Default` はグレー。Tag Manager で名前のない Layer は `Layer 16` のように番号で出ます)。
+
+![Tag / Layer の色帯](Documentation~/img/tag-layer-band.png)
+
+帯をクリックするとメニューが開き、その場で Tag / Layer を変えられます。選択中のオブジェクトをクリックした場合は、選択中すべてに適用されます。Undo もできます。子を持つオブジェクトの Layer を変えるときは、Inspector と同じく子も変えるかを確認します。
+
+[muValidation](../works.mmzk.muvalidation/README.ja.md) の SceneRules が適用されるシーンでは、ルールで禁止されている Tag / Layer はメニューでグレーアウトし、理由を併記します。対象は禁止 Tag・禁止 Layer と、Tag ごと・Component ごとの許可 Layer に反する組み合わせです。
+
+色帯は `Tools/muHierarchy/Label Background/Enable` で切り替えられます。
+
+### 色のカスタマイズ
+
+`Tools/muHierarchy/Label Background/Create Color Settings` を実行すると、`Assets/Settings/muhierarchy/LabelColorSettings.asset` ができて選択されます(すでにあるときはそれを選択します)。中身は現在の色で埋まっているので、Inspector で色を変えればそのまま Hierarchy に反映されます。`Create > muHierarchy > Label Color Settings` から作ることもできます。
+
+- **Auto colors**: 自動色の彩度(`Saturation`)・明度(`Value`)・不透明度(`Alpha`)
+- **Tags / Layers**: Tag / Layer をドロップダウンで選び、背景色を指定します。`Override Text Color` をオンにすると文字色も指定できます(オフなら背景に合わせて白か黒)
+
+リストにない Tag / Layer は自動色のままです。設定アセットが複数あるときは `Assets/Settings/muhierarchy/LabelColorSettings.asset` を、なければパス順で最初のものを使います。
+
 ## Prefab の未適用
 
 Prefab インスタンスに未適用の変更があると、黄色い警告が出ます。Apply 忘れに気づきやすくなります。

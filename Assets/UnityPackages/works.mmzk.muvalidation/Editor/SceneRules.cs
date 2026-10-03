@@ -165,6 +165,66 @@ namespace Mmzkworks.muValidation.Editor
         }
 
         /// <summary>
+        /// Returns why the GameObject may not take the tag (on its current layer), or null if it may.
+        /// </summary>
+        public string GetTagRestriction(GameObject go, string tag)
+        {
+            if (go == null || string.IsNullOrEmpty(tag) || severity == ValidationSeverity.None) return null;
+
+            if (forbiddenTags != null && Array.IndexOf(forbiddenTags, tag) >= 0)
+            {
+                return $"{name}: Tag \"{tag}\" is not allowed";
+            }
+
+            if (tagLayers != null)
+            {
+                foreach (var rule in tagLayers)
+                {
+                    if (rule == null || rule.tag != tag || IsInMask(rule.allowedLayers, go.layer)) continue;
+                    return $"{name}: Tag \"{tag}\" must be on layer(s) {FormatMask(rule.allowedLayers)}";
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Returns why the GameObject may not move to the layer (with its current tag and components), or null if it may.
+        /// </summary>
+        public string GetLayerRestriction(GameObject go, int layer)
+        {
+            if (go == null || severity == ValidationSeverity.None) return null;
+
+            if (IsInMask(forbiddenLayers, layer))
+            {
+                return $"{name}: Layer \"{LayerName(layer)}\" is not allowed";
+            }
+
+            if (tagLayers != null)
+            {
+                foreach (var rule in tagLayers)
+                {
+                    if (rule == null || string.IsNullOrEmpty(rule.tag) || go.tag != rule.tag) continue;
+                    if (IsInMask(rule.allowedLayers, layer)) continue;
+                    return $"{name}: Tag \"{rule.tag}\" must be on layer(s) {FormatMask(rule.allowedLayers)}";
+                }
+            }
+
+            if (componentLayers != null)
+            {
+                foreach (var rule in componentLayers)
+                {
+                    if (rule == null || IsInMask(rule.allowedLayers, layer)) continue;
+                    var type = ResolveComponentType(rule.componentType);
+                    if (type == null || !HasComponent(go, type, rule.includeSubclasses)) continue;
+                    return $"{name}: {type.Name} must be on layer(s) {FormatMask(rule.allowedLayers)}";
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
         /// Returns the component type with the given full name, or null if there is none.
         /// </summary>
         public static Type ResolveComponentType(string fullName)

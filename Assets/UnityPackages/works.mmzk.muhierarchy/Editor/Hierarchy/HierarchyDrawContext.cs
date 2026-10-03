@@ -17,6 +17,7 @@ namespace Mmzkworks.muHierarchy.Editor
         public float FixedRightMargin { get; set; }
         public bool ShowLayerName { get; set; }
         public bool ShowTagName { get; set; }
+        public bool ShowLabelBackground { get; set; }
         public bool ShowPrefabIcon { get; set; }
         public bool ShowComponentIcons { get; set; }
         public bool DedupeComponentIcons { get; set; }

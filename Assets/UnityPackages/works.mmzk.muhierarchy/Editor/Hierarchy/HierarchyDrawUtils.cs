@@ -23,6 +23,32 @@ namespace Mmzkworks.muHierarchy.Editor
             GUI.Label(r, content, style);
         }
 
+        private static GUIStyle _pillLabelStyle;
+
+        // Draws text on a rounded (capsule) colored band, right edge at rect.xMax
+        public static void DrawPillLabel(Rect rect, GUIContent content, GUIStyle baseStyle, Color background, Color textColor)
+        {
+            const float pillHeight = 13f;
+            var pillRect = new Rect(rect.x, rect.y + (rect.height - pillHeight) * 0.5f, rect.width, pillHeight);
+            if (Event.current.type == EventType.Repaint)
+            {
+                GUI.DrawTexture(pillRect, Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0f,
+                    background, 0f, pillHeight * 0.5f);
+            }
+
+            if (_pillLabelStyle == null || _pillLabelStyle.fontSize != baseStyle.fontSize)
+            {
+                _pillLabelStyle = new GUIStyle(baseStyle)
+                {
+                    alignment = TextAnchor.MiddleCenter,
+                    padding = new RectOffset(0, 0, 0, 0),
+                    margin = new RectOffset(0, 0, 0, 0),
+                };
+            }
+            _pillLabelStyle.normal.textColor = textColor;
+            GUI.Label(pillRect, content, _pillLabelStyle);
+        }
+
         public static bool IsSelectedInstanceId(int instanceID)
         {
             var ids = Selection.instanceIDs;

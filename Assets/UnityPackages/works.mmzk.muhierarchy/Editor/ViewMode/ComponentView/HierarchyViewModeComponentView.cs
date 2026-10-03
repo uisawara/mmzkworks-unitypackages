@@ -49,15 +49,30 @@ namespace Mmzkworks.muHierarchy.Editor
                 ? MuValidationBridge.GetSeverity(go, out validationMessage)
                 : MuValidationBridge.Severity.None;
 
+            float iconRightX = selectionRect.xMax - iconSize;
+
+            // Missing scripts end drawing before the component icons
+            var componentIcons = showComponentIcons && !(showPrefabIcon && hasMissingScripts)
+                ? new List<ComponentIconInfo>(CollectComponentIcons(go, ctx.DedupeComponentIcons))
+                : null;
+            componentIcons?.RemoveAll(info => info.Icon == null);
+
             if (showLayer || showTag)
             {
+                // Keep the fixed column, but move left of the component icons when there are many of them
+                float labelRightX = fixedRightPosition;
+                if (componentIcons != null && componentIcons.Count > 0)
+                {
+                    float leftmostIconX = iconRightX - (iconSize + spacing)
+                        - (componentIcons.Count - 1) * (iconSize + componentIconSpacing);
+                    labelRightX = Mathf.Min(labelRightX, leftmostIconX - textSpacing);
+                }
+
                 float layerWidth = 0f;
                 GUIContent layerLabel = null;
                 if (showLayer)
                 {
-                    string layerName = LayerMask.LayerToName(go.layer);
-                    if (string.IsNullOrEmpty(layerName))
-                        layerName = "Default";
+                    string layerName = HierarchyLabelColors.GetLayerDisplayName(go.layer);
                     layerLabel = new GUIContent($" {layerName} ");
                     layerWidth = smallLabelStyle.CalcSize(layerLabel).x;
                 }
@@ -73,32 +88,45 @@ namespace Mmzkworks.muHierarchy.Editor
                     tagWidth = smallLabelStyle.CalcSize(tagLabel).x;
                 }
 
-                if (showTag)
-                {
-                    var tagRect = new Rect(
-                        fixedRightPosition - tagWidth,
-                        selectionRect.y,
-                        tagWidth,
-                        selectionRect.height
-                    );
-                    GUI.Label(tagRect, tagLabel, smallLabelStyle);
-                }
+                // Left to right: Tag, Layer (Layer sits at the fixed right edge)
                 if (showLayer)
                 {
-                    float layerX = showTag
-                        ? fixedRightPosition - tagWidth - textSpacing - layerWidth
-                        : fixedRightPosition - layerWidth;
                     var layerRect = new Rect(
-                        layerX,
+                        labelRightX - layerWidth,
                         selectionRect.y,
                         layerWidth,
                         selectionRect.height
                     );
-                    GUI.Label(layerRect, layerLabel, smallLabelStyle);
+                    if (ctx.ShowLabelBackground)
+                    {
+                        var c = HierarchyLabelColors.GetLayerColor(go.layer);
+                        HierarchyDrawUtils.DrawPillLabel(layerRect, layerLabel, smallLabelStyle, c.Background, c.Text);
+                    }
+                    else
+                        GUI.Label(layerRect, layerLabel, smallLabelStyle);
+                    HierarchyTagLayerMenu.HandleLayerClick(layerRect, go);
+                }
+                if (showTag)
+                {
+                    float tagX = showLayer
+                        ? labelRightX - layerWidth - textSpacing - tagWidth
+                        : labelRightX - tagWidth;
+                    var tagRect = new Rect(
+                        tagX,
+                        selectionRect.y,
+                        tagWidth,
+                        selectionRect.height
+                    );
+                    if (ctx.ShowLabelBackground)
+                    {
+                        var c = HierarchyLabelColors.GetTagColor(go.tag);
+                        HierarchyDrawUtils.DrawPillLabel(tagRect, tagLabel, smallLabelStyle, c.Background, c.Text);
+                    }
+                    else
+                        GUI.Label(tagRect, tagLabel, smallLabelStyle);
+                    HierarchyTagLayerMenu.HandleTagClick(tagRect, go);
                 }
             }
-
-            float iconRightX = selectionRect.xMax - iconSize;
 
             bool shouldShowPrefabAreaIcon = showPrefabIcon &&
                 (hasMissingScripts || validationSeverity != MuValidationBridge.Severity.None || ((isPrefabInstance || hasChildOverrides) && showWarning));
@@ -142,13 +170,11 @@ namespace Mmzkworks.muHierarchy.Editor
                 }
             }
 
-            if (showComponentIcons)
+            if (componentIcons != null)
             {
                 float x = iconRightX - (iconSize + spacing);
-                foreach (var iconInfo in CollectComponentIcons(go, ctx.DedupeComponentIcons))
+                foreach (var iconInfo in componentIcons)
                 {
-                    if (iconInfo.Icon == null)
-                        continue;
                     var iconRect = new Rect(
                         x,
                         selectionRect.y + (selectionRect.height - iconSize) * 0.5f,
