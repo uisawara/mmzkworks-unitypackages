@@ -37,6 +37,7 @@ namespace Mmzkworks.muHierarchy.Editor
         private const string PrefsKeyViewMode = "PrefabOverrideIconInHierarchy.ViewMode";
         private const string PrefsKeyShowLayerName = "PrefabOverrideIconInHierarchy.ShowLayerName";
         private const string PrefsKeyShowTagName = "PrefabOverrideIconInHierarchy.ShowTagName";
+        private const string PrefsKeyShowLabelBackground = "PrefabOverrideIconInHierarchy.ShowLabelBackground";
         private const string PrefsKeyShowPrefabIcon = "PrefabOverrideIconInHierarchy.ShowPrefabIcon";
         private const string PrefsKeyShowComponentIcons = "PrefabOverrideIconInHierarchy.ShowComponentIcons";
         private const string PrefsKeyDedupeComponentIcons = "PrefabOverrideIconInHierarchy.DedupeComponentIcons";
@@ -58,6 +59,12 @@ namespace Mmzkworks.muHierarchy.Editor
         {
             get => EditorPrefs.GetBool(PrefsKeyShowTagName, true);
             set => EditorPrefs.SetBool(PrefsKeyShowTagName, value);
+        }
+
+        private static bool ShowLabelBackground
+        {
+            get => EditorPrefs.GetBool(PrefsKeyShowLabelBackground, true);
+            set => EditorPrefs.SetBool(PrefsKeyShowLabelBackground, value);
         }
 
         private static bool ShowPrefabIcon
@@ -489,6 +496,20 @@ namespace Mmzkworks.muHierarchy.Editor
             return true;
         }
 
+        [MenuItem("Tools/muHierarchy/Label Background/Enable", false, 40)]
+        private static void ToggleShowLabelBackground()
+        {
+            ShowLabelBackground = !ShowLabelBackground;
+            EditorApplication.RepaintHierarchyWindow();
+        }
+
+        [MenuItem("Tools/muHierarchy/Label Background/Enable", true)]
+        private static bool ToggleShowLabelBackgroundValidate()
+        {
+            Menu.SetChecked("Tools/muHierarchy/Label Background/Enable", ShowLabelBackground);
+            return true;
+        }
+
         [MenuItem("Tools/muHierarchy/Tag Background/Set Color For Selected Tag...", false, 31)]
         private static void SetTagBackgroundColorForSelectedTag()
         {
@@ -658,6 +679,7 @@ namespace Mmzkworks.muHierarchy.Editor
                 FixedRightMargin = fixedRightMargin,
                 ShowLayerName = showLayer,
                 ShowTagName = showTag,
+                ShowLabelBackground = ShowLabelBackground,
                 ShowPrefabIcon = showPrefabIcon,
                 ShowComponentIcons = showComponentIcons,
                 DedupeComponentIcons = DedupeComponentIcons,

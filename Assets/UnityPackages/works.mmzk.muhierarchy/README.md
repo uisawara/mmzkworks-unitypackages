@@ -22,6 +22,27 @@ https://github.com/uisawara/mmzkworks-unitypackages.git?path=Assets/UnityPackage
 
 In the default Component View, icons for each object's Components appear on the right. You can tell Cameras, Canvases, Particles, and so on without expanding the name.
 
+## Tag / Layer
+
+In Component View, you can tell Tags and Layers apart at a glance (`Untagged` and `Default` are gray; layers without a name in the Tag Manager show their number, e.g. `Layer 16`).
+
+![Tag / Layer color bands](Documentation~/img/tag-layer-band.png)
+
+Click a band to open a menu and change the Tag / Layer in place. Clicking a selected object applies the change to all selected objects. It is undoable. When changing the Layer of an object with children, you are asked whether to change the children too, as in the Inspector.
+
+In scenes where [muValidation](../works.mmzk.muvalidation/README.md) SceneRules apply, Tags / Layers the rules forbid are grayed out in the menu with the reason: forbidden tags and layers, and combinations outside the allowed layers per tag or per component.
+
+Toggle the bands with `Tools/muHierarchy/Label Background/Enable`.
+
+### Customizing colors
+
+Run `Tools/muHierarchy/Label Background/Create Color Settings` to create and select `Assets/Settings/muhierarchy/LabelColorSettings.asset` (or select it if it exists). It is filled with the current colors; change them in the Inspector and the Hierarchy updates right away. You can also create one from `Create > muHierarchy > Label Color Settings`.
+
+- **Auto colors**: saturation, value (brightness), and alpha of the auto colors
+- **Tags / Layers**: pick a Tag / Layer from the dropdown and set its background color. Turn on `Override Text Color` to set the text color too (otherwise white or black is picked to contrast with the background)
+
+Tags / Layers not in the lists keep their auto colors. If there are several settings assets, `Assets/Settings/muhierarchy/LabelColorSettings.asset` is used, otherwise the first by path.
+
 ## Unapplied prefab changes
 
 When a Prefab instance has unapplied changes, a yellow warning appears. That makes it easier to notice a missed Apply.

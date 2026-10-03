@@ -21,11 +21,15 @@ namespace Mmzkworks.muHierarchy.Editor
         private const string MethodName = "GetSeverityIncludingChildren";
         private const string SceneRulesTypeName = "Mmzkworks.muValidation.Editor.SceneRulesRegistry, works.mmzk.muvalidation.Editor";
         private const string SceneRulesMethodName = "GetRulePaths";
+        private const string TagRestrictionMethodName = "GetTagRestriction";
+        private const string LayerRestrictionMethodName = "GetLayerRestriction";
 
         private delegate int GetSeverityDelegate(GameObject go, out string message);
 
         private static GetSeverityDelegate _getSeverity;
         private static Func<string, string[]> _getSceneRulePaths;
+        private static Func<GameObject, string, string> _getTagRestriction;
+        private static Func<GameObject, int, string> _getLayerRestriction;
         private static bool _resolved;
 
         /// <summary>
@@ -69,11 +73,64 @@ namespace Mmzkworks.muHierarchy.Editor
             }
         }
 
+        /// <summary>
+        /// Returns why the GameObject may not take the tag under the muValidation SceneRules of its scene.
+        /// Null if it may, or muValidation is not installed.
+        /// </summary>
+        public static string GetTagRestriction(GameObject go, string tag)
+        {
+            if (!_resolved) Resolve();
+            if (_getTagRestriction == null || go == null) return null;
+
+            try
+            {
+                return _getTagRestriction(go, tag);
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Returns why the GameObject may not move to the layer under the muValidation SceneRules of its scene.
+        /// Null if it may, or muValidation is not installed.
+        /// </summary>
+        public static string GetLayerRestriction(GameObject go, int layer)
+        {
+            if (!_resolved) Resolve();
+            if (_getLayerRestriction == null || go == null) return null;
+
+            try
+            {
+                return _getLayerRestriction(go, layer);
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+                return null;
+            }
+        }
+
         private static void Resolve()
         {
             _resolved = true;
 
-            var rulePaths = Type.GetType(SceneRulesTypeName)?.GetMethod(SceneRulesMethodName, BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(string) }, null);
+            var sceneRulesType = Type.GetType(SceneRulesTypeName);
+            var tagRestriction = sceneRulesType?.GetMethod(TagRestrictionMethodName, BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(GameObject), typeof(string) }, null);
+            if (tagRestriction != null && tagRestriction.ReturnType == typeof(string))
+            {
+                _getTagRestriction = (Func<GameObject, string, string>)Delegate.CreateDelegate(typeof(Func<GameObject, string, string>), tagRestriction);
+            }
+
+            var layerRestriction = sceneRulesType?.GetMethod(LayerRestrictionMethodName, BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(GameObject), typeof(int) }, null);
+            if (layerRestriction != null && layerRestriction.ReturnType == typeof(string))
+            {
+                _getLayerRestriction = (Func<GameObject, int, string>)Delegate.CreateDelegate(typeof(Func<GameObject, int, string>), layerRestriction);
+            }
+
+            var rulePaths = sceneRulesType?.GetMethod(SceneRulesMethodName, BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(string) }, null);
             if (rulePaths != null && rulePaths.ReturnType == typeof(string[]))
             {
                 _getSceneRulePaths = (Func<string, string[]>)Delegate.CreateDelegate(typeof(Func<string, string[]>), rulePaths);

@@ -246,6 +246,8 @@ Change it in `Project Settings > muValidation`. Settings are saved to `ProjectSe
 
 When [muHierarchy](../works.mmzk.muhierarchy/README.md) is also installed, scene objects whose validation attributes or SceneRules report errors get the red error icon in the Hierarchy window, and those with only warnings get the yellow warning icon (ComponentView, with the Prefab icon shown). Like Missing Script, it also shows on parents. Hover to see the messages.
 
+When changing the Tag / Layer by clicking muHierarchy's labels, Tags / Layers forbidden by SceneRules are grayed out and cannot be chosen.
+
 Results are cached. Editing an object re-validates only that object; adding, deleting or moving objects rebuilds the results, visiting only objects with validated components (all objects if there are SceneRules).
 
 Scene objects are not validated in Play Mode by default. Turn it on with `Tools > muValidation > Validate In Play Mode`; results then refresh at most every 0.5 seconds.
