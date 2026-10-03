@@ -1,6 +1,6 @@
 {
   "name": "works.mmzk.muproject",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "displayName": "muProject",
   "description": "Unity editor extensions for the Project window (folder icons based on folder contents or path patterns)",
   "unity": "2022.3",
