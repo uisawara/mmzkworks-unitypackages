@@ -88,6 +88,18 @@ namespace Mmzkworks.muAsmdefgraph
             _showUnresolvedNodes = AsmdefDatabase.ShowUnresolvedNodes;
         }
 
+        // フォーカスが外れると KeyUp / MouseUp が届かないので、Space や右ドラッグによるパンを解除する
+        private void OnLostFocus()
+        {
+            _isPanning = false;
+            if (_inputContext == null)
+                return;
+            _inputContext.IsPanning = false;
+            _inputContext.IsSpaceHeld = false;
+            _inputContext.IsRightButtonPending = false;
+            _inputContext.RightButtonDownNode = null;
+        }
+
         private void OnGUI()
         {
             var roots = GetRootAsmdefNames();
@@ -200,6 +212,8 @@ namespace Mmzkworks.muAsmdefgraph
             _inputContext.Rects = rects;
             AsmdefGraphInputHandler.Handle(_inputContext);
             SyncInputContextBack();
+            if (_isPanning || _inputContext.IsSpaceHeld)
+                EditorGUIUtility.AddCursorRect(new Rect(0f, ToolbarHeight, position.width, position.height - ToolbarHeight), MouseCursor.Pan);
             DrawNoRootsHelp();
 
             var mouse = Event.current?.mousePosition ?? Vector2.zero;

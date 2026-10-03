@@ -42,7 +42,7 @@ Drag nodes to rearrange them, and pan and zoom to see the whole graph. Double-cl
 | Left-drag on a node | Move nodes |
 | Left-drag on the background | Box selection |
 | Ctrl / Cmd + click | Add to / remove from selection |
-| Middle button / Alt + left-drag | Pan |
+| Right-drag / Space + left-drag / middle button / Alt + left-drag | Pan |
 | Mouse wheel | Zoom |
 | Double-click | Select and ping the object |
 

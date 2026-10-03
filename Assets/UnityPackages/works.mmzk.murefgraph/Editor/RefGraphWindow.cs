@@ -66,6 +66,13 @@ namespace Mmzkworks.muRefgraph
 
         private void OnFocus() => MarkDirty();
 
+        // フォーカスが外れると KeyUp が届かないので、Space による一時パンを解除する
+        private void OnLostFocus()
+        {
+            _state.IsSpaceHeld = false;
+            _state.IsPanning = false;
+        }
+
         private void MarkDirty()
         {
             _graphDirty = true;
@@ -110,6 +117,8 @@ namespace Mmzkworks.muRefgraph
             }
 
             RefGraphInputHandler.Handle(e, _state, layout?.Rects, GraphOrigin, OpenNode, Repaint);
+            if (_state.IsPanning || _state.IsSpaceHeld)
+                EditorGUIUtility.AddCursorRect(new Rect(0f, ToolbarHeight, position.width, position.height - ToolbarHeight), MouseCursor.Pan);
 
             if (layout != null)
             {

@@ -28,7 +28,7 @@ Combined with [muHierarchy](../works.mmzk.muhierarchy/README.md) Asmdef View, it
 
 ## Graph
 
-Drag nodes to rearrange them, and pan and zoom to see the whole graph. Double-click a node to select the asmdef in the Project window.
+Drag nodes to rearrange them, and pan and zoom to see the whole graph. Pan with right-drag, Space + left-drag, or middle-button drag (a right click without dragging still toggles node interest as before). Double-click a node to select the asmdef in the Project window.
 
 Layout and comments are saved per open root.
 

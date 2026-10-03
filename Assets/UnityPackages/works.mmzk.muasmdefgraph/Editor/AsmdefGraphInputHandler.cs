@@ -18,6 +18,12 @@ namespace Mmzkworks.muAsmdefgraph
         public Vector2 DragStartOffset;
         public bool IsPanning;
         public Vector2 LastMouse;
+        /// <summary>Space キーが押されている間は左ドラッグでパンする。</summary>
+        public bool IsSpaceHeld;
+        /// <summary>右ボタンを押してからまだ離していない。動かさずに離せばクリック、動かせばパン。</summary>
+        public bool IsRightButtonPending;
+        public Vector2 RightButtonDownMouse;
+        public string RightButtonDownNode;
         public string LastClickedNode;
         public float LastClickTime;
         public HashSet<string> LowInterestNodes;
@@ -51,7 +57,7 @@ namespace Mmzkworks.muAsmdefgraph
         public bool SelectAllRenameField;
     }
 
-    /// <summary>Handles node drag, pan, zoom, double-click, right-click interest toggle and comment blocks.</summary>
+    /// <summary>Handles node drag, pan (middle / right drag / Space + left drag), zoom, double-click, right-click interest toggle and comment blocks.</summary>
     public static class AsmdefGraphInputHandler
     {
         private const float DoubleClickTimeThreshold = 0.5f;
@@ -71,6 +77,9 @@ namespace Mmzkworks.muAsmdefgraph
             }
 
             if (HandleRenameEvents(ctx))
+                return;
+
+            if (HandleDragPan(ctx))
                 return;
 
             // Left button: node drag / double-click / comment / marquee / create
@@ -324,85 +333,6 @@ namespace Mmzkworks.muAsmdefgraph
                 }
             }
 
-            // Right button: toggle low interest / high interest
-            if (e.type == EventType.MouseDown && e.button == 1)
-            {
-                foreach (var kv in rects)
-                {
-                    if (!kv.Value.Contains(e.mousePosition))
-                        continue;
-                    var clickedNode = kv.Key;
-                    if (ctx.LowInterestNodes == null)
-                        ctx.LowInterestNodes = new HashSet<string>();
-
-                    bool isMultiSelectWithClicked = ctx.SelectedNodes != null && ctx.SelectedNodes.Count > 1 && ctx.SelectedNodes.Contains(clickedNode);
-                    if (isMultiSelectWithClicked)
-                    {
-                        int lowCount = 0;
-                        foreach (var id in ctx.SelectedNodes)
-                        {
-                            if (ctx.LowInterestNodes.Contains(id))
-                                lowCount++;
-                        }
-                        int selectedCount = ctx.SelectedNodes.Count;
-                        bool isMixed = lowCount > 0 && lowCount < selectedCount;
-                        if (isMixed)
-                        {
-                            foreach (var id in ctx.SelectedNodes)
-                                ctx.LowInterestNodes.Add(id);
-                        }
-                        else
-                        {
-                            foreach (var id in ctx.SelectedNodes)
-                            {
-                                if (ctx.LowInterestNodes.Contains(id))
-                                    ctx.LowInterestNodes.Remove(id);
-                                else
-                                    ctx.LowInterestNodes.Add(id);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        bool isLow = ctx.LowInterestNodes.Contains(clickedNode);
-                        if (isLow)
-                            ctx.LowInterestNodes.Remove(clickedNode);
-                        else
-                            ctx.LowInterestNodes.Add(clickedNode);
-                    }
-
-                    ctx.Save?.Invoke();
-                    ctx.Repaint?.Invoke();
-                    e.Use();
-                    return;
-                }
-            }
-
-            // Middle button: pan
-            if (e.type == EventType.MouseDown && e.button == 2)
-            {
-                ctx.IsPanning = true;
-                ctx.LastMouse = e.mousePosition;
-                e.Use();
-                return;
-            }
-            if (e.type == EventType.MouseDrag && e.button == 2)
-            {
-                if (ctx.IsPanning)
-                {
-                    var delta = e.mousePosition - ctx.LastMouse;
-                    ctx.PanOffset += delta;
-                    ctx.LastMouse = e.mousePosition;
-                    e.Use();
-                    ctx.Repaint?.Invoke();
-                    return;
-                }
-            }
-            if (e.type == EventType.MouseUp && e.button == 2)
-            {
-                ctx.IsPanning = false;
-            }
-
             // Scroll: zoom
             if (e.type == EventType.ScrollWheel)
             {
@@ -423,28 +353,146 @@ namespace Mmzkworks.muAsmdefgraph
         /// <summary>When there are no nodes (no roots), only pan is available.</summary>
         public static void HandlePanOnly(AsmdefGraphInputContext ctx)
         {
+            if (ctx.Event == null) return;
+            HandleDragPan(ctx);
+        }
+
+        /// <summary>
+        /// Pan with the middle button, the right button (drag), or Space + left button.
+        /// A right click without dragging toggles low / high interest on the clicked node.
+        /// </summary>
+        /// <returns>true if the event was consumed.</returns>
+        private static bool HandleDragPan(AsmdefGraphInputContext ctx)
+        {
             var e = ctx.Event;
-            if (e == null) return;
-            if (e.type == EventType.MouseDown && e.button == 2)
+
+            if ((e.type == EventType.KeyDown || e.type == EventType.KeyUp) && e.keyCode == KeyCode.Space)
             {
-                ctx.IsPanning = true;
-                ctx.LastMouse = e.mousePosition;
-                e.Use();
-                return;
-            }
-            if (e.type == EventType.MouseDrag && e.button == 2 && ctx.IsPanning)
-            {
-                var delta = e.mousePosition - ctx.LastMouse;
-                ctx.PanOffset += delta;
-                ctx.LastMouse = e.mousePosition;
+                // テキスト入力中（コメント名の編集など）は Space をそのまま渡す
+                if (!string.IsNullOrEmpty(ctx.RenamingCommentId) || GUIUtility.keyboardControl != 0)
+                    return false;
+                ctx.IsSpaceHeld = e.type == EventType.KeyDown;
                 e.Use();
                 ctx.Repaint?.Invoke();
-                return;
+                return true;
             }
-            if (e.type == EventType.MouseUp && e.button == 2)
+
+            switch (e.type)
             {
-                ctx.IsPanning = false;
+                case EventType.MouseDown when e.button == 2 || (e.button == 0 && ctx.IsSpaceHeld):
+                    if (ctx.ToolbarHeight > 0 && e.mousePosition.y < ctx.ToolbarHeight)
+                        return false;
+                    ctx.IsPanning = true;
+                    ctx.LastMouse = e.mousePosition;
+                    e.Use();
+                    return true;
+
+                case EventType.MouseDown when e.button == 1:
+                    if (ctx.ToolbarHeight > 0 && e.mousePosition.y < ctx.ToolbarHeight)
+                        return false;
+                    ctx.IsRightButtonPending = true;
+                    ctx.RightButtonDownMouse = e.mousePosition;
+                    ctx.RightButtonDownNode = HitTestNode(ctx.Rects, e.mousePosition);
+                    ctx.LastMouse = e.mousePosition;
+                    e.Use();
+                    return true;
+
+                case EventType.MouseDrag:
+                    if (!ctx.IsPanning && ctx.IsRightButtonPending && e.button == 1 &&
+                        (e.mousePosition - ctx.RightButtonDownMouse).magnitude > DragThreshold)
+                    {
+                        ctx.IsPanning = true;
+                    }
+                    if (ctx.IsPanning)
+                    {
+                        ctx.PanOffset += e.mousePosition - ctx.LastMouse;
+                        ctx.LastMouse = e.mousePosition;
+                        e.Use();
+                        ctx.Repaint?.Invoke();
+                        return true;
+                    }
+                    if (ctx.IsRightButtonPending)
+                    {
+                        e.Use();
+                        return true;
+                    }
+                    return false;
+
+                case EventType.MouseUp:
+                    if (ctx.IsRightButtonPending && e.button == 1)
+                    {
+                        if (!ctx.IsPanning && ctx.RightButtonDownNode != null)
+                            ToggleLowInterest(ctx, ctx.RightButtonDownNode);
+                        ctx.IsRightButtonPending = false;
+                        ctx.RightButtonDownNode = null;
+                        ctx.IsPanning = false;
+                        e.Use();
+                        ctx.Repaint?.Invoke();
+                        return true;
+                    }
+                    if (ctx.IsPanning)
+                    {
+                        ctx.IsPanning = false;
+                        e.Use();
+                        return true;
+                    }
+                    return false;
             }
+            return false;
+        }
+
+        private static string HitTestNode(Dictionary<string, Rect> rects, Vector2 position)
+        {
+            if (rects == null)
+                return null;
+            foreach (var kv in rects)
+            {
+                if (kv.Value.Contains(position))
+                    return kv.Key;
+            }
+            return null;
+        }
+
+        /// <summary>Toggle low / high interest. With several nodes selected (including the clicked one), all of them are toggled together.</summary>
+        private static void ToggleLowInterest(AsmdefGraphInputContext ctx, string clickedNode)
+        {
+            if (ctx.LowInterestNodes == null)
+                ctx.LowInterestNodes = new HashSet<string>();
+
+            bool isMultiSelectWithClicked = ctx.SelectedNodes != null && ctx.SelectedNodes.Count > 1 && ctx.SelectedNodes.Contains(clickedNode);
+            if (isMultiSelectWithClicked)
+            {
+                int lowCount = 0;
+                foreach (var id in ctx.SelectedNodes)
+                {
+                    if (ctx.LowInterestNodes.Contains(id))
+                        lowCount++;
+                }
+                int selectedCount = ctx.SelectedNodes.Count;
+                bool isMixed = lowCount > 0 && lowCount < selectedCount;
+                if (isMixed)
+                {
+                    foreach (var id in ctx.SelectedNodes)
+                        ctx.LowInterestNodes.Add(id);
+                }
+                else
+                {
+                    foreach (var id in ctx.SelectedNodes)
+                    {
+                        if (ctx.LowInterestNodes.Contains(id))
+                            ctx.LowInterestNodes.Remove(id);
+                        else
+                            ctx.LowInterestNodes.Add(id);
+                    }
+                }
+            }
+            else
+            {
+                if (!ctx.LowInterestNodes.Remove(clickedNode))
+                    ctx.LowInterestNodes.Add(clickedNode);
+            }
+
+            ctx.Save?.Invoke();
         }
 
         private static bool HandleRenameEvents(AsmdefGraphInputContext ctx)
