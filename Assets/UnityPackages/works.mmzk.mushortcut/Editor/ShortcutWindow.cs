@@ -262,7 +262,7 @@ namespace Mmzkworks.mushortcut.Editor
         private readonly Dictionary<string, double> _previewRequestTime = new Dictionary<string, double>();
         private const double PreviewRetryInterval = 0.5;
 
-        [MenuItem("Tools/muShortcut/Shortcuts")]
+        [MenuItem("Tools/muShortcut/Shortcuts", false, 2002)]
         private static void Open()
         {
             var window = CreateInstance<ShortcutWindow>();

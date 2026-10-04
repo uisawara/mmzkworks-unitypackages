@@ -56,7 +56,7 @@ namespace Mmzkworks.muValidation.Editor
             }
         }
 
-        [MenuItem(MenuPath)]
+        [MenuItem(MenuPath, false, 2006)]
         private static void ToggleShowOnFolders()
         {
             ShowOnFolders = !ShowOnFolders;

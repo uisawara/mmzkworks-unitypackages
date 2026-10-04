@@ -172,7 +172,7 @@ namespace Mmzkworks.muHierarchy.Editor
         }
 
         // Add to Hierarchy window menu
-        [MenuItem("Tools/muHierarchy/View Mode/Component View", false, 12)]
+        [MenuItem("Tools/muHierarchy/View Mode/Component View", false, 2001)]
         private static void SetViewModeComponentView()
         {
             CurrentViewMode = HierarchyViewMode.ComponentView;
@@ -186,7 +186,7 @@ namespace Mmzkworks.muHierarchy.Editor
             return true;
         }
 
-        [MenuItem("Tools/muHierarchy/View Mode/None", false, 11)]
+        [MenuItem("Tools/muHierarchy/View Mode/None", false, 2000)]
         private static void SetViewModeNone()
         {
             CurrentViewMode = HierarchyViewMode.None;
@@ -200,7 +200,7 @@ namespace Mmzkworks.muHierarchy.Editor
             return true;
         }
 
-        [MenuItem("Tools/muHierarchy/View Mode/Component Name View", false, 13)]
+        [MenuItem("Tools/muHierarchy/View Mode/Component Name View", false, 2002)]
         private static void SetViewModeComponentNameView()
         {
             CurrentViewMode = HierarchyViewMode.ComponentNameView;
@@ -215,7 +215,7 @@ namespace Mmzkworks.muHierarchy.Editor
             return true;
         }
 
-        [MenuItem("Tools/muHierarchy/View Mode/Asmdef View", false, 14)]
+        [MenuItem("Tools/muHierarchy/View Mode/Asmdef View", false, 2003)]
         private static void SetViewModeAsmdefView()
         {
             CurrentViewMode = HierarchyViewMode.AsmdefView;
@@ -229,7 +229,7 @@ namespace Mmzkworks.muHierarchy.Editor
             return true;
         }
 
-        [MenuItem("Tools/muHierarchy/View Mode/Prefab Path View", false, 15)]
+        [MenuItem("Tools/muHierarchy/View Mode/Prefab Path View", false, 2004)]
         private static void SetViewModePrefabPathView()
         {
             CurrentViewMode = HierarchyViewMode.PrefabPathView;
@@ -243,7 +243,7 @@ namespace Mmzkworks.muHierarchy.Editor
             return true;
         }
 
-        [MenuItem("Tools/muHierarchy/View Mode/Mesh Info View", false, 16)]
+        [MenuItem("Tools/muHierarchy/View Mode/Mesh Info View", false, 2005)]
         private static void SetViewModeMeshInfoView()
         {
             CurrentViewMode = HierarchyViewMode.MeshInfoView;
@@ -257,7 +257,7 @@ namespace Mmzkworks.muHierarchy.Editor
             return true;
         }
 
-        [MenuItem("Tools/muHierarchy/View Mode/Material Info View", false, 17)]
+        [MenuItem("Tools/muHierarchy/View Mode/Material Info View", false, 2006)]
         private static void SetViewModeMaterialInfoView()
         {
             CurrentViewMode = HierarchyViewMode.MaterialInfoView;
@@ -272,7 +272,7 @@ namespace Mmzkworks.muHierarchy.Editor
             return true;
         }
 
-        [MenuItem("Tools/muHierarchy/View Mode/Shader Info View", false, 18)]
+        [MenuItem("Tools/muHierarchy/View Mode/Shader Info View", false, 2007)]
         private static void SetViewModeShaderInfoView()
         {
             CurrentViewMode = HierarchyViewMode.ShaderInfoView;
@@ -286,7 +286,7 @@ namespace Mmzkworks.muHierarchy.Editor
             return true;
         }
 
-        [MenuItem("Tools/muHierarchy/View Mode/Reference View", false, 19)]
+        [MenuItem("Tools/muHierarchy/View Mode/Reference View", false, 2008)]
         private static void SetViewModeReferenceView()
         {
             CurrentViewMode = HierarchyViewMode.ReferenceView;
@@ -384,7 +384,7 @@ namespace Mmzkworks.muHierarchy.Editor
             return true;
         }
 
-        [MenuItem("Tools/muHierarchy/Show Layer Name", false, 20)]
+        [MenuItem("Tools/muHierarchy/Show Layer Name", false, 2009)]
         private static void ToggleShowLayerName()
         {
             ShowLayerName = !ShowLayerName;
@@ -398,7 +398,7 @@ namespace Mmzkworks.muHierarchy.Editor
             return true;
         }
 
-        [MenuItem("Tools/muHierarchy/Show Tag Name", false, 21)]
+        [MenuItem("Tools/muHierarchy/Show Tag Name", false, 2010)]
         private static void ToggleShowTagName()
         {
             ShowTagName = !ShowTagName;
@@ -412,7 +412,7 @@ namespace Mmzkworks.muHierarchy.Editor
             return true;
         }
 
-        [MenuItem("Tools/muHierarchy/Show Prefab Icon", false, 22)]
+        [MenuItem("Tools/muHierarchy/Show Prefab Icon", false, 2011)]
         private static void ToggleShowPrefabIcon()
         {
             ShowPrefabIcon = !ShowPrefabIcon;
@@ -426,7 +426,7 @@ namespace Mmzkworks.muHierarchy.Editor
             return true;
         }
 
-        [MenuItem("Tools/muHierarchy/Show Component Icons", false, 23)]
+        [MenuItem("Tools/muHierarchy/Show Component Icons", false, 2012)]
         private static void ToggleShowComponentIcons()
         {
             ShowComponentIcons = !ShowComponentIcons;
@@ -440,7 +440,7 @@ namespace Mmzkworks.muHierarchy.Editor
             return true;
         }
 
-        [MenuItem("Tools/muHierarchy/Dedupe Component Icons", false, 24)]
+        [MenuItem("Tools/muHierarchy/Dedupe Component Icons", false, 2013)]
         private static void ToggleDedupeComponentIcons()
         {
             DedupeComponentIcons = !DedupeComponentIcons;
@@ -454,7 +454,7 @@ namespace Mmzkworks.muHierarchy.Editor
             return true;
         }
 
-        [MenuItem("Tools/muHierarchy/Show Reference Lines", false, 25)]
+        [MenuItem("Tools/muHierarchy/Show Reference Lines", false, 2014)]
         private static void ToggleShowReferenceLines()
         {
             ShowReferenceLines = !ShowReferenceLines;
@@ -468,7 +468,7 @@ namespace Mmzkworks.muHierarchy.Editor
             return true;
         }
 
-        [MenuItem("Tools/muHierarchy/Show Alternating Row Colors", false, 26)]
+        [MenuItem("Tools/muHierarchy/Show Alternating Row Colors", false, 2015)]
         private static void ToggleShowAlternatingRowColors()
         {
             ShowAlternatingRowColors = !ShowAlternatingRowColors;
@@ -482,7 +482,7 @@ namespace Mmzkworks.muHierarchy.Editor
             return true;
         }
 
-        [MenuItem("Tools/muHierarchy/Tag Background/Enable", false, 30)]
+        [MenuItem("Tools/muHierarchy/Tag Background/Enable", false, 2019)]
         private static void ToggleShowTagBackground()
         {
             ShowTagBackground = !ShowTagBackground;
@@ -496,7 +496,7 @@ namespace Mmzkworks.muHierarchy.Editor
             return true;
         }
 
-        [MenuItem("Tools/muHierarchy/Label Background/Enable", false, 40)]
+        [MenuItem("Tools/muHierarchy/Label Background/Enable", false, 2029)]
         private static void ToggleShowLabelBackground()
         {
             ShowLabelBackground = !ShowLabelBackground;
@@ -510,7 +510,7 @@ namespace Mmzkworks.muHierarchy.Editor
             return true;
         }
 
-        [MenuItem("Tools/muHierarchy/Tag Background/Set Color For Selected Tag...", false, 31)]
+        [MenuItem("Tools/muHierarchy/Tag Background/Set Color For Selected Tag...", false, 2020)]
         private static void SetTagBackgroundColorForSelectedTag()
         {
             if (!TryGetSelectedTag(out var tag))
@@ -528,7 +528,7 @@ namespace Mmzkworks.muHierarchy.Editor
             return Selection.activeGameObject != null;
         }
 
-        [MenuItem("Tools/muHierarchy/Tag Background/Clear Color For Selected Tag", false, 32)]
+        [MenuItem("Tools/muHierarchy/Tag Background/Clear Color For Selected Tag", false, 2021)]
         private static void ClearTagBackgroundColorForSelectedTag()
         {
             if (!TryGetSelectedTag(out var tag))

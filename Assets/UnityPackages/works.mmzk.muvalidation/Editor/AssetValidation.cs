@@ -80,7 +80,7 @@ namespace Mmzkworks.muValidation.Editor
         /// <summary>
         /// Clears all results including the saved cache file.
         /// </summary>
-        [MenuItem("Tools/muValidation/Clear Validation Cache")]
+        [MenuItem("Tools/muValidation/Clear Validation Cache", false, 2005)]
         public static void ClearCache()
         {
             AssetValidationStore.Delete();
