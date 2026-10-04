@@ -47,7 +47,7 @@ namespace Mmzkworks.muProject.Editor
             }
         }
 
-        [MenuItem(MenuPath)]
+        [MenuItem(MenuPath, false, 2001)]
         private static void ToggleEnabled()
         {
             Enabled = !Enabled;

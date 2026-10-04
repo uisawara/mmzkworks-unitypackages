@@ -184,7 +184,7 @@ namespace Mmzkworks.muHierarchy.Editor
             }
         }
 
-        [MenuItem("Tools/muHierarchy/Label Background/Create Color Settings", false, 41)]
+        [MenuItem("Tools/muHierarchy/Label Background/Create Color Settings", false, 2030)]
         private static void CreateSettings()
         {
             Invalidate();

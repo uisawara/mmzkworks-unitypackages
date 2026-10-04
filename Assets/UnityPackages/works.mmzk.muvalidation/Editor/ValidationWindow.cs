@@ -49,7 +49,7 @@ namespace Mmzkworks.muValidation.Editor
         private GUIContent _errorIcon;
         private GUIContent _warningIcon;
 
-        [MenuItem("Tools/muValidation/Validation")]
+        [MenuItem("Tools/muValidation/Validation", false, 2003)]
         public static void Open()
         {
             GetWindow<ValidationWindow>("Validation").Show();

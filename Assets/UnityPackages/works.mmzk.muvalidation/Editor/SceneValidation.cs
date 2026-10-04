@@ -90,7 +90,7 @@ namespace Mmzkworks.muValidation.Editor
             }
         }
 
-        [MenuItem(PlayModeMenuPath)]
+        [MenuItem(PlayModeMenuPath, false, 2007)]
         private static void ToggleValidateInPlayMode()
         {
             ValidateInPlayMode = !ValidateInPlayMode;

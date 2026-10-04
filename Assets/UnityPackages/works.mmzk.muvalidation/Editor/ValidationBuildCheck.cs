@@ -43,7 +43,7 @@ namespace Mmzkworks.muValidation.Editor
         /// <summary>
         /// Runs the same check as before a build, without building, and shows the results.
         /// </summary>
-        [MenuItem("Tools/muValidation/Run Build Check")]
+        [MenuItem("Tools/muValidation/Run Build Check", false, 2004)]
         public static void RunFromMenu()
         {
             if (!Run(ValidationSettings.instance, false, out var issues)) return;
