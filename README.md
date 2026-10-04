@@ -7,7 +7,7 @@ English | [日本語](README.ja.md)
 
 ### Editor Extensions
 
-![Editor extensions overview](docs/img/editor-extensions.png)
+![Editor extensions overview](docs/img/promo/en/01-hero-1600x900.png)
 
 - [muHierarchy](Assets/UnityPackages/works.mmzk.muhierarchy/README.md) — Hierarchy window enhancements such as prefab/component icons and color-banded Tag/Layer labels you can change in place.
   - [![openupm](https://img.shields.io/npm/v/works.mmzk.muhierarchy?label=openupm&registry_uri=https://package.openupm.com)](https://openupm.com/packages/works.mmzk.muhierarchy/)
@@ -16,6 +16,22 @@ English | [日本語](README.ja.md)
 - [muRefgraph](Assets/UnityPackages/works.mmzk.murefgraph/README.md) — Shows a GameObject's or Prefab's components and the objects their fields reference as a graph, grouped by assembly if you like.
 - [muShortcut](Assets/UnityPackages/works.mmzk.mushortcut/README.md) — Shortcut tool for quickly selecting objects in the Hierarchy and Project windows.
 - [muValidation](Assets/UnityPackages/works.mmzk.muvalidation/README.md) — Marks invalid assets in the Project window using path rules, validation attributes and scene rules.
+
+#### Highlights
+
+![Better visibility](docs/img/promo/en/02-visibility-1600x900.png)
+
+![Validation](docs/img/promo/en/03-validation-1600x900.png)
+
+![Workflow](docs/img/promo/en/04-workflow-1600x900.png)
+
+![Graph tools](docs/img/promo/en/07-graphs-hero-1600x900.png)
+
+![muAsmdefgraph](docs/img/promo/en/05-asmdefgraph-1600x900.png)
+
+![muRefgraph](docs/img/promo/en/06-refgraph-1600x900.png)
+
+![muShortcut](docs/img/promo/en/08-shortcut-1600x900.png)
 
 ### Scene Management
 
