@@ -93,6 +93,29 @@ subscription.Dispose();
 
 An installer that subscribes in `OnEnable` and disposes in `OnDisable`, placed in each level scene, lets each level have its own rules.
 
+### Rules as a method chain
+
+A rule that filters and converts events can be written as a chain starting from `hub.On<TEvent>()`:
+
+```csharp
+IDisposable subscription = hub.On<ContactEvent>()
+    .Where(e => e.Phase == ContactPhase.Enter)
+    .Where(e => e.Self != null && e.Other != null)
+    .Where(e => e.Self.Is("Gem") && e.Other.Is("Player"))
+    .DistinctBy(e => e.Self.ActorId)
+    .Publish(e => new GemCollectedEvent(e.Other, e.Self));
+```
+
+| Method | Description |
+| --- | --- |
+| `Where(predicate)` | Passes only events for which the predicate returns true |
+| `Select(selector)` | Transforms each event (into any type) |
+| `DistinctBy(keySelector)` | Passes only the first event for each key. Keys are kept while subscribed |
+| `Publish(selector)` | Subscribes; publishes the selected event as a follow-up (cause and depth carry over) |
+| `Subscribe(action)` | Subscribes; calls `action(e)` or `action(e, context)` |
+
+Nothing is subscribed until `Publish` or `Subscribe` is called; both return an `IDisposable`. The chain is built once at that point, so the lambdas may capture fields and locals: handling an event only runs the built stages and does not allocate.
+
 ### Monitoring
 
 Set `EventHub.Observer` to an `IEventHubObserver` to receive publishes, handled events and errors. Each call gets an `EventInfo` (`Id`, `EventType`, `CauseId`, `CauseType`, `Depth`) so you can follow the cause-and-effect chain. Inside a rule, the same information is available as `context.Info`. `LoggingEventHubObserver` writes the chain to a muLogger `ILogger`, indented by depth (it allocates; use it for debugging only).
@@ -135,7 +158,7 @@ What still allocates:
 - `Subscribe` (the subscription and the copied rule list). Subscribe when a scene or level starts, not every frame.
 - The first event of each type, and queues growing beyond their size. Pass `new EventHub(initialCapacity)` (or set `Initial Capacity` on `EventHubRunner`) to size them up front.
 - Errors and limit warnings (exceptions and messages).
-- `Subscribe(Action<TEvent>)` is fine, but avoid lambdas that capture new variables each frame in your own code.
+- `Subscribe(Action<TEvent>)` and method chains are fine: their lambdas are created once when subscribing. Avoid creating capturing lambdas inside `Handle` or other per-event code.
 - `ContactSensor` relies on Unity physics callbacks. Keep `Physics.reuseCollisionCallbacks` enabled (the default) so `OnCollision*` does not allocate a `Collision` per call.
 
 ## Notes

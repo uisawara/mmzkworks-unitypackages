@@ -93,6 +93,29 @@ subscription.Dispose();
 
 `OnEnable` で登録して `OnDisable` で `Dispose` するインストーラーをレベルのシーンに置くと、レベルごとにルールを差し替えられます。
 
+### メソッドチェインで Rule を書く
+
+イベントを絞り込んで変換するルールは、`hub.On<TEvent>()` から始まるメソッドチェインでも書けます。
+
+```csharp
+IDisposable subscription = hub.On<ContactEvent>()
+    .Where(e => e.Phase == ContactPhase.Enter)
+    .Where(e => e.Self != null && e.Other != null)
+    .Where(e => e.Self.Is("Gem") && e.Other.Is("Player"))
+    .DistinctBy(e => e.Self.ActorId)
+    .Publish(e => new GemCollectedEvent(e.Other, e.Self));
+```
+
+| メソッド | 説明 |
+| --- | --- |
+| `Where(predicate)` | 条件が true のイベントだけを通す |
+| `Select(selector)` | イベントを変換する(型は自由) |
+| `DistinctBy(keySelector)` | キーごとに最初のイベントだけを通す。キーは購読中ずっと保持する |
+| `Publish(selector)` | 購読する。変換したイベントを後続イベントとして発行する(原因と深さを引き継ぐ) |
+| `Subscribe(action)` | 購読する。`action(e)` か `action(e, context)` を呼ぶ |
+
+`Publish` か `Subscribe` を呼ぶまでは購読しません。どちらも `IDisposable` を返します。チェインはこのとき 1 回だけ組み立てるので、ラムダからフィールドやローカル変数を参照してもかまいません。イベントの処理では組み立て済みの処理を順に実行するだけで、割り当ては発生しません。
+
 ### 監視
 
 `EventHub.Observer` に `IEventHubObserver` を設定すると、発行、処理完了、エラーを受け取れます。どの呼び出しにも `EventInfo`（`Id`、`EventType`、`CauseId`、`CauseType`、`Depth`）が渡されるので、因果関係をたどれます。ルールの中では同じ情報を `context.Info` で参照できます。`LoggingEventHubObserver` は因果関係を、muLogger の `ILogger` にインデント付きで出力します（割り当てが発生するので、デバッグ専用です）。
@@ -135,7 +158,7 @@ hub.Observer = new LoggingEventHubObserver(new UnityLogger("Events"));
 - `Subscribe`（購読オブジェクトと、ルール一覧のコピー）。購読は毎フレームではなく、シーンやレベルの開始時に行ってください。
 - 型ごとの最初のイベントと、キューが今の容量を超えて伸びるとき。`new EventHub(initialCapacity)`（または `EventHubRunner` の `Initial Capacity`）で、あらかじめ容量を確保できます。
 - エラーや上限の警告（例外とメッセージ）。
-- `Subscribe(Action<TEvent>)` 自体は問題ありませんが、自分のコードで毎フレーム新しい変数をキャプチャするラムダは避けてください。
+- `Subscribe(Action<TEvent>)` とメソッドチェインは問題ありません。ラムダは購読時に 1 回だけ作られます。`Handle` などイベントごとに通るコードの中で、変数をキャプチャするラムダを作るのは避けてください。
 - `ContactSensor` は Unity の物理コールバックを使います。`Physics.reuseCollisionCallbacks` を有効のまま（既定）にしておけば、`OnCollision*` のたびに `Collision` が割り当てられることはありません。
 
 ## 注意
