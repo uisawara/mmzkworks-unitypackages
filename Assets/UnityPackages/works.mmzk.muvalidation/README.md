@@ -5,7 +5,7 @@ English | [日本語](README.ja.md)
 An Editor extension that finds invalid assets and objects, and marks them in the Project window.
 
 - **File names**: place `FileNameRules` assets with allowed file path patterns. Files that break them get a ✗ mark on their icon.
-- **Scenes**: assign `SceneRules` assets to scene folders to check scene objects for default names (`Cube`, `GameObject`...), forbidden tags and layers, and the layers allowed per tag and component.
+- **Scenes**: assign `SceneRules` assets to scene folders to check scene objects for default names (`Cube`, `GameObject`...), forbidden tags and layers, the layers allowed per tag and component, and objects that are not prefab instances.
 - **Object content**: put validation attributes on ScriptableObject / Component classes and fields. Assets and prefabs with errors get a red ✗ mark, or a yellow ! mark when there are only warnings.
 - **Folders**: a folder that contains assets with errors (at any depth) also gets a ✗ mark, or a ! mark if they have only warnings. Turn it off with `Tools > muValidation > Show Errors On Folders`.
 
@@ -61,7 +61,7 @@ With `Allow Other Files` off, files outside `Textures` and `Models` are errors t
 
 ## Scene rules
 
-Check GameObjects in scenes against rules for default names, tags and layers. Rules and the scenes they apply to are set in two kinds of assets, so different folders of scenes can follow different rules.
+Check GameObjects in scenes against rules for default names, tags, layers and prefab instances. Rules and the scenes they apply to are set in two kinds of assets, so different folders of scenes can follow different rules.
 
 1. Create a `SceneRules` asset with `Create > muValidation > Scene Rules` and set the rules.
 2. Create a `SceneRulesAssignments` asset with `Create > muValidation > Scene Rules Assignments`, and assign the `SceneRules` to folders.
@@ -78,6 +78,7 @@ Check GameObjects in scenes against rules for default names, tags and layers. Ru
 | Forbidden Layers | Layers that GameObjects may not be on |
 | Tag Layers | Per tag, the layers GameObjects with that tag may be on |
 | Component Layers | Per component type (full name, e.g. `UnityEngine.Camera`; pick one with `Select`), the layers GameObjects with that component may be on. `Include Subclasses` also applies it to derived types |
+| Require Prefab Instance | GameObjects must be part of a prefab instance. Objects added to a prefab instance (added GameObject overrides) also break it. Objects tagged `EditorOnly`, and their children, are exempt. Not checked in Prefab Mode, where everything is part of the prefab |
 
 The Inspector shows the paths the asset is assigned to, and lists the objects in open scenes that break it. Click one to ping it.
 
