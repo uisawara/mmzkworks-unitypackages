@@ -1,6 +1,6 @@
 {
   "name": "works.mmzk.muvalidation",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "displayName": "muValidation",
   "description": "Marks invalid assets in the Project window: file path pattern rules and validation attributes on ScriptableObjects, prefabs and scene objects, scene rules for default names, layers and prefab instances, with a results window",
   "unity": "2022.3",
