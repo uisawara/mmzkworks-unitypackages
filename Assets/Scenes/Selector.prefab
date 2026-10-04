@@ -9,9 +9,10 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6249269643552919441}
-  m_Layer: 0
-  m_Name: Actor
-  m_TagString: Untagged
+  - component: {fileID: 840208770526600936}
+  m_Layer: 16
+  m_Name: Selector
+  m_TagString: Prop
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -33,6 +34,19 @@ Transform:
   - {fileID: 7279982543620351496}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &840208770526600936
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4676242521956521747}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9dfae5053e1aa444f95ec8eb4b31ca13, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: works.mmzk.mueventhub::Mmzkworks.muEventHub.EventActor
+  _kind: Player
 --- !u!1 &9106895318136501786
 GameObject:
   m_ObjectHideFlags: 0
@@ -45,9 +59,9 @@ GameObject:
   - component: {fileID: 6337628860265478748}
   - component: {fileID: 4558048623050378946}
   - component: {fileID: 8963467928385803933}
-  m_Layer: 0
+  m_Layer: 16
   m_Name: Model1
-  m_TagString: Untagged
+  m_TagString: Prop
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -156,6 +170,14 @@ PrefabInstance:
     - target: {fileID: 1440144946055581659, guid: 005bf5a9d592044e3b08264781270cdc, type: 3}
       propertyPath: m_Name
       value: Model2
+      objectReference: {fileID: 0}
+    - target: {fileID: 1440144946055581659, guid: 005bf5a9d592044e3b08264781270cdc, type: 3}
+      propertyPath: m_Layer
+      value: 16
+      objectReference: {fileID: 0}
+    - target: {fileID: 1440144946055581659, guid: 005bf5a9d592044e3b08264781270cdc, type: 3}
+      propertyPath: m_TagString
+      value: Prop
       objectReference: {fileID: 0}
     - target: {fileID: 8156436125371353226, guid: 005bf5a9d592044e3b08264781270cdc, type: 3}
       propertyPath: m_LocalPosition.x
