@@ -104,6 +104,13 @@ IDisposable subscription = hub.On<ContactEvent>()
     .Where(e => e.Self.Is("Gem") && e.Other.Is("Player"))
     .DistinctBy(e => e.Self.ActorId)
     .Publish(e => new GemCollectedEvent(e.Other, e.Self));
+
+// 下の ContactEvent 用フィルタで書いた同じルール
+hub.On<ContactEvent>()
+    .WhereContactPhaseIsEnter()
+    .WhereContactSelfAndOtherKindsAre("Gem", "Player")
+    .DistinctByContactSelfActor()
+    .Publish(e => new GemCollectedEvent(e.Other, e.Self));
 ```
 
 | メソッド | 説明 |
@@ -115,6 +122,25 @@ IDisposable subscription = hub.On<ContactEvent>()
 | `Subscribe(action)` | 購読する。`action(e)` か `action(e, context)` を呼ぶ |
 
 `Publish` か `Subscribe` を呼ぶまでは購読しません。どちらも `IDisposable` を返します。チェインはこのとき 1 回だけ組み立てるので、ラムダからフィールドやローカル変数を参照してもかまいません。イベントの処理では組み立て済みの処理を順に実行するだけで、割り当ては発生しません。
+
+#### ContactEvent 用のフィルタ
+
+`ContactEvent` でよく使う絞り込みを用意しています。どれも `WhereContact` / `DistinctByContact` で始まるので、コード補完でまとめて探せます。
+
+| メソッド | 通す条件 |
+| --- | --- |
+| `WhereContactPhaseIsEnter()` / `WhereContactPhaseIsStay()` / `WhereContactPhaseIsExit()` | `Phase` が Enter / Stay / Exit |
+| `WhereContactPhaseIs(phase)` | `Phase` が `phase` |
+| `WhereContactIsTrigger()` / `WhereContactIsCollision()` | トリガーの接触 / 衝突 |
+| `WhereContactActorsAreAlive()` | `Self` も `Other` も破棄されていない |
+| `WhereContactSelfKindIs(kind)` / `WhereContactOtherKindIs(kind)` | `Self` / `Other` の `Kind` が一致する |
+| `WhereContactSelfAndOtherKindsAre(selfKind, otherKind)` | 上の 2 つを両方満たす |
+| `DistinctByContactSelfActor()` | その `Self` の最初の接触 |
+| `DistinctByContactSelfAndOtherActors()` | その (`Self`, `Other`) の組の最初の接触 |
+
+- Kind と `DistinctByContact` のフィルタは、Actor が破棄されていれば通しません。そのため前に `WhereContactActorsAreAlive()` を書く必要はありません。
+- `DistinctByContact` のフィルタは、購読中ずっとキーを保持します。
+- Kind が空のときは、チェインを組み立てる時点で `ArgumentException` になります。
 
 ### 監視
 

@@ -104,6 +104,13 @@ IDisposable subscription = hub.On<ContactEvent>()
     .Where(e => e.Self.Is("Gem") && e.Other.Is("Player"))
     .DistinctBy(e => e.Self.ActorId)
     .Publish(e => new GemCollectedEvent(e.Other, e.Self));
+
+// Same rule with the ContactEvent filters below
+hub.On<ContactEvent>()
+    .WhereContactPhaseIsEnter()
+    .WhereContactSelfAndOtherKindsAre("Gem", "Player")
+    .DistinctByContactSelfActor()
+    .Publish(e => new GemCollectedEvent(e.Other, e.Self));
 ```
 
 | Method | Description |
@@ -115,6 +122,25 @@ IDisposable subscription = hub.On<ContactEvent>()
 | `Subscribe(action)` | Subscribes; calls `action(e)` or `action(e, context)` |
 
 Nothing is subscribed until `Publish` or `Subscribe` is called; both return an `IDisposable`. The chain is built once at that point, so the lambdas may capture fields and locals: handling an event only runs the built stages and does not allocate.
+
+#### ContactEvent filters
+
+Common filters for `ContactEvent` flows. They all start with `WhereContact` / `DistinctByContact`, so code completion lists them together.
+
+| Method | Passes when |
+| --- | --- |
+| `WhereContactPhaseIsEnter()` / `WhereContactPhaseIsStay()` / `WhereContactPhaseIsExit()` | `Phase` is Enter / Stay / Exit |
+| `WhereContactPhaseIs(phase)` | `Phase` is `phase` |
+| `WhereContactIsTrigger()` / `WhereContactIsCollision()` | The contact is a trigger / a collision |
+| `WhereContactActorsAreAlive()` | Neither `Self` nor `Other` has been destroyed |
+| `WhereContactSelfKindIs(kind)` / `WhereContactOtherKindIs(kind)` | `Self` / `Other` has the `Kind` |
+| `WhereContactSelfAndOtherKindsAre(selfKind, otherKind)` | Both of the above |
+| `DistinctByContactSelfActor()` | It is the first contact of this `Self` |
+| `DistinctByContactSelfAndOtherActors()` | It is the first contact of this (`Self`, `Other`) pair |
+
+- Kind and `DistinctByContact` filters reject contacts whose actor has been destroyed, so `WhereContactActorsAreAlive()` is not needed before them.
+- `DistinctByContact` filters keep their keys while subscribed.
+- An empty Kind throws `ArgumentException` when the chain is built.
 
 ### Monitoring
 
