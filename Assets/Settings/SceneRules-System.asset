@@ -88,6 +88,11 @@ MonoBehaviour:
     allowed: 0
   forbiddenTags:
   - Untagged
+  - Respawn
+  - Finish
+  - Player
+  - Field
+  - Prop
   forbiddenLayers:
     serializedVersion: 2
     m_Bits: 2171934
@@ -98,3 +103,4 @@ MonoBehaviour:
     allowedLayers:
       serializedVersion: 2
       m_Bits: 1
+  requirePrefabInstance: 0

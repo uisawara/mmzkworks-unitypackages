@@ -90,12 +90,8 @@ MonoBehaviour:
   - Untagged
   forbiddenLayers:
     serializedVersion: 2
-    m_Bits: 1
-  tagLayers:
-  - tag: MainCamera
-    allowedLayers:
-      serializedVersion: 2
-      m_Bits: 1
+    m_Bits: 65536
+  tagLayers: []
   componentLayers:
   - componentType: UnityEngine.Camera
     includeSubclasses: 1

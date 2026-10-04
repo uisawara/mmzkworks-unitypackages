@@ -94,6 +94,7 @@ MonoBehaviour:
   - Player
   forbiddenLayers:
     serializedVersion: 2
-    m_Bits: 2098207
+    m_Bits: 2162728
   tagLayers: []
   componentLayers: []
+  requirePrefabInstance: 0
