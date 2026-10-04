@@ -138,6 +138,9 @@ public class MenuPanel : MonoBehaviour
 | `[RequireSceneObject("A/B", typeof(T))]` | Class | The scene has a GameObject at path `A/B` (from a root object). With a type, it must also have that component (scenes only) |
 | `[RequireReference]` | Field | The field is not null or missing. For arrays and lists, each element |
 | `[ReferenceInChildren]` | Field | The reference is this GameObject or one of its descendants. Null is allowed; references outside the hierarchy or to assets are errors. For arrays and lists, each element |
+| `[NotEmpty]` | Field | The string is not null, empty or whitespace. For arrays and lists, each element |
+| `[RequireComponentInParent(typeof(T))]` | Class | The GameObject or one of its parents has a `T` component |
+| `[SingleInScene]` | Class | The scene has only one component of this type, inactive objects included (scenes only) |
 
 - Every attribute takes `Severity = ValidationSeverity.Warning` to report warnings instead of errors.
 - "Scenes only" checks are skipped in prefab assets and Prefab Mode.

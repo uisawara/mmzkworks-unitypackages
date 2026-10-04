@@ -138,6 +138,9 @@ public class MenuPanel : MonoBehaviour
 | `[RequireSceneObject("A/B", typeof(T))]` | クラス | シーンにパス `A/B`(ルートオブジェクトから)の GameObject がある。型を指定すると、そのコンポーネントも必要(シーンのみ) |
 | `[RequireReference]` | フィールド | null や Missing でない。配列・リストは要素ごと |
 | `[ReferenceInChildren]` | フィールド | 参照先が自分自身かその子孫。null は許容。階層外やアセットへの参照はエラー。配列・リストは要素ごと |
+| `[NotEmpty]` | フィールド | 文字列が null・空・空白だけでない。配列・リストは要素ごと |
+| `[RequireComponentInParent(typeof(T))]` | クラス | GameObject かその親に `T` コンポーネントがある |
+| `[SingleInScene]` | クラス | この型のコンポーネントがシーンに 1 つだけ(非アクティブなものも数える。シーンのみ) |
 
 - どの属性も `Severity = ValidationSeverity.Warning` を付けると、エラーではなく警告になります。
 - 「シーンのみ」のチェックは、prefab アセットと Prefab Mode では行いません。
