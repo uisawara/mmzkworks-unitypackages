@@ -37,6 +37,10 @@ English | [日本語](README.ja.md)
 
 - [muSceneManager](Assets/UnityPackages/works.mmzk.muscenemanager/README.md) — Queued main/sub scene management with UniTask and an Inspector-friendly SceneId.
 
+### Gameplay
+
+- [muEventHub](Assets/UnityPackages/works.mmzk.mueventhub/README.md) — Queued event hub that separates what happened (events) from what it causes (rules).
+
 ### Data & Storage
 
 - [muDatastore](Assets/UnityPackages/works.mmzk.mudatastore/README.md) — Simple async key-value data store with PlayerPrefs and local file backends.

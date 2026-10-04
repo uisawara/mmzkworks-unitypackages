@@ -1,0 +1,17 @@
+{
+    "name": "works.mmzk.mueventhub",
+    "rootNamespace": "Mmzkworks.muEventHub",
+    "references": [
+        "works.mmzk.mulogger",
+        "works.mmzk.muvalidation"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

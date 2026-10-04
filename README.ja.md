@@ -36,6 +36,10 @@
 
 - [muSceneManager](Assets/UnityPackages/works.mmzk.muscenemanager/README.ja.md) — UniTask を使ったメイン/サブシーンのキュー管理と、Inspector で扱いやすい SceneId を提供します。
 
+### ゲームプレイ
+
+- [muEventHub](Assets/UnityPackages/works.mmzk.mueventhub/README.ja.md) — 起きた事象（Event）と、その結果起こること（Rule）を分けて扱う、キュー方式のイベントハブです。
+
 ### データ・ストレージ
 
 - [muDatastore](Assets/UnityPackages/works.mmzk.mudatastore/README.ja.md) — PlayerPrefs やローカルファイルをバックエンドにした、シンプルな非同期キーバリューストアです。
