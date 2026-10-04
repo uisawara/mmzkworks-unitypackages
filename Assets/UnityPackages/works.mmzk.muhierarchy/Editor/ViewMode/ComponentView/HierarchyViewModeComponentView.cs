@@ -40,8 +40,8 @@ namespace Mmzkworks.muHierarchy.Editor
             bool isPrefabInstance = PrefabUtility.IsPartOfPrefabInstance(go);
             bool isPrefabRoot = isPrefabInstance && PrefabUtility.IsAnyPrefabInstanceRoot(go);
             bool isPrefabChild = isPrefabInstance && !isPrefabRoot;
-            bool hasOverrides = isPrefabRoot && PrefabUtility.HasPrefabInstanceAnyOverrides(go, false);
-            bool hasChildOverrides = HasChildPrefabOverrides(go);
+            bool hasOverrides = isPrefabRoot && PrefabOverrideCache.HasOverrides(go);
+            bool hasChildOverrides = PrefabOverrideCache.HasChildOverrides(go);
             bool showWarning = hasOverrides || hasChildOverrides;
             bool hasMissingScripts = HasMissingScripts(go, true);
             string validationMessage = null;
@@ -430,23 +430,6 @@ namespace Mmzkworks.muHierarchy.Editor
                 if (child == null)
                     continue;
                 if (HasMissingScripts(child.gameObject, true))
-                    return true;
-            }
-            return false;
-        }
-
-        private static bool HasChildPrefabOverrides(GameObject go)
-        {
-            if (go == null)
-                return false;
-            foreach (Transform child in go.transform)
-            {
-                var childGo = child.gameObject;
-                if (!childGo.scene.IsValid() || !childGo.scene.isLoaded)
-                    continue;
-                if (PrefabUtility.IsPartOfPrefabInstance(childGo) && PrefabUtility.HasPrefabInstanceAnyOverrides(childGo, false))
-                    return true;
-                if (HasChildPrefabOverrides(childGo))
                     return true;
             }
             return false;
