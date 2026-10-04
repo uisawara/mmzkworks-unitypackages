@@ -5,7 +5,7 @@
 問題のあるアセットやオブジェクトを見つけ、Project ウィンドウで印を付ける Editor 拡張です。
 
 - **ファイル名**: 許容するファイルパスのパターンを書いた `FileNameRules` アセットを置きます。ルールに合わないファイルは、アイコンに ✗ マークが付きます。
-- **シーン**: `SceneRules` アセットをシーンのフォルダに割り当てると、シーン上のオブジェクトのデフォルト名(`Cube`、`GameObject` など)、禁止した Tag・レイヤー、Tag・Component ごとに使えるレイヤーをチェックします。
+- **シーン**: `SceneRules` アセットをシーンのフォルダに割り当てると、シーン上のオブジェクトのデフォルト名(`Cube`、`GameObject` など)、禁止した Tag・レイヤー、Tag・Component ごとに使えるレイヤー、Prefab インスタンスでないオブジェクトをチェックします。
 - **オブジェクトの内容**: ScriptableObject / Component のクラスやフィールドに Validation 属性を付けます。エラーのあるアセットや prefab には赤い ✗ マーク、警告だけなら黄色い ! マークが付きます。
 - **フォルダ**: エラーのあるアセットを(階層の深さに関係なく)含むフォルダにも ✗ マークが付きます。警告だけなら ! マークです。`Tools > muValidation > Show Errors On Folders` でオフにできます。
 
@@ -61,7 +61,7 @@ https://github.com/uisawara/mmzkworks-unitypackages.git?path=Assets/UnityPackage
 
 ## シーンルール
 
-シーン上の GameObject を、デフォルト名・Tag・レイヤーのルールでチェックします。ルールの中身と、それを適用するシーンを別々のアセットで設定するので、フォルダごとに違うルールを適用できます。
+シーン上の GameObject を、デフォルト名・Tag・レイヤー・Prefab インスタンスのルールでチェックします。ルールの中身と、それを適用するシーンを別々のアセットで設定するので、フォルダごとに違うルールを適用できます。
 
 1. `Create > muValidation > Scene Rules` で `SceneRules` アセットを作り、ルールを設定します。
 2. `Create > muValidation > Scene Rules Assignments` で `SceneRulesAssignments` アセットを作り、フォルダに `SceneRules` を割り当てます。
@@ -78,6 +78,7 @@ https://github.com/uisawara/mmzkworks-unitypackages.git?path=Assets/UnityPackage
 | Forbidden Layers | GameObject に使ってはいけないレイヤー |
 | Tag Layers | Tag ごとに、その Tag の GameObject が使えるレイヤー |
 | Component Layers | Component の型(フルネーム。例: `UnityEngine.Camera`。`Select` で選べます)ごとに、その Component を持つ GameObject が使えるレイヤー。`Include Subclasses` をオンにすると派生型にも適用します |
+| Require Prefab Instance | GameObject が Prefab インスタンスの一部であること。Prefab インスタンスに後から追加したオブジェクト(Added GameObject)も違反です。`EditorOnly` タグのオブジェクトとその子は対象外。Prefab Mode では中身がすべて Prefab の一部なのでチェックしません |
 
 Inspector には、割り当て先のパスと、開いているシーンでルールに合わないオブジェクトの一覧が出ます。クリックするとそのオブジェクトを Ping します。
 

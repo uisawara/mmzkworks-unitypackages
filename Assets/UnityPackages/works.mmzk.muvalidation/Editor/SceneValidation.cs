@@ -46,6 +46,10 @@ namespace Mmzkworks.muValidation.Editor
         // GameObjects whose validations depend on other objects; re-validated after any change.
         private static readonly HashSet<GameObject> DependentObjects = new HashSet<GameObject>();
 
+        // GameObjects tagged EditorOnly at the last build. Changing that tag changes the prefab rule result
+        // of all descendants, so it triggers a rebuild.
+        private static readonly HashSet<int> EditorOnlyObjects = new HashSet<int>();
+
         private static bool _dirty = true;
         private static double _lastBuildTime;
 
@@ -167,9 +171,11 @@ namespace Mmzkworks.muValidation.Editor
             OwnResults.Clear();
             ChildResults.Clear();
             DependentObjects.Clear();
+            EditorOnlyObjects.Clear();
 
             foreach (var go in FindValidatedObjects())
             {
+                if (go.tag == SceneRules.EditorOnlyTag) EditorOnlyObjects.Add(go.GetInstanceID());
                 var summary = Validate(go, out var dependsOnOthers);
                 OwnResults[go.GetInstanceID()] = summary;
                 if (dependsOnOthers) DependentObjects.Add(go);
@@ -331,6 +337,17 @@ namespace Mmzkworks.muValidation.Editor
             }
 
             if (changed.Count == 0) return;
+
+            if (SceneRulesRegistry.HasRules)
+            {
+                foreach (var go in changed)
+                {
+                    if ((go.tag == SceneRules.EditorOnlyTag) == EditorOnlyObjects.Contains(go.GetInstanceID())) continue;
+                    Invalidate();
+                    EditorApplication.RepaintHierarchyWindow();
+                    return;
+                }
+            }
 
             foreach (var go in changed) Refresh(go);
 

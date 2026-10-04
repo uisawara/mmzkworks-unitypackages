@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 
 namespace Mmzkworks.muValidation.Editor
@@ -87,6 +88,8 @@ namespace Mmzkworks.muValidation.Editor
             new KeyValuePair<string, bool>("Sprite", false),
         };
 
+        internal const string EditorOnlyTag = "EditorOnly";
+
         // "Cube (1)" -> "Cube"
         private static readonly Regex DuplicateSuffix = new Regex(@" \(\d+\)$");
 
@@ -111,11 +114,15 @@ namespace Mmzkworks.muValidation.Editor
         [Tooltip("Layers allowed per component type.")]
         public ComponentLayerRule[] componentLayers = Array.Empty<ComponentLayerRule>();
 
+        [Tooltip("GameObjects must be part of a prefab instance. Objects tagged EditorOnly, and their children, are exempt.")]
+        public bool requirePrefabInstance;
+
         [NonSerialized] private HashSet<string> _forbiddenNames;
 
         public bool HasRules =>
             (defaultNames?.Length ?? 0) + (forbiddenTags?.Length ?? 0) + (tagLayers?.Length ?? 0) + (componentLayers?.Length ?? 0) > 0
-            || forbiddenLayers.value != 0;
+            || forbiddenLayers.value != 0
+            || requirePrefabInstance;
 
         /// <summary>
         /// Adds the problems of the GameObject to <paramref name="into"/>.
@@ -162,6 +169,38 @@ namespace Mmzkworks.muValidation.Editor
                     into.Add(severity, $"{name}: {type.Name} must be on layer(s) {FormatMask(rule.allowedLayers)} (now: {LayerName(go.layer)})");
                 }
             }
+
+            if (requirePrefabInstance && !IsExemptFromPrefabRule(go))
+            {
+                if (PrefabUtility.IsAddedGameObjectOverride(go))
+                {
+                    into.Add(severity, $"{name}: Added to a prefab instance; add it to the prefab instead");
+                }
+                else if (!PrefabUtility.IsPartOfPrefabInstance(go))
+                {
+                    into.Add(severity, $"{name}: Must be part of a prefab instance");
+                }
+            }
+        }
+
+        /// <summary>
+        /// True for objects tagged EditorOnly, or under one (they are stripped from builds).
+        /// </summary>
+        internal static bool IsUnderEditorOnly(GameObject go)
+        {
+            for (var transform = go.transform; transform != null; transform = transform.parent)
+            {
+                // Not CompareTag: it logs an error for tags missing from the Tag Manager.
+                if (transform.gameObject.tag == EditorOnlyTag) return true;
+            }
+
+            return false;
+        }
+
+        // Prefab Mode contents are all part of the prefab being edited.
+        private static bool IsExemptFromPrefabRule(GameObject go)
+        {
+            return PrefabStageUtility.GetPrefabStage(go) != null || IsUnderEditorOnly(go);
         }
 
         /// <summary>
