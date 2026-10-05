@@ -60,6 +60,19 @@ namespace Mmzkworks.muValidation.Editor
         }
 
         /// <summary>
+        /// True if any assigned SceneRules forbids duplicate root names. Renaming a root object then changes the
+        /// results of other root objects with the old or new name.
+        /// </summary>
+        public static bool HasUniqueNameRules
+        {
+            get
+            {
+                EnsureLoaded();
+                return _entries.Any(entry => entry.Rules.uniqueNames && entry.Rules.severity != ValidationSeverity.None);
+            }
+        }
+
+        /// <summary>
         /// Adds the problems found by the SceneRules assigned to the GameObject's scene to <paramref name="into"/>.
         /// In Prefab Mode the prefab's path is used.
         /// </summary>

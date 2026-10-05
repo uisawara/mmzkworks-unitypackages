@@ -50,6 +50,10 @@ namespace Mmzkworks.muValidation.Editor
         // of all descendants, so it triggers a rebuild.
         private static readonly HashSet<int> EditorOnlyObjects = new HashSet<int>();
 
+        // Root GameObject instance ID -> name at the last build, when a SceneRules forbids duplicate root names.
+        // Renaming changes the results of other roots with the old or new name, so it triggers a rebuild.
+        private static readonly Dictionary<int, string> ObjectNames = new Dictionary<int, string>();
+
         private static bool _dirty = true;
         private static double _lastBuildTime;
 
@@ -172,10 +176,14 @@ namespace Mmzkworks.muValidation.Editor
             ChildResults.Clear();
             DependentObjects.Clear();
             EditorOnlyObjects.Clear();
+            ObjectNames.Clear();
+            SceneNameIndex.Clear();
 
+            var trackNames = SceneRulesRegistry.HasUniqueNameRules;
             foreach (var go in FindValidatedObjects())
             {
                 if (go.tag == SceneRules.EditorOnlyTag) EditorOnlyObjects.Add(go.GetInstanceID());
+                if (trackNames && go.transform.parent == null) ObjectNames[go.GetInstanceID()] = go.name;
                 var summary = Validate(go, out var dependsOnOthers);
                 OwnResults[go.GetInstanceID()] = summary;
                 if (dependsOnOthers) DependentObjects.Add(go);
@@ -342,7 +350,9 @@ namespace Mmzkworks.muValidation.Editor
             {
                 foreach (var go in changed)
                 {
-                    if ((go.tag == SceneRules.EditorOnlyTag) == EditorOnlyObjects.Contains(go.GetInstanceID())) continue;
+                    var id = go.GetInstanceID();
+                    var renamed = ObjectNames.TryGetValue(id, out var previousName) && previousName != go.name;
+                    if (!renamed && (go.tag == SceneRules.EditorOnlyTag) == EditorOnlyObjects.Contains(id)) continue;
                     Invalidate();
                     EditorApplication.RepaintHierarchyWindow();
                     return;
