@@ -10,8 +10,8 @@ namespace Mmzkworks.muValidation.Editor
 {
     /// <summary>
     /// Rules for GameObjects in scenes and Prefab Mode: default object names, unique names, prefab instance
-    /// names, and the layers allowed per tag and per component type. Which scenes they apply to is set in
-    /// SceneRulesAssignments assets.
+    /// names, references to parents, and the layers allowed per tag and per component type. Which scenes they
+    /// apply to is set in SceneRulesAssignments assets.
     /// </summary>
     [CreateAssetMenu(fileName = "SceneRules", menuName = "muValidation/Scene Rules")]
     public class SceneRules : ScriptableObject
@@ -124,6 +124,9 @@ namespace Mmzkworks.muValidation.Editor
         [Tooltip("Prefab instances must have the name of their prefab asset. A \" (1)\" style suffix added on duplication is allowed.")]
         public bool matchPrefabNames;
 
+        [Tooltip("Script fields may not reference a parent (or any ancestor) GameObject or its components. References from a parent to its children are allowed.")]
+        public bool noReferencesToParents;
+
         [NonSerialized] private HashSet<string> _forbiddenNames;
 
         public bool HasRules =>
@@ -131,7 +134,8 @@ namespace Mmzkworks.muValidation.Editor
             || forbiddenLayers.value != 0
             || requirePrefabInstance
             || uniqueNames
-            || matchPrefabNames;
+            || matchPrefabNames
+            || noReferencesToParents;
 
         /// <summary>
         /// Adds the problems of the GameObject to <paramref name="into"/>.
@@ -203,6 +207,36 @@ namespace Mmzkworks.muValidation.Editor
                 if (source != null && DuplicateSuffix.Replace(go.name, "") != source.name)
                 {
                     into.Add(severity, $"{name}: Name must match the prefab \"{source.name}\"");
+                }
+            }
+
+            if (noReferencesToParents && go.transform.parent != null)
+            {
+                AddParentReferences(go, into);
+            }
+        }
+
+        // Reports script fields on the GameObject that reference one of its ancestors.
+        private void AddParentReferences(GameObject go, ValidationResult into)
+        {
+            foreach (var component in go.GetComponents<MonoBehaviour>())
+            {
+                // Missing scripts come back as null.
+                if (component == null) continue;
+
+                using (var serializedObject = new SerializedObject(component))
+                {
+                    var property = serializedObject.GetIterator();
+                    while (property.Next(true))
+                    {
+                        if (property.propertyType != SerializedPropertyType.ObjectReference || property.name == "m_Script") continue;
+
+                        var reference = property.objectReferenceValue;
+                        var target = reference is GameObject referenced ? referenced : reference is Component referencedComponent ? referencedComponent.gameObject : null;
+                        if (target == null || target == go || !go.transform.IsChildOf(target.transform)) continue;
+
+                        into.Add(severity, $"{name}: {component.GetType().Name}.{property.propertyPath} references parent \"{target.name}\"");
+                    }
                 }
             }
         }
