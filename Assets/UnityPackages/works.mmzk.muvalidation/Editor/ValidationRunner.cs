@@ -145,7 +145,7 @@ namespace Mmzkworks.muValidation.Editor
             }
         }
 
-        // Validates the validated components and SceneRules under root, one issue per GameObject.
+        // Validates the validated components, SceneRules and missing scripts under root, one issue per GameObject.
         private static void CollectHierarchy(GameObject root, string locationPrefix, string scenePath, List<ValidationIssue> into)
         {
             SceneNameIndex.Clear();
@@ -165,8 +165,9 @@ namespace Mmzkworks.muValidation.Editor
                 AttributeValidator.Validate(component, type.Name, result);
             }
 
-            if (SceneRulesRegistry.HasRules)
+            if (SceneValidation.VisitsAllObjects)
             {
+                var detectMissingScripts = ValidationSettings.instance.detectMissingScripts;
                 foreach (var transform in root.GetComponentsInChildren<Transform>(true))
                 {
                     if (!results.TryGetValue(transform.gameObject, out var result))
@@ -174,6 +175,7 @@ namespace Mmzkworks.muValidation.Editor
                         results[transform.gameObject] = result = new ValidationResult();
                     }
 
+                    if (detectMissingScripts) SceneValidation.ValidateMissingScripts(transform.gameObject, result);
                     SceneRulesRegistry.Validate(transform.gameObject, result);
                 }
             }

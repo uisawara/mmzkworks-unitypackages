@@ -224,7 +224,7 @@ If the result depends on other objects (their names, existence and so on), overr
 
 ![Validation window](Documentation~/img/validation-window.png)
 
-- Covers assets (FileNameRules and validation attributes) and GameObjects in open scenes and Prefab Mode (validation attributes and SceneRules). Turn each on or off with the `Assets` / `Scenes` buttons.
+- Covers assets (FileNameRules and validation attributes) and GameObjects in open scenes and Prefab Mode (validation attributes, SceneRules and missing scripts). Turn each on or off with the `Assets` / `Scenes` buttons.
 - Filter by errors or warnings, and search by path or message.
 - Click a row to ping the object. Double-click to select it (assets are also opened). The full message shows at the bottom.
 - Results are collected when the window opens and when you press `Refresh`.
@@ -238,10 +238,17 @@ Validation runs before every player build. By default the build stops if there a
 - In batch mode (CI), the build fails with a `BuildFailedException`.
 - `Tools > muValidation > Run Build Check` runs the same check without building.
 
-Change it in `Project Settings > muValidation`. Settings are saved to `ProjectSettings/muValidationSettings.asset`, so commit them to share with your team.
+## Missing scripts
+
+GameObjects in open scenes, in the build scenes and in Prefab Mode that have a MonoBehaviour with a missing script are reported as errors, so they show in the Validation window and stop builds. Turn it off with `Detect Missing Scripts` in `Project Settings > muValidation`. Prefab assets are not checked.
+
+## Settings
+
+Change them in `Project Settings > muValidation`. Settings are saved to `ProjectSettings/muValidationSettings.asset`, so commit them to share with your team.
 
 | Setting | Default | Description |
 | --- | --- | --- |
+| Detect Missing Scripts | On | Report scene objects with missing scripts as errors |
 | Validate Before Build | On | Run the check before builds |
 | Include Assets | On | Check all assets under `Assets` |
 | Include Build Scenes | On | Check the enabled scenes in Build Settings |
@@ -250,10 +257,10 @@ Change it in `Project Settings > muValidation`. Settings are saved to `ProjectSe
 
 ## With muHierarchy
 
-When [muHierarchy](../works.mmzk.muhierarchy/README.md) is also installed, scene objects whose validation attributes or SceneRules report errors get the red error icon in the Hierarchy window, and those with only warnings get the yellow warning icon (ComponentView, with the Prefab icon shown). Like Missing Script, it also shows on parents. Hover to see the messages.
+When [muHierarchy](../works.mmzk.muhierarchy/README.md) is also installed, scene objects whose validation attributes or SceneRules report errors get the red error icon in the Hierarchy window, and those with only warnings get the yellow warning icon (ComponentView, with the Prefab icon shown). Like Missing Script, it also shows on parents. Hover to see the messages, and click the icon to open the Validation window with the object's problems selected (or those of its first child with problems). While `Detect Missing Scripts` is on, muHierarchy shows missing scripts from muValidation's results instead of searching for them itself.
 
 When changing the Tag / Layer by clicking muHierarchy's labels, Tags / Layers forbidden by SceneRules are grayed out and cannot be chosen.
 
-Results are cached. Editing an object re-validates only that object; adding, deleting or moving objects rebuilds the results, visiting only objects with validated components (all objects if there are SceneRules).
+Results are cached. Editing an object re-validates only that object; adding, deleting or moving objects rebuilds the results, visiting only objects with validated components (all objects if there are SceneRules or `Detect Missing Scripts` is on).
 
 Scene objects are not validated in Play Mode by default. Turn it on with `Tools > muValidation > Validate In Play Mode`; results then refresh at most every 0.5 seconds.

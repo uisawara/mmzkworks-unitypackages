@@ -224,7 +224,7 @@ public class PositiveAttribute : ValidationAttribute
 
 ![Validation ウィンドウ](Documentation~/img/validation-window.png)
 
-- アセット(FileNameRules と Validation 属性)と、開いているシーン・Prefab Mode の GameObject(Validation 属性と SceneRules)が対象です。`Assets` / `Scenes` ボタンでそれぞれ切り替えられます。
+- アセット(FileNameRules と Validation 属性)と、開いているシーン・Prefab Mode の GameObject(Validation 属性・SceneRules・Missing Script)が対象です。`Assets` / `Scenes` ボタンでそれぞれ切り替えられます。
 - エラー・警告での絞り込みと、パスやメッセージでの検索ができます。
 - 行をクリックするとそのオブジェクトを Ping します。ダブルクリックで選択します(アセットは開きます)。下部に全文が出ます。
 - ウィンドウを開いたときと `Refresh` を押したときに集計します。
@@ -238,10 +238,17 @@ Player のビルド前に Validation を実行します。既定ではエラー�
 - batch mode(CI)では、`BuildFailedException` でビルドが失敗します。
 - `Tools > muValidation > Run Build Check` で、ビルドせずに同じチェックを実行できます。
 
+## Missing Script
+
+開いているシーン・ビルド対象のシーン・Prefab Mode の GameObject で、スクリプトが見つからない MonoBehaviour があるものをエラーとして報告します。Validation ウィンドウに出て、ビルドも止まります。`Project Settings > muValidation` の `Detect Missing Scripts` でオフにできます。Prefab アセットはチェックしません。
+
+## 設定
+
 設定は `Project Settings > muValidation` で変えられます。`ProjectSettings/muValidationSettings.asset` に保存されるので、コミットすればチームで共有できます。
 
 | 設定 | 既定 | 説明 |
 | --- | --- | --- |
+| Detect Missing Scripts | オン | Missing Script があるシーン上のオブジェクトをエラーにする |
 | Validate Before Build | オン | ビルド前にチェックする |
 | Include Assets | オン | `Assets` 以下のすべてのアセットをチェックする |
 | Include Build Scenes | オン | Build Settings で有効なシーンをチェックする |
@@ -250,10 +257,10 @@ Player のビルド前に Validation を実行します。既定ではエラー�
 
 ## muHierarchy と一緒に使う
 
-[muHierarchy](../works.mmzk.muhierarchy/README.ja.md) も入れると、Validation 属性や SceneRules がエラーを報告したシーン上のオブジェクトには赤いエラーアイコン、警告だけなら黄色い警告アイコンが、Hierarchy ウィンドウで付きます(ComponentView で Prefab アイコンを表示しているとき)。Missing Script と同じく、親にも付きます。マウスを乗せるとメッセージが出ます。
+[muHierarchy](../works.mmzk.muhierarchy/README.ja.md) も入れると、Validation 属性や SceneRules がエラーを報告したシーン上のオブジェクトには赤いエラーアイコン、警告だけなら黄色い警告アイコンが、Hierarchy ウィンドウで付きます(ComponentView で Prefab アイコンを表示しているとき)。Missing Script と同じく、親にも付きます。マウスを乗せるとメッセージが出ます。アイコンをクリックすると Validation ウィンドウが開き、そのオブジェクト(なければ問題のある最初の子)の行を選択します。`Detect Missing Scripts` がオンのあいだ、muHierarchy は Missing Script を自前で探さず、muValidation の結果を表示します。
 
 muHierarchy の Tag / Layer ラベルをクリックして変更するときは、SceneRules で禁止されている Tag / Layer がグレーアウトされ、選べません。
 
-結果はキャッシュします。オブジェクトを編集したときはそのオブジェクトだけを再検証し、追加・削除・移動したときは、検証対象のコンポーネントを持つオブジェクトだけを集計し直します(SceneRules があるときはすべてのオブジェクト)。
+結果はキャッシュします。オブジェクトを編集したときはそのオブジェクトだけを再検証し、追加・削除・移動したときは、検証対象のコンポーネントを持つオブジェクトだけを集計し直します(SceneRules があるとき、または `Detect Missing Scripts` がオンのときはすべてのオブジェクト)。
 
 Play Mode 中は既定でシーンを検証しません。`Tools > muValidation > Validate In Play Mode` でオンにすると、最短 0.5 秒ごとに更新します。

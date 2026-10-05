@@ -10,6 +10,9 @@ namespace Mmzkworks.muValidation.Editor
     [FilePath("ProjectSettings/muValidationSettings.asset", FilePathAttribute.Location.ProjectFolder)]
     public class ValidationSettings : ScriptableSingleton<ValidationSettings>
     {
+        [Tooltip("Report GameObjects in scenes and Prefab Mode whose scripts are missing as errors.")]
+        public bool detectMissingScripts = true;
+
         [Tooltip("Run validation before every player build.")]
         public bool validateBeforeBuild = true;
 
@@ -33,7 +36,7 @@ namespace Mmzkworks.muValidation.Editor
             return new SettingsProvider("Project/muValidation", SettingsScope.Project)
             {
                 label = "muValidation",
-                keywords = new[] { "validation", "build", "muValidation" },
+                keywords = new[] { "validation", "build", "missing script", "muValidation" },
                 guiHandler = _ =>
                 {
                     var settings = instance;
@@ -41,6 +44,18 @@ namespace Mmzkworks.muValidation.Editor
                     settings.hideFlags &= ~HideFlags.NotEditable;
                     var serialized = new SerializedObject(settings);
 
+                    EditorGUILayout.LabelField("Scene Objects", EditorStyles.boldLabel);
+                    EditorGUI.BeginChangeCheck();
+                    EditorGUILayout.PropertyField(serialized.FindProperty(nameof(detectMissingScripts)));
+                    if (EditorGUI.EndChangeCheck())
+                    {
+                        serialized.ApplyModifiedPropertiesWithoutUndo();
+                        settings.Save();
+                        SceneValidation.Invalidate();
+                        EditorApplication.RepaintHierarchyWindow();
+                    }
+
+                    EditorGUILayout.Space();
                     EditorGUILayout.LabelField("Before Build", EditorStyles.boldLabel);
                     EditorGUI.BeginChangeCheck();
                     EditorGUILayout.PropertyField(serialized.FindProperty(nameof(validateBeforeBuild)));
