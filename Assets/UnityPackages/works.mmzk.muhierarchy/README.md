@@ -43,6 +43,14 @@ Run `Tools/muHierarchy/Label Background/Create Color Settings` to create and sel
 
 Tags / Layers not in the lists keep their auto colors. If there are several settings assets, `Assets/Settings/muhierarchy/LabelColorSettings.asset` is used, otherwise the first by path.
 
+## Static
+
+In Component View, an `S` badge to the right of the Tag / Layer shows whether the object is Static: blue when all static flags are set, pale blue when only some are, and gray when it is not Static. Hover to see the flags.
+
+Click the badge to toggle Static, as with the Inspector's Static checkbox (all flags on, or all off when every flag is already set). Clicking a selected object applies the change to all selected objects. It is undoable. For an object with children, you are asked whether to change the children too.
+
+Toggle the badge with `Tools/muHierarchy/Show Static Icon`.
+
 ## Unapplied prefab changes
 
 When a Prefab instance has unapplied changes, a yellow warning appears. That makes it easier to notice a missed Apply.

@@ -96,7 +96,7 @@ namespace Mmzkworks.muHierarchy.Editor
             return $"{label}    ({restriction})".Replace('/', '\u2215');
         }
 
-        private static bool IsClicked(Rect rect)
+        internal static bool IsClicked(Rect rect)
         {
             var e = Event.current;
             if (e == null || e.type != EventType.MouseDown || e.button != 0 || e.alt)
@@ -108,7 +108,7 @@ namespace Mmzkworks.muHierarchy.Editor
             return true;
         }
 
-        private static GameObject[] GetTargets(GameObject go)
+        internal static GameObject[] GetTargets(GameObject go)
         {
             if (HierarchyDrawUtils.IsSelectedInstanceId(go.GetInstanceID()))
             {
