@@ -10,7 +10,8 @@ GameObject:
   m_Component:
   - component: {fileID: 3533828974527364455}
   - component: {fileID: 5989207648498231552}
-  - component: {fileID: 8499763363283190614}
+  - component: {fileID: 4033757307497159875}
+  - component: {fileID: 8649730169665190930}
   - component: {fileID: 7061579155548690691}
   - component: {fileID: 4040239541270149657}
   m_Layer: 16
@@ -49,7 +50,19 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: works.mmzk.mueventhub::Mmzkworks.muEventHub.EventActor
   _kind: Gem
---- !u!114 &8499763363283190614
+--- !u!114 &4033757307497159875
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4298855996983498480}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1e054030a2474dad98cf1958e10421bc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: App.Contents.Common.Runtime::App.Contents.Despawner
+--- !u!114 &8649730169665190930
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

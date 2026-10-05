@@ -48,10 +48,20 @@ namespace App.Contents
             _subscriptions.Add(gemCollected.Subscribe((e, context) => AddScore(_pointsPerGem, context)));
             _subscriptions.Add(gemCollected.Publish(e => new DespawnEvent(e.Gem)));
 
-            // A despawned actor is destroyed.
+            // A despawned actor is handed to its Despawner, which removes it.
             _subscriptions.Add(hub.On<DespawnEvent>()
                 .Where(e => e.Actor != null)
-                .Subscribe(e => Destroy(e.Actor.gameObject)));
+                .Subscribe(e =>
+                {
+                    if (e.Actor.TryGetComponent<Despawner>(out var despawner))
+                    {
+                        despawner.OnDespawn(e);
+                    }
+                    else
+                    {
+                        Logger.LogWarning($"{e.Actor} has no Despawner; it is not despawned.");
+                    }
+                }));
         }
 
         private void AddScore(int points, IEventContext context)
