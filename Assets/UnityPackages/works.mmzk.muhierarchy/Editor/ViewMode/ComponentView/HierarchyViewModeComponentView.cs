@@ -24,10 +24,11 @@ namespace Mmzkworks.muHierarchy.Editor
         {
             bool showLayer = ctx.ShowLayerName;
             bool showTag = ctx.ShowTagName;
+            bool showStatic = ctx.ShowStaticIcon;
             bool showPrefabIcon = ctx.ShowPrefabIcon;
             bool showComponentIcons = ctx.ShowComponentIcons;
 
-            if (!showLayer && !showTag && !showPrefabIcon && !showComponentIcons)
+            if (!showLayer && !showTag && !showStatic && !showPrefabIcon && !showComponentIcons)
                 return;
 
             float fixedRightPosition = ctx.FixedRightPosition;
@@ -63,7 +64,7 @@ namespace Mmzkworks.muHierarchy.Editor
                 ? CountDrawnIcons(componentIcons.Count, firstIconX, iconStep, iconLimitX)
                 : 0;
 
-            if (showLayer || showTag)
+            if (showLayer || showTag || showStatic)
             {
                 // Keep the fixed column, but move left of the component icons when there are many of them
                 float labelRightX = fixedRightPosition;
@@ -71,6 +72,20 @@ namespace Mmzkworks.muHierarchy.Editor
                 {
                     float leftmostIconX = firstIconX - (drawnIconCount - 1) * iconStep;
                     labelRightX = Mathf.Min(labelRightX, leftmostIconX - textSpacing);
+                }
+
+                // Static badge sits at the fixed right edge; Tag / Layer go left of it
+                if (showStatic)
+                {
+                    float staticWidth = HierarchyStaticToggle.GetWidth(smallLabelStyle);
+                    var staticRect = new Rect(
+                        labelRightX - staticWidth,
+                        selectionRect.y,
+                        staticWidth,
+                        selectionRect.height
+                    );
+                    HierarchyStaticToggle.Draw(staticRect, go, smallLabelStyle);
+                    labelRightX -= staticWidth + textSpacing;
                 }
 
                 float layerWidth = 0f;
@@ -93,7 +108,7 @@ namespace Mmzkworks.muHierarchy.Editor
                     tagWidth = smallLabelStyle.CalcSize(tagLabel).x;
                 }
 
-                // Left to right: Tag, Layer (Layer sits at the fixed right edge)
+                // Left to right: Tag, Layer, Static
                 if (showLayer)
                 {
                     var layerRect = new Rect(
