@@ -38,6 +38,7 @@ namespace Mmzkworks.muHierarchy.Editor
         private const string PrefsKeyShowLayerName = "PrefabOverrideIconInHierarchy.ShowLayerName";
         private const string PrefsKeyShowTagName = "PrefabOverrideIconInHierarchy.ShowTagName";
         private const string PrefsKeyShowLabelBackground = "PrefabOverrideIconInHierarchy.ShowLabelBackground";
+        private const string PrefsKeyShowStaticIcon = "PrefabOverrideIconInHierarchy.ShowStaticIcon";
         private const string PrefsKeyShowPrefabIcon = "PrefabOverrideIconInHierarchy.ShowPrefabIcon";
         private const string PrefsKeyShowComponentIcons = "PrefabOverrideIconInHierarchy.ShowComponentIcons";
         private const string PrefsKeyDedupeComponentIcons = "PrefabOverrideIconInHierarchy.DedupeComponentIcons";
@@ -65,6 +66,12 @@ namespace Mmzkworks.muHierarchy.Editor
         {
             get => EditorPrefs.GetBool(PrefsKeyShowLabelBackground, true);
             set => EditorPrefs.SetBool(PrefsKeyShowLabelBackground, value);
+        }
+
+        private static bool ShowStaticIcon
+        {
+            get => EditorPrefs.GetBool(PrefsKeyShowStaticIcon, true);
+            set => EditorPrefs.SetBool(PrefsKeyShowStaticIcon, value);
         }
 
         private static bool ShowPrefabIcon
@@ -412,6 +419,20 @@ namespace Mmzkworks.muHierarchy.Editor
             return true;
         }
 
+        [MenuItem("Tools/muHierarchy/Show Static Icon", false, 2010)]
+        private static void ToggleShowStaticIcon()
+        {
+            ShowStaticIcon = !ShowStaticIcon;
+            EditorApplication.RepaintHierarchyWindow();
+        }
+
+        [MenuItem("Tools/muHierarchy/Show Static Icon", true)]
+        private static bool ToggleShowStaticIconValidate()
+        {
+            Menu.SetChecked("Tools/muHierarchy/Show Static Icon", ShowStaticIcon);
+            return true;
+        }
+
         [MenuItem("Tools/muHierarchy/Show Prefab Icon", false, 2011)]
         private static void ToggleShowPrefabIcon()
         {
@@ -656,6 +677,7 @@ namespace Mmzkworks.muHierarchy.Editor
             const float fixedRightMargin = iconSize * 5f;
             bool showLayer = viewMode == HierarchyViewMode.ComponentView && ShowLayerName;
             bool showTag = viewMode == HierarchyViewMode.ComponentView && ShowTagName;
+            bool showStatic = viewMode == HierarchyViewMode.ComponentView && ShowStaticIcon;
             bool showPrefabIcon = viewMode == HierarchyViewMode.ComponentView && ShowPrefabIcon;
             bool showComponentIcons = viewMode == HierarchyViewMode.ComponentView && ShowComponentIcons;
             float fixedRightPosition = viewMode == HierarchyViewMode.ComponentView
@@ -679,6 +701,7 @@ namespace Mmzkworks.muHierarchy.Editor
                 FixedRightMargin = fixedRightMargin,
                 ShowLayerName = showLayer,
                 ShowTagName = showTag,
+                ShowStaticIcon = showStatic,
                 ShowLabelBackground = ShowLabelBackground,
                 ShowPrefabIcon = showPrefabIcon,
                 ShowComponentIcons = showComponentIcons,

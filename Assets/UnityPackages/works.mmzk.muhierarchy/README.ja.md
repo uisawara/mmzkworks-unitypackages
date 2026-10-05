@@ -43,6 +43,14 @@ Component View では、どの Tag・Layer かが一目で分かります(`Untag
 
 リストにない Tag / Layer は自動色のままです。設定アセットが複数あるときは `Assets/Settings/muhierarchy/LabelColorSettings.asset` を、なければパス順で最初のものを使います。
 
+## Static
+
+Component View では、Tag / Layer の右にある `S` バッジで Static かどうかが分かります。すべての Static フラグが立っていれば青、一部だけなら薄い青、Static でなければグレーです。マウスを乗せるとフラグの内容が出ます。
+
+バッジをクリックすると、Inspector の Static チェックボックスと同じく Static を切り替えます(全フラグをオン、すでに全フラグが立っていれば全部オフ)。選択中のオブジェクトをクリックした場合は、選択中すべてに適用されます。Undo もできます。子を持つオブジェクトでは、子も変えるかを確認します。
+
+バッジは `Tools/muHierarchy/Show Static Icon` で表示を切り替えられます。
+
 ## Prefab の未適用
 
 Prefab インスタンスに未適用の変更があると、黄色い警告が出ます。Apply 忘れに気づきやすくなります。
