@@ -9,14 +9,18 @@ namespace Mmzkworks.muValidation.Editor
     /// Runs validation attributes on components of GameObjects in loaded scenes and Prefab Mode,
     /// and SceneRules on the GameObjects themselves, for display in the Hierarchy window.
     ///
-    /// Only GameObjects with validated components are visited (all GameObjects if there are SceneRules):
+    /// Missing scripts are reported as errors when enabled in <see cref="ValidationSettings"/>.
+    ///
+    /// Only GameObjects with validated components are visited (all GameObjects if there are SceneRules
+    /// or missing scripts are detected):
     /// they are found per validated component type, and their problems are added up the parent chain to give
     /// per-object child counts.
     /// Property changes re-validate just the changed object (plus objects whose validations depend on other
     /// objects); structural changes rebuild the index. Play Mode is skipped unless enabled from the menu.
     /// </summary>
     /// <remarks>
-    /// muHierarchy calls <see cref="GetSeverityIncludingChildren"/> via reflection. Keep its signature stable.
+    /// muHierarchy calls <see cref="GetSeverityIncludingChildren"/> and <see cref="ReportsMissingScripts"/>
+    /// via reflection. Keep their signatures stable.
     /// </remarks>
     [InitializeOnLoad]
     public static class SceneValidation
@@ -144,6 +148,30 @@ namespace Mmzkworks.muValidation.Editor
         }
 
         /// <summary>
+        /// True when missing scripts are currently included in the results: enabled in settings,
+        /// and validation is running (not Play Mode without the option).
+        /// muHierarchy calls this via reflection and skips its own missing script check when true.
+        /// </summary>
+        public static bool ReportsMissingScripts()
+        {
+            if (!ValidationSettings.instance.detectMissingScripts) return false;
+            return !EditorApplication.isPlayingOrWillChangePlaymode || ValidateInPlayMode;
+        }
+
+        /// <summary>
+        /// Adds an error when the GameObject has MonoBehaviours whose script is missing.
+        /// </summary>
+        internal static void ValidateMissingScripts(GameObject go, ValidationResult result)
+        {
+            var count = GameObjectUtility.GetMonoBehavioursWithMissingScriptCount(go);
+            if (count == 1) result.AddError("Missing script");
+            else if (count > 1) result.AddError($"{count} missing scripts");
+        }
+
+        // SceneRules and the missing script check apply to every GameObject.
+        internal static bool VisitsAllObjects => SceneRulesRegistry.HasRules || ValidationSettings.instance.detectMissingScripts;
+
+        /// <summary>
         /// Entry point for muHierarchy (called via reflection, so it uses only primitive types).
         /// Returns the severity as int (0 = valid, 1 = warning, 2 = error) and the tooltip message.
         /// </summary>
@@ -200,8 +228,7 @@ namespace Mmzkworks.muValidation.Editor
             var stage = PrefabStageUtility.GetCurrentPrefabStage();
             var stageRoot = stage != null ? stage.prefabContentsRoot : null;
 
-            // SceneRules apply to every GameObject.
-            if (SceneRulesRegistry.HasRules)
+            if (VisitsAllObjects)
             {
                 foreach (var transform in Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None))
                 {
@@ -245,6 +272,8 @@ namespace Mmzkworks.muValidation.Editor
         {
             dependsOnOthers = false;
             var result = new ValidationResult();
+            if (ValidationSettings.instance.detectMissingScripts) ValidateMissingScripts(go, result);
+
             foreach (var component in go.GetComponents<MonoBehaviour>())
             {
                 // Missing scripts come back as null.
@@ -275,8 +304,8 @@ namespace Mmzkworks.muValidation.Editor
             if (dependsOnOthers) DependentObjects.Add(go);
             else DependentObjects.Remove(go);
 
-            // Keep entries only for GameObjects with validated components (all GameObjects if there are SceneRules).
-            if (SceneRulesRegistry.HasRules || HasValidatedComponent(go)) OwnResults[id] = summary;
+            // Keep entries only for GameObjects with validated components (all GameObjects if VisitsAllObjects).
+            if (VisitsAllObjects || HasValidatedComponent(go)) OwnResults[id] = summary;
             else OwnResults.Remove(id);
 
             if (previous.Severity == summary.Severity) return;

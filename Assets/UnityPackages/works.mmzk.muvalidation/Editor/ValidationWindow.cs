@@ -46,6 +46,9 @@ namespace Mmzkworks.muValidation.Editor
         private static List<ValidationIssue> _pendingIssues;
         private static string _pendingSource;
 
+        // GameObject to select after the next collection (see ShowFor).
+        private static GameObject _pendingFocus;
+
         private GUIContent _errorIcon;
         private GUIContent _warningIcon;
 
@@ -66,6 +69,22 @@ namespace Mmzkworks.muValidation.Editor
             var window = GetWindow<ValidationWindow>("Validation");
             window.ApplyPending();
             window.Show();
+        }
+
+        /// <summary>
+        /// Opens the window, collects results and selects the issue of the GameObject,
+        /// or of its first descendant with issues.
+        /// </summary>
+        /// <remarks>muHierarchy calls this via reflection. Keep its signature stable.</remarks>
+        public static void ShowFor(GameObject go)
+        {
+            _pendingFocus = go;
+            var existed = HasOpenInstances<ValidationWindow>();
+            var window = GetWindow<ValidationWindow>("Validation");
+            window.Show();
+
+            // A new window collects from OnEnable.
+            if (existed) window.Refresh();
         }
 
         private void OnEnable()
@@ -98,8 +117,32 @@ namespace Mmzkworks.muValidation.Editor
                 issues.Clear();
             }
 
-            if (includeScenes) ValidationRunner.CollectOpenScenes(issues);
+            if (includeScenes || _pendingFocus != null) ValidationRunner.CollectOpenScenes(issues);
             SetIssues(issues, null);
+            FocusPending();
+        }
+
+        private void FocusPending()
+        {
+            var go = _pendingFocus;
+            _pendingFocus = null;
+            if (go == null) return;
+
+            var row = _rows.FirstOrDefault(r => r.Issue.SceneObject == go)
+                ?? _rows.FirstOrDefault(r => r.Issue.SceneObject != null && r.Issue.SceneObject.transform.IsChildOf(go.transform));
+            if (row == null) return;
+
+            // Make sure the row is not filtered out.
+            search = "";
+            showErrors = true;
+            showWarnings = true;
+            includeScenes = true;
+            ApplyFilter();
+
+            _selected = row;
+            _scroll.y = _visible.IndexOf(row) * RowHeight;
+            EditorGUIUtility.PingObject(row.Issue.SceneObject);
+            Repaint();
         }
 
         private void SetIssues(List<ValidationIssue> issues, string source)
