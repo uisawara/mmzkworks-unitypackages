@@ -5,7 +5,7 @@
 問題のあるアセットやオブジェクトを見つけ、Project ウィンドウで印を付ける Editor 拡張です。
 
 - **ファイル名**: 許容するファイルパスのパターンを書いた `FileNameRules` アセットを置きます。ルールに合わないファイルは、アイコンに ✗ マークが付きます。
-- **シーン**: `SceneRules` アセットをシーンのフォルダに割り当てると、シーン上のオブジェクトのデフォルト名(`Cube`、`GameObject` など)、禁止した Tag・レイヤー、Tag・Component ごとに使えるレイヤー、Prefab インスタンスでないオブジェクト、同名のルートオブジェクトをチェックします。
+- **シーン**: `SceneRules` アセットをシーンのフォルダに割り当てると、シーン上のオブジェクトのデフォルト名(`Cube`、`GameObject` など)、禁止した Tag・レイヤー、Tag・Component ごとに使えるレイヤー、Prefab インスタンスでないオブジェクト、同名のルートオブジェクト、Prefab と名前が違う Prefab インスタンスをチェックします。
 - **オブジェクトの内容**: ScriptableObject / Component のクラスやフィールドに Validation 属性を付けます。エラーのあるアセットや prefab には赤い ✗ マーク、警告だけなら黄色い ! マークが付きます。
 - **フォルダ**: エラーのあるアセットを(階層の深さに関係なく)含むフォルダにも ✗ マークが付きます。警告だけなら ! マークです。`Tools > muValidation > Show Errors On Folders` でオフにできます。
 
@@ -61,7 +61,7 @@ https://github.com/uisawara/mmzkworks-unitypackages.git?path=Assets/UnityPackage
 
 ## シーンルール
 
-シーン上の GameObject を、デフォルト名・Tag・レイヤー・Prefab インスタンス・同名禁止のルールでチェックします。ルールの中身と、それを適用するシーンを別々のアセットで設定するので、フォルダごとに違うルールを適用できます。
+シーン上の GameObject を、デフォルト名・Tag・レイヤー・Prefab インスタンス・同名禁止・Prefab 名一致のルールでチェックします。ルールの中身と、それを適用するシーンを別々のアセットで設定するので、フォルダごとに違うルールを適用できます。
 
 1. `Create > muValidation > Scene Rules` で `SceneRules` アセットを作り、ルールを設定します。
 2. `Create > muValidation > Scene Rules Assignments` で `SceneRulesAssignments` アセットを作り、フォルダに `SceneRules` を割り当てます。
@@ -80,6 +80,7 @@ https://github.com/uisawara/mmzkworks-unitypackages.git?path=Assets/UnityPackage
 | Component Layers | Component の型(フルネーム。例: `UnityEngine.Camera`。`Select` で選べます)ごとに、その Component を持つ GameObject が使えるレイヤー。`Include Subclasses` をオンにすると派生型にも適用します |
 | Require Prefab Instance | GameObject が Prefab インスタンスの一部であること。Prefab インスタンスに後から追加したオブジェクト(Added GameObject)も違反です。`EditorOnly` タグのオブジェクトとその子は対象外。Prefab Mode では中身がすべて Prefab の一部なのでチェックしません |
 | Unique Names | 同じシーンのルート GameObject 同士で名前が重複しないこと。子オブジェクトはチェックしません。名前は完全一致で比べるので、`Cube` と `Cube (1)` は別の名前です。Hierarchy に表示されないオブジェクトは数えません |
+| Match Prefab Names | Prefab インスタンスの名前が Prefab アセットの名前(Prefab Variant ならその Variant の名前)と一致すること。複製時に Unity が付ける ` (1)` のような接尾辞は許容します。チェックするのは一番外側のインスタンスのルートだけで、その中にネストした Prefab インスタンスはチェックしません。Prefab アセットが見つからないインスタンスもチェックしません |
 
 Inspector には、割り当て先のパスと、開いているシーンでルールに合わないオブジェクトの一覧が出ます。クリックするとそのオブジェクトを Ping します。
 
@@ -139,6 +140,9 @@ public class MenuPanel : MonoBehaviour
 | `[RequireSceneObject("A/B", typeof(T))]` | クラス | シーンにパス `A/B`(ルートオブジェクトから)の GameObject がある。型を指定すると、そのコンポーネントも必要(シーンのみ) |
 | `[RequireReference]` | フィールド | null や Missing でない。配列・リストは要素ごと |
 | `[ReferenceInChildren]` | フィールド | 参照先が自分自身かその子孫。null は許容。階層外やアセットへの参照はエラー。配列・リストは要素ごと |
+| `[NotEmpty]` | フィールド | 文字列が null・空・空白だけでない。配列・リストは要素ごと |
+| `[RequireComponentInParent(typeof(T))]` | クラス | GameObject かその親に `T` コンポーネントがある |
+| `[SingleInScene]` | クラス | この型のコンポーネントがシーンに 1 つだけ(非アクティブなものも数える。シーンのみ) |
 
 - どの属性も `Severity = ValidationSeverity.Warning` を付けると、エラーではなく警告になります。
 - 「シーンのみ」のチェックは、prefab アセットと Prefab Mode では行いません。

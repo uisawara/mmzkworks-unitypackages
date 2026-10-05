@@ -5,7 +5,7 @@ English | [日本語](README.ja.md)
 An Editor extension that finds invalid assets and objects, and marks them in the Project window.
 
 - **File names**: place `FileNameRules` assets with allowed file path patterns. Files that break them get a ✗ mark on their icon.
-- **Scenes**: assign `SceneRules` assets to scene folders to check scene objects for default names (`Cube`, `GameObject`...), forbidden tags and layers, the layers allowed per tag and component, objects that are not prefab instances, and duplicate root object names.
+- **Scenes**: assign `SceneRules` assets to scene folders to check scene objects for default names (`Cube`, `GameObject`...), forbidden tags and layers, the layers allowed per tag and component, objects that are not prefab instances, duplicate root object names, and prefab instances renamed from their prefab.
 - **Object content**: put validation attributes on ScriptableObject / Component classes and fields. Assets and prefabs with errors get a red ✗ mark, or a yellow ! mark when there are only warnings.
 - **Folders**: a folder that contains assets with errors (at any depth) also gets a ✗ mark, or a ! mark if they have only warnings. Turn it off with `Tools > muValidation > Show Errors On Folders`.
 
@@ -61,7 +61,7 @@ With `Allow Other Files` off, files outside `Textures` and `Models` are errors t
 
 ## Scene rules
 
-Check GameObjects in scenes against rules for default names, tags, layers, prefab instances and duplicate names. Rules and the scenes they apply to are set in two kinds of assets, so different folders of scenes can follow different rules.
+Check GameObjects in scenes against rules for default names, tags, layers, prefab instances, duplicate names and prefab instance names. Rules and the scenes they apply to are set in two kinds of assets, so different folders of scenes can follow different rules.
 
 1. Create a `SceneRules` asset with `Create > muValidation > Scene Rules` and set the rules.
 2. Create a `SceneRulesAssignments` asset with `Create > muValidation > Scene Rules Assignments`, and assign the `SceneRules` to folders.
@@ -80,6 +80,7 @@ Check GameObjects in scenes against rules for default names, tags, layers, prefa
 | Component Layers | Per component type (full name, e.g. `UnityEngine.Camera`; pick one with `Select`), the layers GameObjects with that component may be on. `Include Subclasses` also applies it to derived types |
 | Require Prefab Instance | GameObjects must be part of a prefab instance. Objects added to a prefab instance (added GameObject overrides) also break it. Objects tagged `EditorOnly`, and their children, are exempt. Not checked in Prefab Mode, where everything is part of the prefab |
 | Unique Names | Root GameObjects in the same scene may not share a name. Child objects are not checked. Names are compared exactly, so `Cube` and `Cube (1)` are different. Objects hidden from the Hierarchy are not counted |
+| Match Prefab Names | Prefab instances must have the name of their prefab asset (for a prefab variant, the variant's name). A ` (1)` style suffix that Unity adds on duplication is allowed. Only the outermost instance root is checked; prefab instances nested in it are not. Instances whose prefab asset is missing are not checked |
 
 The Inspector shows the paths the asset is assigned to, and lists the objects in open scenes that break it. Click one to ping it.
 
@@ -139,6 +140,9 @@ public class MenuPanel : MonoBehaviour
 | `[RequireSceneObject("A/B", typeof(T))]` | Class | The scene has a GameObject at path `A/B` (from a root object). With a type, it must also have that component (scenes only) |
 | `[RequireReference]` | Field | The field is not null or missing. For arrays and lists, each element |
 | `[ReferenceInChildren]` | Field | The reference is this GameObject or one of its descendants. Null is allowed; references outside the hierarchy or to assets are errors. For arrays and lists, each element |
+| `[NotEmpty]` | Field | The string is not null, empty or whitespace. For arrays and lists, each element |
+| `[RequireComponentInParent(typeof(T))]` | Class | The GameObject or one of its parents has a `T` component |
+| `[SingleInScene]` | Class | The scene has only one component of this type, inactive objects included (scenes only) |
 
 - Every attribute takes `Severity = ValidationSeverity.Warning` to report warnings instead of errors.
 - "Scenes only" checks are skipped in prefab assets and Prefab Mode.
