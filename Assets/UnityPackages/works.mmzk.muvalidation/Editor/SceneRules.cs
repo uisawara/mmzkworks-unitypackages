@@ -9,8 +9,8 @@ using UnityEngine;
 namespace Mmzkworks.muValidation.Editor
 {
     /// <summary>
-    /// Rules for GameObjects in scenes and Prefab Mode: default object names, and the layers allowed per tag
-    /// and per component type. Which scenes they apply to is set in SceneRulesAssignments assets.
+    /// Rules for GameObjects in scenes and Prefab Mode: default object names, unique names, and the layers allowed
+    /// per tag and per component type. Which scenes they apply to is set in SceneRulesAssignments assets.
     /// </summary>
     [CreateAssetMenu(fileName = "SceneRules", menuName = "muValidation/Scene Rules")]
     public class SceneRules : ScriptableObject
@@ -117,12 +117,16 @@ namespace Mmzkworks.muValidation.Editor
         [Tooltip("GameObjects must be part of a prefab instance. Objects tagged EditorOnly, and their children, are exempt.")]
         public bool requirePrefabInstance;
 
+        [Tooltip("Root GameObjects in the same scene (or Prefab Mode) may not share a name. Child objects are not checked.")]
+        public bool uniqueNames;
+
         [NonSerialized] private HashSet<string> _forbiddenNames;
 
         public bool HasRules =>
             (defaultNames?.Length ?? 0) + (forbiddenTags?.Length ?? 0) + (tagLayers?.Length ?? 0) + (componentLayers?.Length ?? 0) > 0
             || forbiddenLayers.value != 0
-            || requirePrefabInstance;
+            || requirePrefabInstance
+            || uniqueNames;
 
         /// <summary>
         /// Adds the problems of the GameObject to <paramref name="into"/>.
@@ -180,6 +184,12 @@ namespace Mmzkworks.muValidation.Editor
                 {
                     into.Add(severity, $"{name}: Must be part of a prefab instance");
                 }
+            }
+
+            if (uniqueNames && go.transform.parent == null)
+            {
+                var count = SceneNameIndex.CountRoots(go);
+                if (count > 1) into.Add(severity, $"{name}: Name \"{go.name}\" is used by {count} root objects in the scene");
             }
         }
 
@@ -349,6 +359,54 @@ namespace Mmzkworks.muValidation.Editor
         {
             _forbiddenNames = null;
             SceneRulesRegistry.Invalidate();
+        }
+    }
+
+    /// <summary>
+    /// Number of root GameObjects per name in each scene, for the unique name rule. Built per scene on first use.
+    /// Cleared when the hierarchy changes, and by callers that validate a batch of objects, so a batch sees
+    /// the current names.
+    /// </summary>
+    [InitializeOnLoad]
+    internal static class SceneNameIndex
+    {
+        // scene handle -> name -> count
+        private static readonly Dictionary<int, Dictionary<string, int>> CountsByScene = new Dictionary<int, Dictionary<string, int>>();
+
+        static SceneNameIndex()
+        {
+            EditorApplication.hierarchyChanged -= Clear;
+            EditorApplication.hierarchyChanged += Clear;
+        }
+
+        public static void Clear()
+        {
+            CountsByScene.Clear();
+        }
+
+        /// <summary>
+        /// Returns the number of root GameObjects in the GameObject's scene with its name, itself included.
+        /// Objects hidden from the Hierarchy are not counted.
+        /// </summary>
+        public static int CountRoots(GameObject go)
+        {
+            var scene = go.scene;
+            if (!scene.IsValid()) return 1;
+
+            if (!CountsByScene.TryGetValue(scene.handle, out var counts))
+            {
+                counts = new Dictionary<string, int>();
+                foreach (var root in scene.GetRootGameObjects())
+                {
+                    if ((root.hideFlags & HideFlags.HideInHierarchy) != 0) continue;
+                    counts.TryGetValue(root.name, out var current);
+                    counts[root.name] = current + 1;
+                }
+
+                CountsByScene[scene.handle] = counts;
+            }
+
+            return counts.TryGetValue(go.name, out var count) ? count : 1;
         }
     }
 }
