@@ -111,6 +111,7 @@ namespace Mmzkworks.muValidation.Editor
                 if (scene.isLoaded && SceneRulesRegistry.GetRulesFor(scene.path).Contains(rules)) roots.AddRange(scene.GetRootGameObjects());
             }
 
+            SceneNameIndex.Clear();
             var result = new List<KeyValuePair<GameObject, string>>();
             foreach (var root in roots)
             {

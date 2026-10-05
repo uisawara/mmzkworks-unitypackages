@@ -148,6 +148,7 @@ namespace Mmzkworks.muValidation.Editor
         // Validates the validated components and SceneRules under root, one issue per GameObject.
         private static void CollectHierarchy(GameObject root, string locationPrefix, string scenePath, List<ValidationIssue> into)
         {
+            SceneNameIndex.Clear();
             var results = new Dictionary<GameObject, ValidationResult>();
             foreach (var component in root.GetComponentsInChildren<MonoBehaviour>(true))
             {
