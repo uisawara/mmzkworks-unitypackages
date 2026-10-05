@@ -19,6 +19,9 @@ namespace Mmzkworks.muHierarchy.Editor
 
         private const string TypeName = "Mmzkworks.muValidation.Editor.SceneValidation, works.mmzk.muvalidation.Editor";
         private const string MethodName = "GetSeverityIncludingChildren";
+        private const string ReportsMissingScriptsMethodName = "ReportsMissingScripts";
+        private const string WindowTypeName = "Mmzkworks.muValidation.Editor.ValidationWindow, works.mmzk.muvalidation.Editor";
+        private const string ShowForMethodName = "ShowFor";
         private const string SceneRulesTypeName = "Mmzkworks.muValidation.Editor.SceneRulesRegistry, works.mmzk.muvalidation.Editor";
         private const string SceneRulesMethodName = "GetRulePaths";
         private const string TagRestrictionMethodName = "GetTagRestriction";
@@ -30,6 +33,8 @@ namespace Mmzkworks.muHierarchy.Editor
         private static Func<string, string[]> _getSceneRulePaths;
         private static Func<GameObject, string, string> _getTagRestriction;
         private static Func<GameObject, int, string> _getLayerRestriction;
+        private static Func<bool> _reportsMissingScripts;
+        private static Action<GameObject> _showInWindow;
         private static bool _resolved;
 
         /// <summary>
@@ -50,6 +55,57 @@ namespace Mmzkworks.muHierarchy.Editor
             {
                 Debug.LogException(e);
                 return Severity.None;
+            }
+        }
+
+        /// <summary>
+        /// True when muValidation includes missing scripts (with child counts) in <see cref="GetSeverity"/>,
+        /// so muHierarchy need not search children for them. False if muValidation is not installed.
+        /// </summary>
+        public static bool ReportsMissingScripts()
+        {
+            if (!_resolved) Resolve();
+            if (_reportsMissingScripts == null) return false;
+
+            try
+            {
+                return _reportsMissingScripts();
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// True when <see cref="ShowInValidationWindow"/> works (muValidation is installed).
+        /// </summary>
+        public static bool CanShowInValidationWindow
+        {
+            get
+            {
+                if (!_resolved) Resolve();
+                return _showInWindow != null;
+            }
+        }
+
+        /// <summary>
+        /// Opens the muValidation Validation window with the GameObject's issues selected.
+        /// Does nothing if muValidation is not installed.
+        /// </summary>
+        public static void ShowInValidationWindow(GameObject go)
+        {
+            if (!_resolved) Resolve();
+            if (_showInWindow == null || go == null) return;
+
+            try
+            {
+                _showInWindow(go);
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
             }
         }
 
@@ -136,8 +192,21 @@ namespace Mmzkworks.muHierarchy.Editor
                 _getSceneRulePaths = (Func<string, string[]>)Delegate.CreateDelegate(typeof(Func<string, string[]>), rulePaths);
             }
 
+            var showFor = Type.GetType(WindowTypeName)?.GetMethod(ShowForMethodName, BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(GameObject) }, null);
+            if (showFor != null && showFor.ReturnType == typeof(void))
+            {
+                _showInWindow = (Action<GameObject>)Delegate.CreateDelegate(typeof(Action<GameObject>), showFor);
+            }
+
+            var validationType = Type.GetType(TypeName);
+            var reportsMissing = validationType?.GetMethod(ReportsMissingScriptsMethodName, BindingFlags.Public | BindingFlags.Static, null, Type.EmptyTypes, null);
+            if (reportsMissing != null && reportsMissing.ReturnType == typeof(bool))
+            {
+                _reportsMissingScripts = (Func<bool>)Delegate.CreateDelegate(typeof(Func<bool>), reportsMissing);
+            }
+
             var parameterTypes = new[] { typeof(GameObject), typeof(string).MakeByRefType() };
-            var method = Type.GetType(TypeName)?.GetMethod(MethodName, BindingFlags.Public | BindingFlags.Static, null, parameterTypes, null);
+            var method = validationType?.GetMethod(MethodName, BindingFlags.Public | BindingFlags.Static, null, parameterTypes, null);
             if (method == null || method.ReturnType != typeof(int)) return;
             _getSeverity = (GetSeverityDelegate)Delegate.CreateDelegate(typeof(GetSeverityDelegate), method);
         }

@@ -44,7 +44,10 @@ namespace Mmzkworks.muHierarchy.Editor
             bool hasOverrides = isPrefabRoot && PrefabOverrideCache.HasOverrides(go);
             bool hasChildOverrides = PrefabOverrideCache.HasChildOverrides(go);
             bool showWarning = hasOverrides || hasChildOverrides;
-            bool hasMissingScripts = HasMissingScripts(go, true);
+            // When muValidation reports missing scripts (children included in its severity),
+            // only this object's own scripts are checked here.
+            bool missingScriptsFromValidation = showPrefabIcon && MuValidationBridge.ReportsMissingScripts();
+            bool hasMissingScripts = HasMissingScripts(go, !missingScriptsFromValidation);
             string validationMessage = null;
             var validationSeverity = showPrefabIcon
                 ? MuValidationBridge.GetSeverity(go, out validationMessage)
@@ -169,10 +172,11 @@ namespace Mmzkworks.muHierarchy.Editor
 
                 if (hasMissingScripts || validationSeverity == MuValidationBridge.Severity.Error)
                 {
-                    string errorTooltip = hasMissingScripts && validationMessage != null
-                        ? "Missing script\n" + validationMessage
+                    string errorTooltip = missingScriptsFromValidation ? validationMessage ?? "Missing script"
+                        : hasMissingScripts && validationMessage != null ? "Missing script\n" + validationMessage
                         : hasMissingScripts ? "Missing script" : validationMessage;
                     DrawStatusIconAtRect(iconRect, ctx.IconError, errorTooltip);
+                    HandleValidationIconClick(iconRect, go);
                     if (hasMissingScripts)
                         return;
                 }
@@ -183,6 +187,7 @@ namespace Mmzkworks.muHierarchy.Editor
                         ? validationMessage + "\n" + prefabTooltip
                         : validationMessage;
                     DrawStatusIconAtRect(iconRect, ctx.IconPrefabApplyWarning, warningTooltip);
+                    HandleValidationIconClick(iconRect, go);
                 }
                 else
                 {
@@ -374,6 +379,20 @@ namespace Mmzkworks.muHierarchy.Editor
                 GUI.color = new Color(originalColor.r, originalColor.g, originalColor.b, 0.35f);
             GUI.Label(iconRect, new GUIContent(icon, tooltip));
             GUI.color = originalColor;
+        }
+
+        // Clicking an error / warning icon opens the muValidation Validation window, when installed.
+        private static void HandleValidationIconClick(Rect iconRect, GameObject go)
+        {
+            if (!MuValidationBridge.CanShowInValidationWindow)
+                return;
+            EditorGUIUtility.AddCursorRect(iconRect, MouseCursor.Link);
+            var e = Event.current;
+            if (e.type == EventType.MouseDown && e.button == 0 && iconRect.Contains(e.mousePosition))
+            {
+                MuValidationBridge.ShowInValidationWindow(go);
+                e.Use();
+            }
         }
 
         private static void DrawStatusIconAtRect(Rect iconRect, Texture2D icon, string tooltip)

@@ -61,7 +61,7 @@ When a Prefab instance has unapplied changes, a yellow warning appears. That mak
 
 Objects with a Missing Script get a red error icon. It also propagates to parents, so you can find them even when the hierarchy is collapsed.
 
-With [muValidation](../works.mmzk.muvalidation/README.md) installed, objects whose validation attributes report errors get the same error icon, and those with only warnings get the warning icon (in place of the Prefab icon). Hover to see the messages. Scene header rows also get an info icon on the right when muValidation SceneRules apply to the scene; click it to select the SceneRules asset (choose from a menu when several apply). Without muValidation, nothing changes.
+With [muValidation](../works.mmzk.muvalidation/README.md) installed, objects whose validation attributes report errors get the same error icon, and those with only warnings get the warning icon (in place of the Prefab icon). Hover to see the messages, and click the icon to open muValidation's Validation window with the object's problems selected. Missing scripts are then also taken from muValidation's results (unless its `Detect Missing Scripts` setting is off), so they show in its Validation window and build check too. Scene header rows also get an info icon on the right when muValidation SceneRules apply to the scene; click it to select the SceneRules asset (choose from a menu when several apply). Without muValidation, nothing changes.
 
 ![Missing Script display](Documentation~/img/missing-script.png)
 
