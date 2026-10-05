@@ -9,8 +9,9 @@ using UnityEngine;
 namespace Mmzkworks.muValidation.Editor
 {
     /// <summary>
-    /// Rules for GameObjects in scenes and Prefab Mode: default object names, unique names, and the layers allowed
-    /// per tag and per component type. Which scenes they apply to is set in SceneRulesAssignments assets.
+    /// Rules for GameObjects in scenes and Prefab Mode: default object names, unique names, prefab instance
+    /// names, and the layers allowed per tag and per component type. Which scenes they apply to is set in
+    /// SceneRulesAssignments assets.
     /// </summary>
     [CreateAssetMenu(fileName = "SceneRules", menuName = "muValidation/Scene Rules")]
     public class SceneRules : ScriptableObject
@@ -120,13 +121,17 @@ namespace Mmzkworks.muValidation.Editor
         [Tooltip("Root GameObjects in the same scene (or Prefab Mode) may not share a name. Child objects are not checked.")]
         public bool uniqueNames;
 
+        [Tooltip("Prefab instances must have the name of their prefab asset. A \" (1)\" style suffix added on duplication is allowed.")]
+        public bool matchPrefabNames;
+
         [NonSerialized] private HashSet<string> _forbiddenNames;
 
         public bool HasRules =>
             (defaultNames?.Length ?? 0) + (forbiddenTags?.Length ?? 0) + (tagLayers?.Length ?? 0) + (componentLayers?.Length ?? 0) > 0
             || forbiddenLayers.value != 0
             || requirePrefabInstance
-            || uniqueNames;
+            || uniqueNames
+            || matchPrefabNames;
 
         /// <summary>
         /// Adds the problems of the GameObject to <paramref name="into"/>.
@@ -190,6 +195,15 @@ namespace Mmzkworks.muValidation.Editor
             {
                 var count = SceneNameIndex.CountRoots(go);
                 if (count > 1) into.Add(severity, $"{name}: Name \"{go.name}\" is used by {count} root objects in the scene");
+            }
+
+            if (matchPrefabNames && PrefabUtility.IsOutermostPrefabInstanceRoot(go))
+            {
+                var source = PrefabUtility.GetCorrespondingObjectFromSource(go);
+                if (source != null && DuplicateSuffix.Replace(go.name, "") != source.name)
+                {
+                    into.Add(severity, $"{name}: Name must match the prefab \"{source.name}\"");
+                }
             }
         }
 
