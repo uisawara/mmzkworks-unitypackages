@@ -82,6 +82,18 @@ Whether an object has references is also shown with icons.
 
 This is a simplified view. Not every reference visible in the Inspector appears in the Hierarchy.
 
+## Component List
+
+Right-click in the Hierarchy and choose `muHierarchy/Component List...` (or `Tools/muHierarchy/Component List...`) to list the components used in the open scenes. When a Prefab is open in Prefab Mode, its contents are listed instead.
+
+Components are grouped by assembly (the asmdef name for your scripts) and shown as a tag cloud with usage counts. Missing Scripts are collected at the end.
+
+- **Click** a tag to highlight the GameObjects that have it in the Hierarchy. Their parents get a fainter tint, so you can find them while collapsed. Click again to clear.
+- **Shift / Ctrl + Click** adds more components, each in its own color.
+- **Right-click** to select those GameObjects, ping the first one, or open the script.
+
+The toolbar lets you filter by name, hide `UnityEngine.*` assemblies, and exclude inactive GameObjects. The list updates as the Hierarchy changes, and the highlight disappears when the window is closed.
+
 ## Other features
 
 ### Section headers

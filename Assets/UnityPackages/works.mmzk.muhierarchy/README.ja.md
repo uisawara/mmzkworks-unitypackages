@@ -82,6 +82,18 @@ Missing Script があるオブジェクトには、赤いエラーアイコン�
 
 ※簡易的な表示です。Inspector に見える参照が、すべて Hierarchy に乗るわけではありません。
 
+## Component List
+
+Hierarchy で右クリックして `muHierarchy/Component List...`(または `Tools/muHierarchy/Component List...`)を選ぶと、開いているシーンで使われている Component が一覧できます。Prefab Mode で Prefab を開いているときは、その Prefab の中身が対象です。
+
+Component はアセンブリ(自作スクリプトなら asmdef 名)ごとに分かれ、使用数つきのタグクラウドで並びます。Missing Script は最後にまとまります。
+
+- **クリック**すると、その Component を持つオブジェクトの Hierarchy の行に色が付きます。親にも薄く色が付くので、折りたたんだままでも探せます。もう一度クリックで解除します。
+- **Shift / Ctrl + クリック**で、別の Component を別の色で追加できます。
+- **右クリック**で、該当オブジェクトの選択、最初のオブジェクトの Ping、スクリプトを開く、ができます。
+
+ツールバーで名前の絞り込み、`UnityEngine.*` アセンブリの非表示、非アクティブなオブジェクトの除外ができます。一覧は Hierarchy の変更に合わせて更新され、ウィンドウを閉じると色付けも消えます。
+
 ## その他機能
 
 ### セクション見出し
