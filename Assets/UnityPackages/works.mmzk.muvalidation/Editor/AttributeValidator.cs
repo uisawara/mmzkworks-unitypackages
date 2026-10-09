@@ -37,6 +37,22 @@ namespace Mmzkworks.muValidation.Editor
             public bool HasAny => ClassAttributes.Length > 0 || Fields.Length > 0;
         }
 
+        /// <summary>
+        /// One validation attribute declared on a type. <see cref="MemberPath"/> is empty for a class
+        /// attribute, otherwise a field name or a nested path such as "stats.hp" or "pages[].item".
+        /// </summary>
+        public readonly struct AttributeBinding
+        {
+            public readonly string MemberPath;
+            public readonly ValidationAttribute Attribute;
+
+            public AttributeBinding(string memberPath, ValidationAttribute attribute)
+            {
+                MemberPath = memberPath ?? "";
+                Attribute = attribute;
+            }
+        }
+
         private static readonly Dictionary<Type, TypePlan> Plans = new Dictionary<Type, TypePlan>();
         private static Type[] _validatedComponentTypes;
 
@@ -62,6 +78,24 @@ namespace Mmzkworks.muValidation.Editor
         public static bool DependsOnOtherObjects(Type type)
         {
             return type != null && GetPlan(type).DependsOnOtherObjects;
+        }
+
+        /// <summary>
+        /// Validation attributes declared on this type, not ones inherited from a base type.
+        /// Nested serializable fields are included to the same depth validation checks.
+        /// </summary>
+        public static AttributeBinding[] GetDeclaredBindings(Type type)
+        {
+            if (type == null) return Array.Empty<AttributeBinding>();
+
+            var result = new List<AttributeBinding>();
+            foreach (var attribute in type.GetCustomAttributes(typeof(ValidationAttribute), false).Cast<ValidationAttribute>())
+            {
+                result.Add(new AttributeBinding("", attribute));
+            }
+
+            AddBindings(BuildFields(type, 0, false), "", result);
+            return result.ToArray();
         }
 
         /// <summary>
@@ -181,10 +215,28 @@ namespace Mmzkworks.muValidation.Editor
             return false;
         }
 
-        private static FieldPlan[] BuildFields(Type type, int depth)
+        private static void AddBindings(FieldPlan[] fields, string prefix, List<AttributeBinding> into)
+        {
+            if (fields == null) return;
+            foreach (var field in fields)
+            {
+                var path = prefix + field.Field.Name;
+                foreach (var attribute in field.Attributes)
+                {
+                    into.Add(new AttributeBinding(path, attribute));
+                }
+
+                if (field.Nested != null)
+                {
+                    AddBindings(field.Nested, field.NestedIsList ? path + "[]." : path + ".", into);
+                }
+            }
+        }
+
+        private static FieldPlan[] BuildFields(Type type, int depth, bool includeBaseTypes = true)
         {
             var result = new List<FieldPlan>();
-            for (var t = type; t != null && t != typeof(object) && !IsUnityBaseType(t); t = t.BaseType)
+            for (var t = type; t != null && t != typeof(object) && !IsUnityBaseType(t); t = includeBaseTypes ? t.BaseType : null)
             {
                 foreach (var field in t.GetFields(FieldFlags))
                 {

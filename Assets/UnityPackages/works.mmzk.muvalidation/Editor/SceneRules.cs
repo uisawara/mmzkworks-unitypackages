@@ -381,6 +381,17 @@ namespace Mmzkworks.muValidation.Editor
 
         private static bool IsInMask(LayerMask mask, int layer) => (mask.value & (1 << layer)) != 0;
 
+        internal static string[] LayerNames(LayerMask mask)
+        {
+            var names = new List<string>();
+            for (var layer = 0; layer < 32; layer++)
+            {
+                if (IsInMask(mask, layer)) names.Add(LayerName(layer));
+            }
+
+            return names.ToArray();
+        }
+
         private static string FormatMask(LayerMask mask)
         {
             var names = new List<string>();

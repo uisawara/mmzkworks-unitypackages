@@ -229,6 +229,38 @@ If the result depends on other objects (their names, existence and so on), overr
 - Filter by errors or warnings, and search by path or message.
 - Click a row to ping the object. Double-click to select it (assets are also opened). The full message shows at the bottom.
 - Results are collected when the window opens and when you press `Refresh`.
+- `Export...` writes every result currently loaded, including rows hidden by the search or the error / warning buttons. The `issues` array matches the command-line report.
+
+## Rules
+
+`Tools > muValidation > Rules` lists every rule that is configured, and exports them as JSON.
+
+- **File Names**: each `FileNameRules` asset, the folder it covers, and its patterns. A pattern that does not compile is marked invalid.
+- **Scene Rules**: each `SceneRules` asset, including assets no assignment uses, with the paths it is assigned to, default names, tags, layers and the other checks.
+- **Assignments**: each `SceneRulesAssignments` asset and the rules it applies. A path that does not exist is marked missing.
+- **Attributes**: validation attributes declared on Component and ScriptableObject types, including nested serializable fields. Attributes inherited from a base type are listed on the type that declares them. A composite attribute includes the validations it combines.
+
+The buttons hide each group. Search keeps the matching row and its parents and children. Click a row to ping the asset (or the script, for an attribute). Double-click to select it. The bottom shows the JSON for the selection. `Export...` writes every group to one file. `Refresh` reads the assets and scripts again.
+
+The file has four arrays: `fileNameRules`, `sceneRules`, `sceneRulesAssignments`, `validationAttributes`.
+
+## Command line
+
+The same export, and the same check as before a build, can run in batch mode. A relative path is from the project folder. The check uses Project Settings > muValidation (`Include Assets`, `Include Build Scenes`, `Fail On Errors`, `Fail On Warnings`).
+
+Export rules (without `-muValidationExport`, the file is `muvalidation-rules.json` in the project folder):
+
+```
+Unity -batchmode -quit -projectPath . -executeMethod Mmzkworks.muValidation.Editor.ValidationCommandLine.ExportRules -muValidationExport muvalidation-rules.json
+```
+
+Run validation (`-muValidationReport` is optional):
+
+```
+Unity -batchmode -quit -projectPath . -executeMethod Mmzkworks.muValidation.Editor.ValidationCommandLine.Run -muValidationReport muvalidation-report.json
+```
+
+The report has `errors`, `warnings`, `failed` and an `issues` array. The process exits with code 1 when the check fails, and 0 when it passes.
 
 ## Validation before builds
 

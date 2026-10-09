@@ -229,6 +229,38 @@ public class PositiveAttribute : ValidationAttribute
 - エラー・警告での絞り込みと、パスやメッセージでの検索ができます。
 - 行をクリックするとそのオブジェクトを Ping します。ダブルクリックで選択します(アセットは開きます)。下部に全文が出ます。
 - ウィンドウを開いたときと `Refresh` を押したときに集計します。
+- `Export...` で、いま読み込んでいる結果をすべて書き出します。検索やエラー・警告ボタンで隠れている行も含みます。`issues` 配列はコマンドラインのレポートと同じです。
+
+## ルール
+
+`Tools > muValidation > Rules` で、設定されているルールをすべて一覧し、JSON に書き出せます。
+
+- **File Names**: 各 `FileNameRules` アセットと、それが覆うフォルダ、パターン。コンパイルできないパターンは無効と分かります。
+- **Scene Rules**: 各 `SceneRules` アセット。割り当てのないものも含みます。割り当て先のパス、デフォルト名、タグ、レイヤー、その他のチェックが出ます。
+- **Assignments**: 各 `SceneRulesAssignments` アセットと、それが適用するルール。存在しないパスは missing と分かります。
+- **Attributes**: Component / ScriptableObject の型に宣言された Validation 属性。ネストしたシリアライズ可能フィールドも含みます。基底型から継承した属性は、宣言している型のところに出ます。複合属性は、まとめている Validation も含みます。
+
+ボタンでグループを隠せます。検索は、一致した行と、その親・子を残します。行をクリックするとアセット(属性ならスクリプト)を Ping します。ダブルクリックで選択します。下部には、その行の JSON が出ます。`Export...` で全グループを 1 つのファイルに書き出します。`Refresh` でアセットとスクリプトを読み直します。
+
+ファイルには `fileNameRules`、`sceneRules`、`sceneRulesAssignments`、`validationAttributes` の 4 つの配列があります。
+
+## コマンドライン
+
+同じ書き出しと、ビルド前と同じチェックを、batch mode で実行できます。相対パスはプロジェクトフォルダから辿ります。チェックは `Project Settings > muValidation` に従います(`Include Assets`、`Include Build Scenes`、`Fail On Errors`、`Fail On Warnings`)。
+
+ルールの書き出し(`-muValidationExport` を付けないときは、プロジェクトフォルダの `muvalidation-rules.json` に書きます):
+
+```
+Unity -batchmode -quit -projectPath . -executeMethod Mmzkworks.muValidation.Editor.ValidationCommandLine.ExportRules -muValidationExport muvalidation-rules.json
+```
+
+Validation の実行(`-muValidationReport` は省略できます):
+
+```
+Unity -batchmode -quit -projectPath . -executeMethod Mmzkworks.muValidation.Editor.ValidationCommandLine.Run -muValidationReport muvalidation-report.json
+```
+
+レポートには `errors`、`warnings`、`failed` と、`issues` 配列があります。チェックに失敗すると終了コード 1、成功すると 0 です。
 
 ## ビルド前の Validation
 
