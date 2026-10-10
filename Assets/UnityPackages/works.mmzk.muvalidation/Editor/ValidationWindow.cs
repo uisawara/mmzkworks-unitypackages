@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -11,7 +12,8 @@ namespace Mmzkworks.muValidation.Editor
     /// <summary>
     /// Lists all validation results: assets (FileNameRules and validation attributes) and
     /// GameObjects in open scenes / Prefab Mode. Click a row to ping it, double-click to select it.
-    /// Also shows the issues that stopped a build (see <see cref="ShowIssues"/>).
+    /// Export writes the current results as JSON. Also shows the issues that stopped a build
+    /// (see <see cref="ShowIssues"/>).
     /// </summary>
     public class ValidationWindow : EditorWindow
     {
@@ -122,6 +124,34 @@ namespace Mmzkworks.muValidation.Editor
             FocusPending();
         }
 
+        private void Export()
+        {
+            var directory = Directory.GetParent(Application.dataPath)?.FullName ?? "";
+            var path = EditorUtility.SaveFilePanel("Export Validation Results", directory, "muvalidation-report", "json");
+            if (string.IsNullOrEmpty(path)) return;
+
+            var root = new JsonObject();
+            root.Set("errors", _errorCount);
+            root.Set("warnings", _warningCount);
+            if (!string.IsNullOrEmpty(_source)) root.Set("source", _source);
+            root.Set("includeAssets", includeAssets);
+            root.Set("includeScenes", includeScenes);
+            root.Set("issues", ValidationReport.Issues(_rows.Select(row => row.Issue)));
+
+            try
+            {
+                ValidationReport.Write(path, root);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[muValidation] Failed to export validation results: {e.Message}");
+                EditorUtility.DisplayDialog("muValidation", "Could not export validation results.\n" + e.Message, "OK");
+                return;
+            }
+
+            Debug.Log($"[muValidation] Exported validation results to {path} ({_errorCount} error(s), {_warningCount} warning(s)).");
+        }
+
         private void FocusPending()
         {
             var go = _pendingFocus;
@@ -198,6 +228,7 @@ namespace Mmzkworks.muValidation.Editor
             using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar))
             {
                 if (GUILayout.Button("Refresh", EditorStyles.toolbarButton, GUILayout.Width(60))) Refresh();
+                if (GUILayout.Button("Export...", EditorStyles.toolbarButton, GUILayout.Width(70))) Export();
 
                 EditorGUI.BeginChangeCheck();
                 includeAssets = GUILayout.Toggle(includeAssets, "Assets", EditorStyles.toolbarButton, GUILayout.Width(55));
