@@ -22,7 +22,6 @@ namespace Mmzkworks.muShortcutPanel.Editor
         private const string ShowFullPathPrefKey = "Mmzkworks.muShortcutPanel.ShowFullPath";
         private const string DragGenericDataKey = "Mmzkworks.muShortcutPanel.Item";
         private const double SaveDelaySeconds = 0.5;
-        private const float ContentMargin = 64f;
         private const float DragOutThreshold = 6f;
 
 
@@ -72,7 +71,6 @@ namespace Mmzkworks.muShortcutPanel.Editor
         // Middle-button drag scrolls the canvas: mouse position (window coordinates) and scroll at the start.
         private Vector2 _panStartMouse;
         private Vector2 _panStartScroll;
-        private Vector2 _maxScroll;
         private List<string> _linkStartSteps = new List<string>();
 
         // Action run (use mode). Steps are run one per delayCall so the editor can process each command in between.
@@ -483,20 +481,16 @@ namespace Mmzkworks.muShortcutPanel.Editor
                 EditorGUI.DrawRect(canvasRect, bg);
             }
 
-            var contentSize = ShortcutPanelLayout.ContentSize(items, ContentMargin);
-            var viewRect = new Rect(0f, 0f,
-                Mathf.Max(contentSize.x, canvasRect.width - 16f),
-                Mathf.Max(contentSize.y, canvasRect.height - 16f));
-            _maxScroll = new Vector2(
-                Mathf.Max(0f, viewRect.width - (canvasRect.width - 16f)),
-                Mathf.Max(0f, viewRect.height - (canvasRect.height - 16f)));
             if (_op == PointerOp.Pan) EditorGUIUtility.AddCursorRect(canvasRect, MouseCursor.Pan);
 
-            _scroll = GUI.BeginScrollView(canvasRect, _scroll, viewRect);
+            // An unbounded canvas: _scroll is the canvas point shown at the top-left, and may be anything (negative too).
+            // Everything inside the clip is drawn in canvas coordinates.
+            var visible = new Rect(_scroll, canvasRect.size);
+            GUI.BeginClip(canvasRect, -_scroll, Vector2.zero, false);
             {
                 if (e.type == EventType.Repaint)
                 {
-                    if (_editMode) DrawGrid(viewRect);
+                    if (_editMode) DrawGrid(visible);
                     DrawActionLinks();
                     foreach (var item in items) DrawItem(item);
                     if (_showFullPath)
@@ -517,7 +511,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
                     }
                 }
             }
-            GUI.EndScrollView();
+            GUI.EndClip();
 
             HandleDragAndDrop(canvasRect);
             HandlePointer(canvasRect);
@@ -527,14 +521,17 @@ namespace Mmzkworks.muShortcutPanel.Editor
         private Vector2 ToCanvas(Rect canvasRect, Vector2 windowPos) => windowPos - canvasRect.position + _scroll;
 
         /// <summary>Dot grid: a small dot at every snap point (8px).</summary>
-        private void DrawGrid(Rect viewRect)
+        private void DrawGrid(Rect visible)
         {
             var tex = GetGridDotTexture();
             var tile = tex.width; // = 1 grid cell
-            // Round the size up to whole tiles so the pattern starts exactly at the top-left (the scroll view clips the rest).
-            var cols = Mathf.Ceil(viewRect.width / tile);
-            var rows = Mathf.Ceil(viewRect.height / tile);
-            GUI.DrawTextureWithTexCoords(new Rect(0f, 0f, cols * tile, rows * tile), tex, new Rect(0f, 0f, cols, rows));
+            // Start on a grid line at or before the visible top-left so the dots stay on the snap points while panning
+            // (the clip cuts off the rest).
+            var x0 = Mathf.Floor(visible.x / tile) * tile;
+            var y0 = Mathf.Floor(visible.y / tile) * tile;
+            var cols = Mathf.Ceil((visible.xMax - x0) / tile);
+            var rows = Mathf.Ceil((visible.yMax - y0) / tile);
+            GUI.DrawTextureWithTexCoords(new Rect(x0, y0, cols * tile, rows * tile), tex, new Rect(0f, 0f, cols, rows));
         }
 
         private Texture2D GetGridDotTexture()
@@ -1212,8 +1209,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
                 {
                     if (_op == PointerOp.Pan)
                     {
-                        var scroll = _panStartScroll - (e.mousePosition - _panStartMouse);
-                        _scroll = Vector2.Min(Vector2.Max(scroll, Vector2.zero), _maxScroll);
+                        _scroll = _panStartScroll - (e.mousePosition - _panStartMouse);
                         e.Use();
                         Repaint();
                         break;
@@ -1345,7 +1341,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
 
         private void MoveGroup(Vector2 delta)
         {
-            var offset = ShortcutPanelLayout.GroupMoveOffset(_opStartRect, _opStartRects.Values, delta);
+            var offset = ShortcutPanelLayout.GroupMoveOffset(_opStartRect, delta);
             foreach (var kv in _opStartRects)
             {
                 var item = _doc.Find(kv.Key);
@@ -1413,6 +1409,14 @@ namespace Mmzkworks.muShortcutPanel.Editor
                 {
                     if (!_editMode || _selectedIds.Count == 0) return;
                     if (execute) DuplicateItems(SelectedItems());
+                    e.Use();
+                    break;
+                }
+                case "FrameSelected":
+                {
+                    // F key: center the view on all items.
+                    if (_doc.items.Count == 0) return;
+                    if (execute) FrameItems(_doc.items);
                     e.Use();
                     break;
                 }
@@ -1830,7 +1834,23 @@ namespace Mmzkworks.muShortcutPanel.Editor
                 menu.AddItem(new GUIContent("Switch to Edit Mode"), false, () => _editMode = true);
             }
 
+            if (hit == null && _doc.items.Count > 0)
+            {
+                if (menu.GetItemCount() > 0) menu.AddSeparator("");
+                menu.AddItem(new GUIContent("Frame All  (F)"), false, () => FrameItems(_doc.items));
+            }
+
             if (menu.GetItemCount() > 0) menu.ShowAsContext();
+        }
+
+        /// <summary>Scrolls so the center of the items is at the center of the canvas.</summary>
+        private void FrameItems(IReadOnlyList<ShortcutPanelItem> items)
+        {
+            var bounds = ShortcutPanelLayout.Bounds(items);
+            if (bounds == null) return;
+            var scroll = bounds.Value.center - _lastCanvasRect.size * 0.5f;
+            _scroll = new Vector2(Mathf.Round(scroll.x), Mathf.Round(scroll.y));
+            Repaint();
         }
 
         private void Reorder(List<ShortcutPanelItem> targets, bool toFront)
@@ -2132,8 +2152,6 @@ namespace Mmzkworks.muShortcutPanel.Editor
                 using (new EditorGUILayout.HorizontalScope())
                 {
                     var r = EditorGUILayout.RectField("Rect", item.Rect);
-                    r.x = Mathf.Max(0f, r.x);
-                    r.y = Mathf.Max(0f, r.y);
                     r.width = Mathf.Max(ShortcutPanelLayout.MinWidth, r.width);
                     r.height = Mathf.Max(ShortcutPanelLayout.MinHeight, r.height);
                     item.Rect = r;

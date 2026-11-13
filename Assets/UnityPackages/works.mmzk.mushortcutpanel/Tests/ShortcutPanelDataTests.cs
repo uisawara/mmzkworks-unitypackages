@@ -161,7 +161,7 @@ namespace Mmzkworks.muShortcutPanel.Tests
             var doc = ShortcutPanelSerializer.FromJson(json);
 
             Assert.That(doc.items[0].kind, Is.EqualTo(ShortcutItemKind.Label));
-            Assert.That(doc.items[0].x, Is.EqualTo(0f));
+            Assert.That(doc.items[0].x, Is.EqualTo(-10f), "negative positions are kept (unbounded canvas)");
             Assert.That(doc.items[0].width, Is.EqualTo(ShortcutPanelLayout.MinWidth));
             Assert.That(doc.items[0].height, Is.EqualTo(ShortcutPanelLayout.MinHeight));
             var ids = doc.items.Select(i => i.id).ToList();
@@ -203,10 +203,22 @@ namespace Mmzkworks.muShortcutPanel.Tests
         }
 
         [Test]
-        public void Moved_SnapsAndClampsToOrigin()
+        public void Moved_Snaps_AndAllowsNegativePositions()
         {
             var r = ShortcutPanelLayout.Moved(new Rect(16, 16, 100, 20), new Vector2(-40, 5));
-            Assert.That(r, Is.EqualTo(new Rect(0, 24, 100, 20)));
+            Assert.That(r, Is.EqualTo(new Rect(-24, 24, 100, 20)));
+        }
+
+        [Test]
+        public void Bounds_CoversAllItems()
+        {
+            Assert.That(ShortcutPanelLayout.Bounds(new List<ShortcutPanelItem>()), Is.Null);
+            var items = new List<ShortcutPanelItem>
+            {
+                new ShortcutPanelItem { Rect = new Rect(-16, 20, 100, 30) },
+                new ShortcutPanelItem { Rect = new Rect(40, -8, 50, 10) }
+            };
+            Assert.That(ShortcutPanelLayout.Bounds(items), Is.EqualTo(Rect.MinMaxRect(-16, -8, 90, 50)));
         }
 
         [Test]

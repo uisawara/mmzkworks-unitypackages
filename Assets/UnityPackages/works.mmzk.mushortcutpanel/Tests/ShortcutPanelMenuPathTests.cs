@@ -48,17 +48,16 @@ namespace Mmzkworks.muShortcutPanel.Tests
         }
 
         [Test]
-        public void GroupMoveOffset_SnapsPrimaryAndKeepsGroupInsideOrigin()
+        public void GroupMoveOffset_SnapsPrimary_AndAllowsNegativePositions()
         {
             var primary = new Rect(16, 16, 100, 24);
-            var other = new Rect(4, 40, 100, 24); // off-grid on purpose
 
-            var offset = ShortcutPanelLayout.GroupMoveOffset(primary, new[] { primary, other }, new Vector2(10, 3));
+            var offset = ShortcutPanelLayout.GroupMoveOffset(primary, new Vector2(10, 3));
             Assert.That(offset, Is.EqualTo(new Vector2(8, 0)));
 
-            // Moving left would push "other" past x = 0, so the group stops there.
-            offset = ShortcutPanelLayout.GroupMoveOffset(primary, new[] { primary, other }, new Vector2(-20, 0));
-            Assert.That(offset.x, Is.EqualTo(-4f));
+            // The canvas is unbounded: the group may go left of / above the origin.
+            offset = ShortcutPanelLayout.GroupMoveOffset(primary, new Vector2(-40, -40));
+            Assert.That(offset, Is.EqualTo(new Vector2(-40, -40)));
         }
 
         [Test]

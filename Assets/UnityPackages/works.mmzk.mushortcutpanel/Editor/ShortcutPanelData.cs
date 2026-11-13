@@ -174,7 +174,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
         public static Rect Moved(Rect start, Vector2 delta)
         {
             var p = Snap(start.position + delta);
-            return new Rect(Mathf.Max(0f, p.x), Mathf.Max(0f, p.y), start.width, start.height);
+            return new Rect(p.x, p.y, start.width, start.height);
         }
 
         public static Rect Resized(Rect start, Vector2 delta)
@@ -205,18 +205,20 @@ namespace Mmzkworks.muShortcutPanel.Editor
         }
 
         /// <summary>
-        /// Offset to apply to every item of a group move. The dragged item (<paramref name="primaryStart"/>) snaps to the grid,
-        /// the others keep their relative positions, and no item goes above / left of the origin.
+        /// Offset to apply to every item of a group move. The dragged item (<paramref name="primaryStart"/>) snaps to the grid
+        /// and the others keep their relative positions. The canvas is unbounded, so negative positions are fine.
         /// </summary>
-        public static Vector2 GroupMoveOffset(Rect primaryStart, IEnumerable<Rect> groupStarts, Vector2 delta)
+        public static Vector2 GroupMoveOffset(Rect primaryStart, Vector2 delta) =>
+            Snap(primaryStart.position + delta) - primaryStart.position;
+
+        /// <summary>Bounding rect of all items, or null when there are none.</summary>
+        public static Rect? Bounds(IReadOnlyList<ShortcutPanelItem> items)
         {
-            var snapped = Snap(primaryStart.position + delta) - primaryStart.position;
-            foreach (var r in groupStarts)
-            {
-                snapped.x = Mathf.Max(snapped.x, -r.x);
-                snapped.y = Mathf.Max(snapped.y, -r.y);
-            }
-            return snapped;
+            if (items == null || items.Count == 0) return null;
+            var r = items[0].Rect;
+            foreach (var item in items) r = Rect.MinMaxRect(Mathf.Min(r.xMin, item.x), Mathf.Min(r.yMin, item.y),
+                Mathf.Max(r.xMax, item.x + item.width), Mathf.Max(r.yMax, item.y + item.height));
+            return r;
         }
 
         /// <summary>Returns the topmost item (last in draw order) under <paramref name="p"/>, or null.</summary>
@@ -297,8 +299,6 @@ namespace Mmzkworks.muShortcutPanel.Editor
                 item.args ??= new List<ShortcutCommandArg>();
                 item.args.RemoveAll(a => a == null || string.IsNullOrEmpty(a.key));
                 foreach (var a in item.args) a.value ??= "";
-                item.x = Mathf.Max(0f, item.x);
-                item.y = Mathf.Max(0f, item.y);
                 item.width = Mathf.Max(ShortcutPanelLayout.MinWidth, item.width);
                 item.height = Mathf.Max(ShortcutPanelLayout.MinHeight, item.height);
                 if (item.fontSize < 0) item.fontSize = 0;

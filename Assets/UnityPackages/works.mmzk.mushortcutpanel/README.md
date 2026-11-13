@@ -29,7 +29,7 @@ Switch between `Use Mode` and `Edit Mode` with the toggle button at the right of
 
 The `Path` toggle in the toolbar shows or hides the full path (asset path / URL / menu path) under each shortcut.
 
-In both modes, drag with the middle mouse button to scroll the panel.
+The panel is an unbounded canvas with no scroll bars. In both modes, drag with the middle mouse button to move around in any direction. Press `F` (or right-click empty space > `Frame All`) to scroll to the center of all elements.
 
 ### Use mode
 
