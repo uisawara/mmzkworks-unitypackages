@@ -74,6 +74,47 @@ namespace Mmzkworks.muShortcutPanel.Tests
         }
 
         [Test]
+        public void RoundTrip_KeepsCommandAndArgs()
+        {
+            var doc = new ShortcutPanelDocument();
+            var item = new ShortcutPanelItem { id = "c", kind = ShortcutItemKind.Command, command = "prefab.create", Rect = new Rect(0, 0, 100, 24) };
+            item.SetArg("folder", "Assets/Prefabs");
+            item.SetArg("connect", "false");
+            doc.items.Add(item);
+
+            var back = ShortcutPanelSerializer.FromJson(ShortcutPanelSerializer.ToJson(doc)).items[0];
+
+            Assert.That(back.kind, Is.EqualTo(ShortcutItemKind.Command));
+            Assert.That(back.command, Is.EqualTo("prefab.create"));
+            Assert.That(back.GetArg("folder"), Is.EqualTo("Assets/Prefabs"));
+            Assert.That(back.GetArg("connect"), Is.EqualTo("false"));
+            Assert.That(back.GetArg("missing"), Is.Null);
+        }
+
+        [Test]
+        public void SetArg_ReplacesExistingKey()
+        {
+            var item = new ShortcutPanelItem();
+            item.SetArg("a", "1");
+            item.SetArg("a", "2");
+            Assert.That(item.args.Count, Is.EqualTo(1));
+            Assert.That(item.GetArg("a"), Is.EqualTo("2"));
+        }
+
+        [Test]
+        public void Clone_DoesNotShareArgs()
+        {
+            var original = new ShortcutPanelItem { kind = ShortcutItemKind.Command, command = "go.rename" };
+            original.SetArg("pattern", "A");
+
+            var clone = original.Clone();
+            clone.SetArg("pattern", "B");
+
+            Assert.That(original.GetArg("pattern"), Is.EqualTo("A"));
+            Assert.That(clone.command, Is.EqualTo("go.rename"));
+        }
+
+        [Test]
         public void Clone_DoesNotShareSteps()
         {
             var original = new ShortcutPanelItem { id = "act", kind = ShortcutItemKind.Action, steps = new List<string> { "a" } };

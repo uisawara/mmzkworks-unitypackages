@@ -57,6 +57,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
         private Vector2 _boxCurrent;
         private Rect _lastCanvasRect;
         private bool _pendingMenuPicker;
+        private bool _pendingCommandPicker;
         private Vector2 _pendingMenuPickerPos;
         private string _hoverId;
         private bool _showFullPath = true;
@@ -81,6 +82,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
         private int _runIndex;
         private string _failedId;
         private double _failedUntil;
+        private int _runUndoGroup = -1;
 
         private GUIStyle _itemLabelStyle;
         private GUIStyle _itemSubStyle;
@@ -302,15 +304,14 @@ namespace Mmzkworks.muShortcutPanel.Editor
                 return;
             }
 
-            var selected = SingleSelected();
-            var multiCount = _editMode && selected == null ? _selectedIds.Count : 0;
-            var canvasRect = GUILayoutUtility.GetRect(0f, 0f, GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
-            DrawCanvas(canvasRect);
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                var canvasRect = GUILayoutUtility.GetRect(0f, 0f, GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
+                DrawCanvas(canvasRect);
 
-            if (selected != null)
-                DrawPropertyPanel(selected);
-            else if (multiCount > 1)
-                EditorGUILayout.HelpBox($"{multiCount} items selected. Drag to move them together, Delete to remove.", MessageType.None);
+                // Properties of the selected element, docked on the right in edit mode.
+                if (_editMode) DrawSidePanel();
+            }
 
             // Pickers requested from a context menu are opened here, where a GUI context exists.
             if (_pendingMenuPicker && Event.current.type == EventType.Layout)
@@ -320,6 +321,14 @@ namespace Mmzkworks.muShortcutPanel.Editor
                 var windowPos = canvasPos - _scroll + _lastCanvasRect.position;
                 MenuCommandDropdown.Show(new Rect(windowPos, new Vector2(1f, 1f)),
                     path => AddItem(NewMenuItem(path, canvasPos)));
+            }
+            if (_pendingCommandPicker && Event.current.type == EventType.Layout)
+            {
+                _pendingCommandPicker = false;
+                var canvasPos = _pendingMenuPickerPos;
+                var windowPos = canvasPos - _scroll + _lastCanvasRect.position;
+                ShortcutCommandDropdown.Show(new Rect(windowPos, new Vector2(1f, 1f)),
+                    id => AddItem(NewCommandItem(id, canvasPos)));
             }
         }
 
@@ -381,6 +390,13 @@ namespace Mmzkworks.muShortcutPanel.Editor
                     {
                         var pos = NextFreePosition();
                         MenuCommandDropdown.Show(menuRect, path => AddItem(NewMenuItem(path, pos)));
+                    }
+                    var commandContent = new GUIContent("+ Command", "Add an automation command (Prefab / GameObject / Scene / Asset)");
+                    var commandRect = GUILayoutUtility.GetRect(commandContent, EditorStyles.toolbarDropDown);
+                    if (EditorGUI.DropdownButton(commandRect, commandContent, FocusType.Passive, EditorStyles.toolbarDropDown))
+                    {
+                        var pos = NextFreePosition();
+                        ShortcutCommandDropdown.Show(commandRect, id => AddItem(NewCommandItem(id, pos)));
                     }
                     if (GUILayout.Button(new GUIContent("+ Action",
                             "Add an action. Drag from its bottom knob over other elements to run them in that order"), EditorStyles.toolbarButton))
@@ -620,12 +636,33 @@ namespace Mmzkworks.muShortcutPanel.Editor
             style.Draw(Inset(r, 6f, 2f), new GUIContent(text), false, false, false, false);
         }
 
+        /// <summary>
+        /// Background per kind, so things that "do" something stand out from plain links:
+        /// assets / URLs are neutral grey, menu commands and commands are blue-tinted, actions are magenta-tinted.
+        /// </summary>
+        private static Color ItemBackground(string kind, bool pro, bool hover)
+        {
+            Color bg;
+            switch (kind)
+            {
+                case ShortcutItemKind.Menu:
+                case ShortcutItemKind.Command:
+                    bg = pro ? new Color(0.22f, 0.24f, 0.275f) : new Color(0.87f, 0.89f, 0.93f);
+                    break;
+                case ShortcutItemKind.Action:
+                    bg = pro ? new Color(0.31f, 0.18f, 0.26f) : new Color(0.95f, 0.82f, 0.90f);
+                    break;
+                default:
+                    bg = pro ? new Color(0.24f, 0.24f, 0.24f) : new Color(0.90f, 0.90f, 0.90f);
+                    break;
+            }
+            return hover ? Color.Lerp(bg, Color.white, pro ? 0.08f : 0.45f) : bg;
+        }
+
         private void DrawShortcutItem(ShortcutPanelItem item, Rect r, bool hover)
         {
             var pro = EditorGUIUtility.isProSkin;
-            var bg = pro ? new Color(0.24f, 0.24f, 0.24f) : new Color(0.90f, 0.90f, 0.90f);
-            if (hover) bg = pro ? new Color(0.30f, 0.30f, 0.30f) : new Color(0.97f, 0.97f, 0.97f);
-            DrawRoundedRect(r, bg);
+            DrawRoundedRect(r, ItemBackground(item.kind, pro, hover));
 
             var name = DisplayName(item, out var missing);
             var icon = Icon(item, missing);
@@ -888,6 +925,13 @@ namespace Mmzkworks.muShortcutPanel.Editor
                 return !string.IsNullOrEmpty(item.title) ? item.title : ShortcutPanelMenuPath.DefaultTitle(item.menu);
             if (item.kind == ShortcutItemKind.Action)
                 return !string.IsNullOrEmpty(item.title) ? item.title : "Action";
+            if (item.kind == ShortcutItemKind.Command)
+            {
+                var command = ShortcutCommandRegistry.Find(item.command);
+                missing = command == null;
+                if (!string.IsNullOrEmpty(item.title)) return item.title;
+                return command != null ? command.Name : $"{item.command} (unknown)";
+            }
             if (item.kind == ShortcutItemKind.Label)
                 return item.title;
 
@@ -903,6 +947,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
         {
             if (item.kind == ShortcutItemKind.Url) return item.url;
             if (item.kind == ShortcutItemKind.Action) return StepCountText(item);
+            if (item.kind == ShortcutItemKind.Command) return CommandSummary(item);
             if (item.kind == ShortcutItemKind.Menu)
             {
                 var target = ShortcutPanelMenuPath.TargetLabel(ShortcutPanelMenuPath.TargetOf(item.menu));
@@ -917,6 +962,13 @@ namespace Mmzkworks.muShortcutPanel.Editor
             switch (item.kind)
             {
                 case ShortcutItemKind.Url: return item.url;
+                case ShortcutItemKind.Command:
+                {
+                    var command = ShortcutCommandRegistry.Find(item.command);
+                    if (command == null) return $"Unknown command: {item.command}";
+                    var summary = command.Summary(item);
+                    return string.IsNullOrEmpty(summary) ? command.Description : $"{command.Description}{Environment.NewLine}{summary}";
+                }
                 case ShortcutItemKind.Action:
                     return item.steps.Count == 0
                         ? "No steps. In Edit Mode, drag from the bottom knob over other elements."
@@ -935,6 +987,11 @@ namespace Mmzkworks.muShortcutPanel.Editor
             {
                 case ShortcutItemKind.Action:
                     return item.steps.Count == 0 ? "(no steps)" : string.Join(" → ", StepNames(item));
+                case ShortcutItemKind.Command:
+                {
+                    var summary = CommandSummary(item);
+                    return string.IsNullOrEmpty(summary) ? item.command : $"{item.command}: {summary}";
+                }
                 case ShortcutItemKind.Asset:
                     return ResolveAssetPath(item) ?? $"(missing) {item.path}";
                 case ShortcutItemKind.Url:
@@ -977,6 +1034,12 @@ namespace Mmzkworks.muShortcutPanel.Editor
             _fullPathStyle.Draw(r, content, false, false, false, false);
         }
 
+        private static string CommandSummary(ShortcutPanelItem item)
+        {
+            var command = ShortcutCommandRegistry.Find(item.command);
+            return command == null ? $"Unknown command: {item.command}" : command.Summary(item);
+        }
+
         private static string StepCountText(ShortcutPanelItem action) =>
             action.steps.Count == 1 ? "1 step" : $"{action.steps.Count} steps";
 
@@ -1001,6 +1064,9 @@ namespace Mmzkworks.muShortcutPanel.Editor
                     return KindIcon(UrlIconNames);
                 case ShortcutItemKind.Action:
                     return KindIcon(ActionIconNames);
+                case ShortcutItemKind.Command:
+                    return missing ? EditorGUIUtility.IconContent("console.warnicon.sml").image
+                        : ShortcutCommandIcons.For(ShortcutCommandRegistry.Find(item.command));
                 case ShortcutItemKind.Menu:
                     switch (ShortcutPanelMenuPath.TargetOf(item.menu))
                     {
@@ -1423,11 +1489,28 @@ namespace Mmzkworks.muShortcutPanel.Editor
                     RunAction(item);
                     break;
                 case ShortcutItemKind.Menu:
-                    // Run outside OnGUI: menu commands may open dialogs or change the window layout.
+                case ShortcutItemKind.Command:
+                    // Run outside OnGUI: commands may open dialogs, change scenes or the window layout.
                     EditorApplication.delayCall += () =>
                     {
-                        if (!TryActivateNow(item, out var menuError) && this != null)
-                            ShowNotification(new GUIContent(menuError));
+                        if (this == null) return;
+                        bool ok;
+                        string runError;
+                        try
+                        {
+                            Undo.IncrementCurrentGroup();
+                            Undo.SetCurrentGroupName(DisplayName(item, out _));
+                            ok = TryActivateNow(item, out runError);
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.LogException(ex);
+                            ok = false;
+                            runError = ex.Message;
+                        }
+                        if (ok) return;
+                        Debug.LogWarning($"[muShortcutPanel] {DisplayName(item, out _)}: {runError}");
+                        ShowNotification(new GUIContent(runError));
                     };
                     break;
                 default:
@@ -1468,10 +1551,31 @@ namespace Mmzkworks.muShortcutPanel.Editor
                     return true;
                 case ShortcutItemKind.Menu:
                     return TryExecuteMenuCommand(item.menu, out error);
+                case ShortcutItemKind.Command:
+                    return TryRunCommand(item, out error);
                 default:
                     error = $"Cannot run: {DisplayName(item, out _)}";
                     return false;
             }
+        }
+
+        private static bool TryRunCommand(ShortcutPanelItem item, out string error)
+        {
+            var command = ShortcutCommandRegistry.Find(item.command);
+            if (command == null)
+            {
+                error = $"Unknown command: {item.command}";
+                return false;
+            }
+
+            var ctx = new ShortcutCommandContext(command, item);
+            if (command.Run(ctx))
+            {
+                error = null;
+                return true;
+            }
+            error = string.IsNullOrEmpty(ctx.Error) ? $"{command.Name} failed" : ctx.Error;
+            return false;
         }
 
         private static bool TryExecuteMenuCommand(string menuPath, out string error)
@@ -1526,6 +1630,11 @@ namespace Mmzkworks.muShortcutPanel.Editor
             _runSteps = steps;
             _runIndex = 0;
             _failedId = null;
+
+            // Everything the steps record goes into one Undo entry ("Action: <name>"), collapsed in StopRun.
+            Undo.IncrementCurrentGroup();
+            Undo.SetCurrentGroupName($"Action: {DisplayName(action, out _)}");
+            _runUndoGroup = Undo.GetCurrentGroup();
             Repaint();
             EditorApplication.delayCall += RunNextStep;
         }
@@ -1581,6 +1690,11 @@ namespace Mmzkworks.muShortcutPanel.Editor
         private void StopRun()
         {
             if (_runActionId == null && _runSteps == null) return;
+            if (_runUndoGroup >= 0)
+            {
+                Undo.CollapseUndoOperations(_runUndoGroup);
+                _runUndoGroup = -1;
+            }
             _runActionId = null;
             _runSteps = null;
             _runIndex = 0;
@@ -1635,6 +1749,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
                 var activateLabel = hit.kind == ShortcutItemKind.Url ? "Open URL"
                     : hit.kind == ShortcutItemKind.Menu ? "Execute Command"
                     : hit.kind == ShortcutItemKind.Action ? "Run Action"
+                    : hit.kind == ShortcutItemKind.Command ? "Run Command"
                     : "Select in Project";
                 menu.AddItem(new GUIContent(activateLabel), false, () => Activate(hit));
                 if (hit.kind == ShortcutItemKind.Asset)
@@ -1658,6 +1773,8 @@ namespace Mmzkworks.muShortcutPanel.Editor
                         break;
                     case ShortcutItemKind.Menu:
                         menu.AddItem(new GUIContent("Copy Menu Path"), false, () => EditorGUIUtility.systemCopyBuffer = hit.menu);
+                        break;
+                    case ShortcutItemKind.Command:
                         break;
                     case ShortcutItemKind.Action:
                         if (_editMode && hit.steps.Count > 0)
@@ -1689,6 +1806,12 @@ namespace Mmzkworks.muShortcutPanel.Editor
                     menu.AddItem(new GUIContent("Add Menu Command Here..."), false, () =>
                     {
                         _pendingMenuPicker = true;
+                        _pendingMenuPickerPos = pos;
+                        Repaint();
+                    });
+                    menu.AddItem(new GUIContent("Add Command Here..."), false, () =>
+                    {
+                        _pendingCommandPicker = true;
                         _pendingMenuPickerPos = pos;
                         Repaint();
                     });
@@ -1828,6 +1951,14 @@ namespace Mmzkworks.muShortcutPanel.Editor
             Rect = new Rect(pos, ShortcutPanelLayout.DefaultShortcutSize)
         };
 
+        private static ShortcutPanelItem NewCommandItem(string commandId, Vector2 pos) => new ShortcutPanelItem
+        {
+            id = ShortcutPanelItem.NewId(),
+            kind = ShortcutItemKind.Command,
+            command = commandId,
+            Rect = new Rect(pos, ShortcutPanelLayout.DefaultShortcutSize)
+        };
+
         private void ClearSteps(ShortcutPanelItem action)
         {
             if (action.steps.Count == 0) return;
@@ -1844,6 +1975,78 @@ namespace Mmzkworks.muShortcutPanel.Editor
         }
 
         // ------------------------------------------------------------------ property panel (edit mode)
+
+        private const string SidePanelWidthPrefKey = "Mmzkworks.muShortcutPanel.SidePanelWidth";
+        private const float SidePanelMinWidth = 200f;
+        private const float SidePanelDefaultWidth = 280f;
+        private const float SplitterWidth = 4f;
+
+        private float _sidePanelWidth = -1f;
+        private Vector2 _sidePanelScroll;
+        private float _splitterStartMouseX;
+        private float _splitterStartWidth;
+
+        /// <summary>Right-hand panel: properties of the single selected element (or a hint). The left edge drags to resize.</summary>
+        private void DrawSidePanel()
+        {
+            if (_sidePanelWidth < 0f) _sidePanelWidth = EditorPrefs.GetFloat(SidePanelWidthPrefKey, SidePanelDefaultWidth);
+            // Leave the canvas at least a little room in a narrow window.
+            var maxWidth = Mathf.Max(SidePanelMinWidth, position.width - 160f);
+            var width = Mathf.Clamp(_sidePanelWidth, SidePanelMinWidth, maxWidth);
+
+            var splitter = GUILayoutUtility.GetRect(SplitterWidth, 0f, GUILayout.Width(SplitterWidth), GUILayout.ExpandHeight(true));
+            HandleSplitter(splitter);
+
+            using (new EditorGUILayout.VerticalScope(GUILayout.Width(width), GUILayout.ExpandHeight(true)))
+            {
+                _sidePanelScroll = EditorGUILayout.BeginScrollView(_sidePanelScroll);
+
+                var selected = SingleSelected();
+                if (selected != null)
+                    DrawPropertyPanel(selected);
+                else if (_selectedIds.Count > 1)
+                    EditorGUILayout.HelpBox($"{_selectedIds.Count} items selected. Drag to move them together, Delete to remove.", MessageType.None);
+                else
+                    EditorGUILayout.HelpBox("Select an element to edit its properties.", MessageType.None);
+
+                EditorGUILayout.EndScrollView();
+            }
+        }
+
+        private void HandleSplitter(Rect splitter)
+        {
+            var e = Event.current;
+            var id = GUIUtility.GetControlID(FocusType.Passive);
+            EditorGUIUtility.AddCursorRect(splitter, MouseCursor.ResizeHorizontal);
+
+            switch (e.GetTypeForControl(id))
+            {
+                case EventType.Repaint:
+                {
+                    var line = new Rect(splitter.center.x - 0.5f, splitter.y, 1f, splitter.height);
+                    EditorGUI.DrawRect(line, EditorGUIUtility.isProSkin ? new Color(0.1f, 0.1f, 0.1f) : new Color(0.6f, 0.6f, 0.6f));
+                    break;
+                }
+                case EventType.MouseDown when e.button == 0 && splitter.Contains(e.mousePosition):
+                    GUIUtility.hotControl = id;
+                    _splitterStartMouseX = e.mousePosition.x;
+                    _splitterStartWidth = _sidePanelWidth;
+                    e.Use();
+                    break;
+                case EventType.MouseDrag when GUIUtility.hotControl == id:
+                    // Dragging left widens the panel.
+                    _sidePanelWidth = Mathf.Clamp(_splitterStartWidth - (e.mousePosition.x - _splitterStartMouseX),
+                        SidePanelMinWidth, Mathf.Max(SidePanelMinWidth, position.width - 160f));
+                    e.Use();
+                    Repaint();
+                    break;
+                case EventType.MouseUp when GUIUtility.hotControl == id:
+                    GUIUtility.hotControl = 0;
+                    EditorPrefs.SetFloat(SidePanelWidthPrefKey, _sidePanelWidth);
+                    e.Use();
+                    break;
+            }
+        }
 
         private void DrawPropertyPanel(ShortcutPanelItem item)
         {
@@ -1918,6 +2121,10 @@ namespace Mmzkworks.muShortcutPanel.Editor
                             }
                         }
                         break;
+
+                    case ShortcutItemKind.Command:
+                        DrawCommandFields(item);
+                        break;
                 }
 
                 item.fontSize = Mathf.Clamp(EditorGUILayout.IntField(new GUIContent("Font", "0 = default"), item.fontSize, GUILayout.Width(108f)), 0, 64);
@@ -1943,6 +2150,116 @@ namespace Mmzkworks.muShortcutPanel.Editor
 
                 EditorGUIUtility.labelWidth = prevLabelWidth;
             }
+        }
+
+        private string _typeCheckName;
+        private string _typeCheckError;
+
+        /// <summary>Title plus one field per command parameter (generated from the parameter kinds).</summary>
+        private void DrawCommandFields(ShortcutPanelItem item)
+        {
+            var command = ShortcutCommandRegistry.Find(item.command);
+            if (command == null)
+            {
+                EditorGUILayout.HelpBox($"Unknown command: {item.command}", MessageType.Warning);
+                return;
+            }
+
+            GUILayout.Label($"{command.Category} / {command.Name}", EditorStyles.miniBoldLabel);
+            GUILayout.Label(command.Description, EditorStyles.wordWrappedMiniLabel);
+
+            var prevLabelWidth = EditorGUIUtility.labelWidth;
+            EditorGUIUtility.labelWidth = 84f;
+            item.title = EditorGUILayout.TextField(new GUIContent("Title", $"Empty = \"{command.Name}\""), item.title);
+
+            foreach (var p in command.Params)
+            {
+                if (!command.IsVisible(p, item)) continue;
+                var label = new GUIContent(p.Label, p.Tooltip);
+                var current = ShortcutCommandContext.Value(command, item, p.Key);
+                var next = current;
+
+                switch (p.Kind)
+                {
+                    case ShortcutParamKind.Bool:
+                        next = EditorGUILayout.Toggle(label, current == "true") ? "true" : "false";
+                        break;
+
+                    case ShortcutParamKind.Choice:
+                    {
+                        var index = Mathf.Max(0, Array.IndexOf(p.Choices, current));
+                        next = p.Choices[EditorGUILayout.Popup(label, index, p.Choices)];
+                        break;
+                    }
+
+                    case ShortcutParamKind.Asset:
+                    {
+                        var path = string.IsNullOrEmpty(current) ? null : AssetDatabase.GUIDToAssetPath(current);
+                        var asset = string.IsNullOrEmpty(path) ? null : AssetDatabase.LoadAssetAtPath(path, p.AssetType);
+                        var picked = EditorGUILayout.ObjectField(label, asset, p.AssetType, false);
+                        if (picked != asset)
+                            next = picked != null ? AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(picked)) : "";
+                        break;
+                    }
+
+                    case ShortcutParamKind.Vector3:
+                    {
+                        ShortcutCommandUtil.TryParseVector3(current, out var v);
+                        var edited = EditorGUILayout.Vector3Field(label, v);
+                        if (edited != v) next = ShortcutCommandUtil.FormatVector3(edited);
+                        break;
+                    }
+
+                    case ShortcutParamKind.Folder:
+                        using (new EditorGUILayout.HorizontalScope())
+                        {
+                            next = EditorGUILayout.TextField(label, current);
+                            if (GUILayout.Button(new GUIContent("...", "Pick a folder"), EditorStyles.miniButton, GUILayout.Width(28f)))
+                            {
+                                var start = ShortcutCommandUtil.NormalizeAssetFolder(current) ?? "Assets";
+                                var abs = EditorUtility.OpenFolderPanel(p.Label, FullPath(start), "");
+                                var rel = ShortcutCommandUtil.ToProjectRelative(abs, ProjectRoot);
+                                if (rel != null)
+                                {
+                                    item.SetArg(p.Key, rel);
+                                    MarkDirty();
+                                }
+                                else if (!string.IsNullOrEmpty(abs))
+                                {
+                                    ShowNotification(new GUIContent("Pick a folder inside this project"));
+                                }
+                                // The modal dialog broke this layout pass; end it here (the value is already stored).
+                                GUIUtility.ExitGUI();
+                            }
+                        }
+                        break;
+
+                    case ShortcutParamKind.TypeName:
+                        next = EditorGUILayout.TextField(label, current);
+                        if (!string.IsNullOrWhiteSpace(next))
+                        {
+                            if (next != _typeCheckName)
+                            {
+                                _typeCheckName = next;
+                                ShortcutCommandUtil.ResolveComponentType(next, out _typeCheckError);
+                            }
+                            if (_typeCheckError != null) EditorGUILayout.HelpBox(_typeCheckError, MessageType.Warning);
+                        }
+                        break;
+
+                    default:
+                        next = EditorGUILayout.TextField(label, current);
+                        break;
+                }
+
+                if (next != current)
+                {
+                    item.SetArg(p.Key, next);
+                    GUI.changed = true;
+                }
+            }
+
+            EditorGUIUtility.labelWidth = prevLabelWidth;
         }
     }
 }

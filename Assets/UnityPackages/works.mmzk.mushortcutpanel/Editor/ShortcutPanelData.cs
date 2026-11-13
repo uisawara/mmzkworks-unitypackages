@@ -15,8 +15,29 @@ namespace Mmzkworks.muShortcutPanel.Editor
         /// <summary>Runs the items listed in <see cref="ShortcutPanelItem.steps"/> one after another.</summary>
         public const string Action = "action";
 
+        /// <summary>Runs a built-in automation command (<see cref="ShortcutPanelItem.command"/>) with arguments.</summary>
+        public const string Command = "command";
+
         public static bool IsValid(string kind) =>
-            kind == Asset || kind == Url || kind == Label || kind == Menu || kind == Action;
+            kind == Asset || kind == Url || kind == Label || kind == Menu || kind == Action || kind == Command;
+    }
+
+    /// <summary>One argument of a command item. A list of these stands in for a dictionary (JsonUtility cannot store one).</summary>
+    [Serializable]
+    internal sealed class ShortcutCommandArg
+    {
+        public string key = "";
+        public string value = "";
+
+        public ShortcutCommandArg()
+        {
+        }
+
+        public ShortcutCommandArg(string key, string value)
+        {
+            this.key = key;
+            this.value = value;
+        }
     }
 
     /// <summary>One element placed on the panel. Position and size are in panel (content) coordinates.</summary>
@@ -50,6 +71,34 @@ namespace Mmzkworks.muShortcutPanel.Editor
         /// <summary>Item ids run in order (action items). Nested actions are expanded at run time.</summary>
         public List<string> steps = new List<string>();
 
+        /// <summary>Command id (command items), e.g. "prefab.create".</summary>
+        public string command = "";
+
+        /// <summary>Command arguments (command items). Assets are stored as GUIDs, vectors as "x,y,z", bools as "true"/"false".</summary>
+        public List<ShortcutCommandArg> args = new List<ShortcutCommandArg>();
+
+        public string GetArg(string key)
+        {
+            if (args == null) return null;
+            foreach (var a in args)
+            {
+                if (a != null && a.key == key) return a.value;
+            }
+            return null;
+        }
+
+        public void SetArg(string key, string value)
+        {
+            args ??= new List<ShortcutCommandArg>();
+            foreach (var a in args)
+            {
+                if (a == null || a.key != key) continue;
+                a.value = value ?? "";
+                return;
+            }
+            args.Add(new ShortcutCommandArg(key, value ?? ""));
+        }
+
         public Rect Rect
         {
             get => new Rect(x, y, width, height);
@@ -67,6 +116,14 @@ namespace Mmzkworks.muShortcutPanel.Editor
             var c = (ShortcutPanelItem)MemberwiseClone();
             c.id = NewId();
             c.steps = steps != null ? new List<string>(steps) : new List<string>();
+            c.args = new List<ShortcutCommandArg>();
+            if (args != null)
+            {
+                foreach (var a in args)
+                {
+                    if (a != null) c.args.Add(new ShortcutCommandArg(a.key, a.value));
+                }
+            }
             return c;
         }
 
@@ -236,6 +293,10 @@ namespace Mmzkworks.muShortcutPanel.Editor
                 item.menu ??= "";
                 item.steps ??= new List<string>();
                 item.steps.RemoveAll(string.IsNullOrEmpty);
+                item.command ??= "";
+                item.args ??= new List<ShortcutCommandArg>();
+                item.args.RemoveAll(a => a == null || string.IsNullOrEmpty(a.key));
+                foreach (var a in item.args) a.value ??= "";
                 item.x = Mathf.Max(0f, item.x);
                 item.y = Mathf.Max(0f, item.y);
                 item.width = Mathf.Max(ShortcutPanelLayout.MinWidth, item.width);
