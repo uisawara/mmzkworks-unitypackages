@@ -39,6 +39,65 @@ namespace Mmzkworks.muShortcutPanel.Tests
             Assert.That(back.items[2].fontSize, Is.EqualTo(14));
         }
 
+        [Test]
+        public void RoundTrip_KeepsActionSteps()
+        {
+            var doc = new ShortcutPanelDocument();
+            doc.items.Add(new ShortcutPanelItem
+            {
+                id = "act", kind = ShortcutItemKind.Action, steps = new List<string> { "b", "a" },
+                Rect = new Rect(0, 0, 100, 24)
+            });
+
+            var back = ShortcutPanelSerializer.FromJson(ShortcutPanelSerializer.ToJson(doc));
+
+            Assert.That(back.items[0].kind, Is.EqualTo(ShortcutItemKind.Action));
+            Assert.That(back.items[0].steps, Is.EqualTo(new[] { "b", "a" }));
+        }
+
+        [Test]
+        public void FromJson_OldFileWithoutSteps_GetsEmptyList()
+        {
+            var doc = ShortcutPanelSerializer.FromJson("{\"items\":[{\"id\":\"m\",\"kind\":\"menu\",\"width\":100,\"height\":24}]}");
+            Assert.That(doc.items[0].steps, Is.Not.Null.And.Empty);
+        }
+
+        [Test]
+        public void Normalize_DropsEmptyStepIds()
+        {
+            var doc = new ShortcutPanelDocument();
+            doc.items.Add(new ShortcutPanelItem { id = "act", kind = ShortcutItemKind.Action, steps = new List<string> { "a", "", null, "b" } });
+
+            ShortcutPanelSerializer.Normalize(doc);
+
+            Assert.That(doc.items[0].steps, Is.EqualTo(new[] { "a", "b" }));
+        }
+
+        [Test]
+        public void Clone_DoesNotShareSteps()
+        {
+            var original = new ShortcutPanelItem { id = "act", kind = ShortcutItemKind.Action, steps = new List<string> { "a" } };
+
+            var clone = original.Clone();
+            clone.steps.Add("b");
+
+            Assert.That(clone.id, Is.Not.EqualTo(original.id));
+            Assert.That(original.steps, Is.EqualTo(new[] { "a" }));
+        }
+
+        [Test]
+        public void RemoveStepReferences_RemovesFromEveryAction()
+        {
+            var doc = new ShortcutPanelDocument();
+            doc.items.Add(new ShortcutPanelItem { id = "x", kind = ShortcutItemKind.Action, steps = new List<string> { "a", "b", "c" } });
+            doc.items.Add(new ShortcutPanelItem { id = "y", kind = ShortcutItemKind.Action, steps = new List<string> { "b" } });
+
+            doc.RemoveStepReferences(new[] { "b", "c" });
+
+            Assert.That(doc.items[0].steps, Is.EqualTo(new[] { "a" }));
+            Assert.That(doc.items[1].steps, Is.Empty);
+        }
+
         [TestCase(null)]
         [TestCase("")]
         [TestCase("   ")]

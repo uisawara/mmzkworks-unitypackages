@@ -11,6 +11,12 @@ namespace Mmzkworks.muShortcutPanel.Editor
         public const string Url = "url";
         public const string Label = "label";
         public const string Menu = "menu";
+
+        /// <summary>Runs the items listed in <see cref="ShortcutPanelItem.steps"/> one after another.</summary>
+        public const string Action = "action";
+
+        public static bool IsValid(string kind) =>
+            kind == Asset || kind == Url || kind == Label || kind == Menu || kind == Action;
     }
 
     /// <summary>One element placed on the panel. Position and size are in panel (content) coordinates.</summary>
@@ -41,6 +47,9 @@ namespace Mmzkworks.muShortcutPanel.Editor
 
         public int fontSize;
 
+        /// <summary>Item ids run in order (action items). Nested actions are expanded at run time.</summary>
+        public List<string> steps = new List<string>();
+
         public Rect Rect
         {
             get => new Rect(x, y, width, height);
@@ -57,6 +66,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
         {
             var c = (ShortcutPanelItem)MemberwiseClone();
             c.id = NewId();
+            c.steps = steps != null ? new List<string>(steps) : new List<string>();
             return c;
         }
 
@@ -77,6 +87,16 @@ namespace Mmzkworks.muShortcutPanel.Editor
                 if (item.id == id) return item;
             }
             return null;
+        }
+
+        /// <summary>Removes the given item ids from every action's steps (e.g. after those items were deleted).</summary>
+        public void RemoveStepReferences(ICollection<string> ids)
+        {
+            if (ids == null || ids.Count == 0) return;
+            foreach (var item in items)
+            {
+                item.steps?.RemoveAll(ids.Contains);
+            }
         }
     }
 
@@ -111,6 +131,15 @@ namespace Mmzkworks.muShortcutPanel.Editor
         {
             return new Rect(itemRect.xMax - ResizeHandleSize, itemRect.yMax - ResizeHandleSize,
                 ResizeHandleSize, ResizeHandleSize);
+        }
+
+        public const float ActionKnobSize = 12f;
+
+        /// <summary>Knob at the bottom center of an action item; drag from it to trace the steps.</summary>
+        public static Rect ActionKnobRect(Rect itemRect)
+        {
+            return new Rect(itemRect.center.x - ActionKnobSize * 0.5f, itemRect.yMax - ActionKnobSize * 0.5f,
+                ActionKnobSize, ActionKnobSize);
         }
 
         public static Rect RectFromPoints(Vector2 a, Vector2 b)
@@ -197,7 +226,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
                     seen.Add(item.id);
                 }
 
-                if (item.kind != ShortcutItemKind.Asset && item.kind != ShortcutItemKind.Url && item.kind != ShortcutItemKind.Menu)
+                if (!ShortcutItemKind.IsValid(item.kind))
                     item.kind = ShortcutItemKind.Label;
 
                 item.title ??= "";
@@ -205,6 +234,8 @@ namespace Mmzkworks.muShortcutPanel.Editor
                 item.path ??= "";
                 item.url ??= "";
                 item.menu ??= "";
+                item.steps ??= new List<string>();
+                item.steps.RemoveAll(string.IsNullOrEmpty);
                 item.x = Mathf.Max(0f, item.x);
                 item.y = Mathf.Max(0f, item.y);
                 item.width = Mathf.Max(ShortcutPanelLayout.MinWidth, item.width);

@@ -29,11 +29,14 @@ https://github.com/uisawara/mmzkworks-unitypackages.git?path=Assets/UnityPackage
 
 ツールバーの `Path` トグルで、各ショートカットの下にフルパス(アセットパス / URL / メニューパス)を表示するかを On/Off できます。
 
+どちらのモードでも、マウスの中ボタンでドラッグするとパネルをスクロールできます。
+
 ### 利用モード
 
 - アセット / フォルダのショートカットをクリックすると、Project ウィンドウで選択されます。
 - URL のショートカットをクリックすると、標準ブラウザで開きます。
 - メニューコマンドのショートカットをクリックすると、そのメニューを実行します(Project / Hierarchy のコマンドはそれぞれのウィンドウの現在の選択に対して実行されます)。
+- Action をクリックすると、線でつないだ要素を順に実行します([Action](#action) を参照)。
 - ショートカットをドラッグすると、Inspector のフィールドなどへそのままドラッグ & ドロップできます。
 - 右クリックで `Copy Path` / `Copy URL` や `Open Asset` が使えます。
 
@@ -44,7 +47,19 @@ https://github.com/uisawara/mmzkworks-unitypackages.git?path=Assets/UnityPackage
 - 選択中の要素は、ウィンドウ下部でテキスト・URL・タイトル・フォントサイズ・位置とサイズを編集できます。
 - `+ Label` でラベルを、`+ URL` で URL ショートカットを追加します(クリップボードに URL があればそれを使います)。
 - `+ Menu`(または右クリックの `Add Menu Command Here...`)で、メニューコマンドを検索して選べるピッカーが開きます。`Editor Menu` / `Project Window (Assets)` / `Hierarchy Window (GameObject)` に分かれています。
+- `+ Action`(または右クリックの `Add Action Here`)で Action を追加します([Action](#action) を参照)。
 - 右クリックで複製・前面へ・背面へ・削除。`Delete` キーでも削除できます。
+
+## Action
+
+パネル上の複数の要素を、順番にまとめて実行するボタンです。
+
+- 編集モードで Action 下部の丸いノブからドラッグし、実行したい要素をなぞります。なぞった順に要素が線でつながります。もう一度なぞると線は置き換わります。同じ要素は 1 回だけ追加され、ラベルは対象外です。
+- Action にマウスを乗せるか選択すると、各要素に実行順の番号が表示されます。ウィンドウ下部のプロパティにも一覧が出て、`Clear` で消せます。
+- 利用モードで Action をクリックすると、順に実行します。アセットは Project ウィンドウで選択、URL は開き、メニューコマンドは実行します。「アセットを選択 → Project ウィンドウ向けのコマンドを実行」のようにつなげられます。
+- 途中で失敗すると(アセットが見つからない、URL が不正、メニューコマンドが実行できない)、そこで止まります。失敗した要素が赤枠で示され、理由が通知されます。
+- Action から別の Action をつなぐと、その中身がその位置で実行されます。自分自身を含む循環になっている場合はエラーとなり、何も実行しません。
+- 要素を削除すると、すべての Action からも外れます。
 
 ## ショートカットの追加
 
@@ -66,7 +81,8 @@ https://github.com/uisawara/mmzkworks-unitypackages.git?path=Assets/UnityPackage
         { "id": "…", "kind": "asset", "guid": "…", "path": "Assets/Scenes", "x": 8, "y": 8, "width": 176, "height": 24, … },
         { "id": "…", "kind": "url", "url": "https://docs.unity3d.com/", "title": "Unity Docs", … },
         { "id": "…", "kind": "menu", "menu": "GameObject/Create Empty", … },
-        { "id": "…", "kind": "label", "title": "Scenes", "fontSize": 14, … }
+        { "id": "…", "kind": "label", "title": "Scenes", "fontSize": 14, … },
+        { "id": "…", "kind": "action", "title": "Setup", "steps": ["<item id>", "<item id>"], … }
     ]
 }
 ```

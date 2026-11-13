@@ -43,7 +43,9 @@ namespace Mmzkworks.muShortcutPanel.Editor
             Move,
             Resize,
             Press,
-            Box
+            Box,
+            Link,
+            Pan
         }
 
         private PointerOp _op;
@@ -62,6 +64,23 @@ namespace Mmzkworks.muShortcutPanel.Editor
         private Texture2D _gridDotTexture;
         private bool _gridDotTextureIsPro;
         private Vector2 _lastCanvasMouse = new Vector2(16f, 16f);
+
+        // Action tracing (edit mode): the cursor end of the rubber-band line, and the steps before the drag started.
+        private Vector2 _linkCursor;
+
+        // Middle-button drag scrolls the canvas: mouse position (window coordinates) and scroll at the start.
+        private Vector2 _panStartMouse;
+        private Vector2 _panStartScroll;
+        private Vector2 _maxScroll;
+        private List<string> _linkStartSteps = new List<string>();
+
+        // Action run (use mode). Steps are run one per delayCall so the editor can process each command in between.
+        private const double FailedHighlightSeconds = 3.0;
+        private string _runActionId;
+        private List<ShortcutPanelItem> _runSteps;
+        private int _runIndex;
+        private string _failedId;
+        private double _failedUntil;
 
         private GUIStyle _itemLabelStyle;
         private GUIStyle _itemSubStyle;
@@ -165,6 +184,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
             _loadedWriteTime = File.GetLastWriteTimeUtc(full);
             _dirty = false;
             _op = PointerOp.None;
+            StopRun();
             PruneSelection();
 
             EditorPrefs.SetString(LastFilePrefKey, _filePath);
@@ -192,6 +212,12 @@ namespace Mmzkworks.muShortcutPanel.Editor
             // Don't write while the user is still dragging; the drag ends with MarkDirty anyway.
             if (_dirty && _op == PointerOp.None && EditorApplication.timeSinceStartup >= _saveDueTime)
                 Flush();
+
+            if (_failedId != null && EditorApplication.timeSinceStartup >= _failedUntil)
+            {
+                _failedId = null;
+                Repaint();
+            }
         }
 
         private void Flush()
@@ -356,6 +382,9 @@ namespace Mmzkworks.muShortcutPanel.Editor
                         var pos = NextFreePosition();
                         MenuCommandDropdown.Show(menuRect, path => AddItem(NewMenuItem(path, pos)));
                     }
+                    if (GUILayout.Button(new GUIContent("+ Action",
+                            "Add an action. Drag from its bottom knob over other elements to run them in that order"), EditorStyles.toolbarButton))
+                        AddItem(NewActionItem(NextFreePosition()));
                     GUILayout.Space(8f);
                 }
 
@@ -374,6 +403,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
                     if (newEdit != _editMode)
                     {
                         _editMode = newEdit;
+                        if (_op == PointerOp.Link) MarkDirty(); // keep what was traced so far
                         if (_op != PointerOp.None) EndOp();
                         GUI.FocusControl(null);
                     }
@@ -441,17 +471,23 @@ namespace Mmzkworks.muShortcutPanel.Editor
             var viewRect = new Rect(0f, 0f,
                 Mathf.Max(contentSize.x, canvasRect.width - 16f),
                 Mathf.Max(contentSize.y, canvasRect.height - 16f));
+            _maxScroll = new Vector2(
+                Mathf.Max(0f, viewRect.width - (canvasRect.width - 16f)),
+                Mathf.Max(0f, viewRect.height - (canvasRect.height - 16f)));
+            if (_op == PointerOp.Pan) EditorGUIUtility.AddCursorRect(canvasRect, MouseCursor.Pan);
 
             _scroll = GUI.BeginScrollView(canvasRect, _scroll, viewRect);
             {
                 if (e.type == EventType.Repaint)
                 {
                     if (_editMode) DrawGrid(viewRect);
+                    DrawActionLinks();
                     foreach (var item in items) DrawItem(item);
                     if (_showFullPath)
                     {
                         foreach (var item in items) DrawFullPathLabel(item);
                     }
+                    DrawStepBadges();
                     if (_op == PointerOp.Box) DrawSelectionBox();
                 }
 
@@ -537,13 +573,29 @@ namespace Mmzkworks.muShortcutPanel.Editor
                     break;
             }
 
-            if (isSelected)
+            if (item.id == _failedId)
+            {
+                DrawRoundedOutline(r, FailedColor, 2f);
+            }
+            else if (item.id == _runActionId || item.id == CurrentRunStepId)
+            {
+                DrawRoundedOutline(r, RunColor, 2f);
+            }
+            else if (isSelected)
             {
                 DrawRoundedOutline(r, new Color(0.3f, 0.65f, 1f, 1f), 2f);
             }
             else if (_editMode)
             {
                 DrawRoundedOutline(r, new Color(0.5f, 0.5f, 0.5f, 0.6f), 1f);
+            }
+
+            if (_editMode && item.kind == ShortcutItemKind.Action)
+            {
+                var k = ShortcutPanelLayout.ActionKnobRect(r);
+                var linking = _op == PointerOp.Link && _opItemId == item.id;
+                DrawRoundedRect(k, linking || isSelected ? LinkActiveColor : LinkColor, k.width * 0.5f);
+                DrawRoundedOutline(k, EditorGUIUtility.isProSkin ? new Color(0.1f, 0.1f, 0.1f) : Color.white, 1f, k.width * 0.5f);
             }
 
             if (_editMode)
@@ -632,16 +684,173 @@ namespace Mmzkworks.muShortcutPanel.Editor
 
         private static float CornerRadius(Rect r) => Mathf.Min(ItemCornerRadius, Mathf.Min(r.width, r.height) * 0.5f);
 
-        private static void DrawRoundedRect(Rect r, Color c)
+        private static void DrawRoundedRect(Rect r, Color c) => DrawRoundedRect(r, c, CornerRadius(r));
+
+        private static void DrawRoundedRect(Rect r, Color c, float radius)
         {
             if (Event.current.type != EventType.Repaint) return;
-            GUI.DrawTexture(r, Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0f, c, 0f, CornerRadius(r));
+            GUI.DrawTexture(r, Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0f, c, 0f, radius);
         }
 
-        private static void DrawRoundedOutline(Rect r, Color c, float t)
+        private static void DrawRoundedOutline(Rect r, Color c, float t) => DrawRoundedOutline(r, c, t, CornerRadius(r));
+
+        private static void DrawRoundedOutline(Rect r, Color c, float t, float radius)
         {
             if (Event.current.type != EventType.Repaint) return;
-            GUI.DrawTexture(r, Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0f, c, t, CornerRadius(r));
+            GUI.DrawTexture(r, Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0f, c, t, radius);
+        }
+
+        // ------------------------------------------------------------------ action links
+
+        private static readonly Color RunColor = new Color(0.30f, 0.80f, 0.45f, 1f);
+        private static readonly Color FailedColor = new Color(0.95f, 0.30f, 0.25f, 1f);
+        private static readonly Color LinkActiveColor = new Color(0.3f, 0.65f, 1f, 1f);
+        /// <summary>Lines are drawn fainter than the knob / badges so they stay in the background.</summary>
+        private const float LinkLineAlpha = 0.5f;
+        private static Color LinkColor =>EditorGUIUtility.isProSkin ? new Color(0.75f, 0.75f, 0.75f, 0.55f) : new Color(0.2f, 0.2f, 0.2f, 0.5f);
+
+        private string CurrentRunStepId =>
+            _runSteps != null && _runIndex >= 0 && _runIndex < _runSteps.Count ? _runSteps[_runIndex].id : null;
+
+        /// <summary>The action whose step numbers are shown: the one being traced, run, hovered or selected.</summary>
+        private ShortcutPanelItem FocusedAction()
+        {
+            string id = null;
+            if (_op == PointerOp.Link) id = _opItemId;
+            else if (_runActionId != null) id = _runActionId;
+            else if (_hoverId != null && _doc.Find(_hoverId) is { kind: ShortcutItemKind.Action }) id = _hoverId;
+            else if (_editMode && SingleSelected() is { kind: ShortcutItemKind.Action } sel) id = sel.id;
+            var item = _doc.Find(id);
+            return item != null && item.kind == ShortcutItemKind.Action ? item : null;
+        }
+
+        /// <summary>The action and its existing steps, in order.</summary>
+        private List<ShortcutPanelItem> LinkNodes(ShortcutPanelItem action)
+        {
+            var nodes = new List<ShortcutPanelItem> { action };
+            foreach (var id in action.steps)
+            {
+                var step = _doc.Find(id);
+                if (step != null) nodes.Add(step);
+            }
+            return nodes;
+        }
+
+        /// <summary>Lines from each action through its steps. Drawn behind the items.</summary>
+        private void DrawActionLinks()
+        {
+            var focused = FocusedAction();
+            var prev = Handles.color;
+            foreach (var action in _doc.items)
+            {
+                if (action.kind != ShortcutItemKind.Action) continue;
+                var linking = _op == PointerOp.Link && _opItemId == action.id;
+                var nodes = LinkNodes(action);
+                if (nodes.Count < 2 && !linking) continue;
+
+                var active = action == focused;
+                var color = action.id == _runActionId ? RunColor : active ? LinkActiveColor : LinkColor;
+                color.a *= LinkLineAlpha;
+                Handles.color = color;
+                var width = active ? 4f : 3f;
+                for (var i = 1; i < nodes.Count; i++)
+                {
+                    // A line into a nested action gets finer dots, so "runs that action" reads differently from a plain step.
+                    var toAction = nodes[i].kind == ShortcutItemKind.Action;
+                    DrawDottedArc(nodes[i - 1].Rect.center, nodes[i].Rect.center, width, toAction ? NestedLinkDots : LinkDots);
+                }
+                if (linking) DrawDottedArc(nodes[nodes.Count - 1].Rect.center, _linkCursor, width, LinkDots);
+            }
+            Handles.color = prev;
+        }
+
+        /// <summary>Dash pattern of a link line: dash and gap lengths along the curve, and a width factor.</summary>
+        private readonly struct DotStyle
+        {
+            public readonly float Dash;
+            public readonly float Gap;
+            public readonly float WidthScale;
+
+            public DotStyle(float dash, float gap, float widthScale)
+            {
+                Dash = dash;
+                Gap = gap;
+                WidthScale = widthScale;
+            }
+        }
+
+        private static readonly DotStyle LinkDots = new DotStyle(5f, 4f, 1f);
+        private static readonly DotStyle NestedLinkDots = new DotStyle(2f, 3f, 0.6f);
+
+        private const float LinkBend = 0.2f;      // arc height relative to the segment length
+        private const float LinkMaxBend = 40f;
+
+        /// <summary>
+        /// Dotted arc from <paramref name="a"/> to <paramref name="b"/> in the current <see cref="Handles.color"/>.
+        /// It always bows to the same side of the travel direction, so the order stays readable even for items in a row.
+        /// </summary>
+        private static void DrawDottedArc(Vector2 a, Vector2 b, float width, DotStyle dots)
+        {
+            width *= dots.WidthScale;
+            var d = b - a;
+            var len = d.magnitude;
+            if (len < 1f) return;
+
+            var normal = new Vector2(-d.y, d.x) / len;
+            var ctrl = (a + b) * 0.5f + normal * Mathf.Min(len * LinkBend, LinkMaxBend);
+
+            // Sample the quadratic Bezier finely enough for the dash, then emit it in dash / gap pieces by arc length.
+            var step = Mathf.Clamp(dots.Dash * 0.5f, 0.5f, 2f);
+            var samples = Mathf.Max(8, Mathf.CeilToInt(len / step));
+            var dash = new List<Vector3>();
+            var on = true;
+            var acc = 0f;
+            var last = a;
+            dash.Add(a);
+            for (var i = 1; i <= samples; i++)
+            {
+                var t = i / (float)samples;
+                var u = 1f - t;
+                var p = u * u * a + 2f * u * t * ctrl + t * t * b;
+                acc += Vector2.Distance(last, p);
+                last = p;
+                if (on) dash.Add(p);
+
+                if (acc < (on ? dots.Dash : dots.Gap)) continue;
+                if (on && dash.Count >= 2) Handles.DrawAAPolyLine(width, dash.ToArray());
+                dash.Clear();
+                on = !on;
+                acc = 0f;
+                if (on) dash.Add(p);
+            }
+            if (on && dash.Count >= 2) Handles.DrawAAPolyLine(width, dash.ToArray());
+        }
+
+        /// <summary>Step numbers on the items of the focused action. Drawn on top of the items.</summary>
+        private void DrawStepBadges()
+        {
+            var action = FocusedAction();
+            if (action == null) return;
+
+            var style = EditorStyles.miniBoldLabel;
+            var n = 0;
+            foreach (var id in action.steps)
+            {
+                var step = _doc.Find(id);
+                if (step == null) continue;
+                n++;
+                var content = new GUIContent(n.ToString());
+                var w = Mathf.Max(14f, style.CalcSize(content).x + 6f);
+                var badge = new Rect(step.x - 5f, step.y - 6f, w, 14f);
+                DrawRoundedRect(badge, action.id == _runActionId ? RunColor : LinkActiveColor, 7f);
+                var prevColor = style.normal.textColor;
+                var prevAlign = style.alignment;
+                style.normal.textColor = Color.white;
+                style.alignment = TextAnchor.MiddleCenter;
+                style.Draw(badge, content, false, false, false, false);
+                style.normal.textColor = prevColor;
+                style.alignment = prevAlign;
+            }
         }
 
         private static void DrawOutline(Rect r, Color c, float t)
@@ -677,6 +886,10 @@ namespace Mmzkworks.muShortcutPanel.Editor
                 return !string.IsNullOrEmpty(item.title) ? item.title : ShortcutPanelDropParser.DefaultUrlTitle(item.url);
             if (item.kind == ShortcutItemKind.Menu)
                 return !string.IsNullOrEmpty(item.title) ? item.title : ShortcutPanelMenuPath.DefaultTitle(item.menu);
+            if (item.kind == ShortcutItemKind.Action)
+                return !string.IsNullOrEmpty(item.title) ? item.title : "Action";
+            if (item.kind == ShortcutItemKind.Label)
+                return item.title;
 
             var path = ResolveAssetPath(item);
             missing = path == null;
@@ -686,9 +899,10 @@ namespace Mmzkworks.muShortcutPanel.Editor
             return missing ? $"{name} (missing)" : name;
         }
 
-        private static string SubText(ShortcutPanelItem item)
+        private string SubText(ShortcutPanelItem item)
         {
             if (item.kind == ShortcutItemKind.Url) return item.url;
+            if (item.kind == ShortcutItemKind.Action) return StepCountText(item);
             if (item.kind == ShortcutItemKind.Menu)
             {
                 var target = ShortcutPanelMenuPath.TargetLabel(ShortcutPanelMenuPath.TargetOf(item.menu));
@@ -698,11 +912,15 @@ namespace Mmzkworks.muShortcutPanel.Editor
             return Path.GetDirectoryName(path)?.Replace('\\', '/') ?? "";
         }
 
-        private static string Tooltip(ShortcutPanelItem item)
+        private string Tooltip(ShortcutPanelItem item)
         {
             switch (item.kind)
             {
                 case ShortcutItemKind.Url: return item.url;
+                case ShortcutItemKind.Action:
+                    return item.steps.Count == 0
+                        ? "No steps. In Edit Mode, drag from the bottom knob over other elements."
+                        : string.Join(Environment.NewLine, StepNames(item).Select((n, i) => $"{i + 1}. {n}"));
                 case ShortcutItemKind.Menu:
                     return $"{ShortcutPanelMenuPath.TargetLabel(ShortcutPanelMenuPath.TargetOf(item.menu))} command: {item.menu}";
                 case ShortcutItemKind.Asset: return ResolveAssetPath(item) ?? $"Missing: {item.path}";
@@ -710,11 +928,13 @@ namespace Mmzkworks.muShortcutPanel.Editor
             }
         }
 
-        /// <summary>Asset path / URL / menu path of a shortcut, or null for labels.</summary>
-        private static string FullPathText(ShortcutPanelItem item)
+        /// <summary>Asset path / URL / menu path of a shortcut, the step names of an action, or null for labels.</summary>
+        private string FullPathText(ShortcutPanelItem item)
         {
             switch (item.kind)
             {
+                case ShortcutItemKind.Action:
+                    return item.steps.Count == 0 ? "(no steps)" : string.Join(" → ", StepNames(item));
                 case ShortcutItemKind.Asset:
                     return ResolveAssetPath(item) ?? $"(missing) {item.path}";
                 case ShortcutItemKind.Url:
@@ -757,6 +977,19 @@ namespace Mmzkworks.muShortcutPanel.Editor
             _fullPathStyle.Draw(r, content, false, false, false, false);
         }
 
+        private static string StepCountText(ShortcutPanelItem action) =>
+            action.steps.Count == 1 ? "1 step" : $"{action.steps.Count} steps";
+
+        /// <summary>Display names of an action's direct steps, in order (missing ones included as "(missing)").</summary>
+        private IEnumerable<string> StepNames(ShortcutPanelItem action)
+        {
+            foreach (var id in action.steps)
+            {
+                var step = _doc?.Find(id);
+                yield return step != null ? DisplayName(step, out _) : "(missing)";
+            }
+        }
+
         private static Texture Icon(ShortcutPanelItem item, bool missing)
         {
             switch (item.kind)
@@ -766,6 +999,8 @@ namespace Mmzkworks.muShortcutPanel.Editor
                     return AssetDatabase.GetCachedIcon(ResolveAssetPath(item));
                 case ShortcutItemKind.Url:
                     return KindIcon(UrlIconNames);
+                case ShortcutItemKind.Action:
+                    return KindIcon(ActionIconNames);
                 case ShortcutItemKind.Menu:
                     switch (ShortcutPanelMenuPath.TargetOf(item.menu))
                     {
@@ -780,6 +1015,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
 
         // Built-in editor icons per shortcut kind. Names differ between Unity versions, so the first one that exists is used.
         private static readonly string[] UrlIconNames = { "BuildSettings.Web.Small", "BuildSettings.WebGL.Small", "CloudConnect" };
+        private static readonly string[] ActionIconNames = { "PlayButton", "Animation.Play", "PlayButtonProfile" };
         private static readonly string[] MenuIconNames = { "_Menu", "Settings", "SettingsIcon" };
         private static readonly string[] ProjectIconNames = { "Project", "Folder Icon" };
         private static readonly string[] HierarchyIconNames = { "UnityEditor.SceneHierarchyWindow", "UnityEditor.HierarchyWindow" };
@@ -838,6 +1074,17 @@ namespace Mmzkworks.muShortcutPanel.Editor
                     break;
                 }
 
+                case EventType.MouseDown when inCanvas && e.button == 2 && _op == PointerOp.None:
+                {
+                    _op = PointerOp.Pan;
+                    _opItemId = null;
+                    _panStartMouse = e.mousePosition;
+                    _panStartScroll = _scroll;
+                    GUIUtility.hotControl = controlId;
+                    e.Use();
+                    break;
+                }
+
                 case EventType.MouseDown when inCanvas && e.button == 0:
                 {
                     _lastCanvasMouse = local;
@@ -847,7 +1094,18 @@ namespace Mmzkworks.muShortcutPanel.Editor
                     {
                         GUI.FocusControl(null);
                         var additive = e.shift || EditorGUI.actionKey;
-                        if (hit == null)
+                        var knobAction = HitActionKnob(local);
+                        if (knobAction != null)
+                        {
+                            // Trace a new step list: it replaces the previous one.
+                            SelectOnly(knobAction.id);
+                            _linkStartSteps = new List<string>(knobAction.steps);
+                            knobAction.steps.Clear();
+                            _linkCursor = local;
+                            _op = PointerOp.Link;
+                            BeginOp(knobAction, local, controlId);
+                        }
+                        else if (hit == null)
                         {
                             // Box select (Shift / Ctrl / Cmd adds to the current selection).
                             _boxBase = additive ? new List<string>(_selectedIds) : new List<string>();
@@ -886,6 +1144,15 @@ namespace Mmzkworks.muShortcutPanel.Editor
 
                 case EventType.MouseDrag when GUIUtility.hotControl == controlId:
                 {
+                    if (_op == PointerOp.Pan)
+                    {
+                        var scroll = _panStartScroll - (e.mousePosition - _panStartMouse);
+                        _scroll = Vector2.Min(Vector2.Max(scroll, Vector2.zero), _maxScroll);
+                        e.Use();
+                        Repaint();
+                        break;
+                    }
+
                     if (_op == PointerOp.Box)
                     {
                         _boxCurrent = local;
@@ -905,13 +1172,27 @@ namespace Mmzkworks.muShortcutPanel.Editor
                     var delta = local - _opStartMouse;
                     switch (_op)
                     {
+                        case PointerOp.Link:
+                        {
+                            // Sample along the moved segment so a quick stroke does not skip small items.
+                            var from = _linkCursor;
+                            var samples = Mathf.Max(1, Mathf.CeilToInt(Vector2.Distance(from, local) / 4f));
+                            for (var i = 1; i <= samples; i++)
+                            {
+                                var p = Vector2.Lerp(from, local, i / (float)samples);
+                                ShortcutPanelActionTrace.TryAdd(item.steps, item, ShortcutPanelLayout.HitTest(_doc.items, p));
+                            }
+                            _linkCursor = local;
+                            break;
+                        }
                         case PointerOp.Move:
                             MoveGroup(delta);
                             break;
                         case PointerOp.Resize:
                             item.Rect = ShortcutPanelLayout.Resized(_opStartRect, delta);
                             break;
-                        case PointerOp.Press when delta.magnitude > DragOutThreshold && item.kind != ShortcutItemKind.Menu:
+                        case PointerOp.Press when delta.magnitude > DragOutThreshold
+                                                  && (item.kind == ShortcutItemKind.Asset || item.kind == ShortcutItemKind.Url):
                             // Drag a shortcut out of the panel (e.g. into the Inspector or the Hierarchy).
                             StartDragOut(item);
                             EndOp();
@@ -922,20 +1203,28 @@ namespace Mmzkworks.muShortcutPanel.Editor
                     break;
                 }
 
-                case EventType.MouseUp when GUIUtility.hotControl == controlId:
+                // The middle button ends only a pan, and the other buttons end only the other operations.
+                case EventType.MouseUp when GUIUtility.hotControl == controlId && (e.button == 2) == (_op == PointerOp.Pan):
                 {
                     var item = _doc.Find(_opItemId);
                     var op = _op;
                     EndOp();
                     e.Use();
 
-                    if (op == PointerOp.Box)
+                    if (op == PointerOp.Box || op == PointerOp.Pan)
                     {
                         Repaint();
                         break;
                     }
                     if (item == null) break;
-                    if (op == PointerOp.Move || op == PointerOp.Resize)
+                    if (op == PointerOp.Link)
+                    {
+                        // A plain click on the knob (no stroke over anything) keeps the previous steps.
+                        if (item.steps.Count == 0 && (local - _opStartMouse).magnitude < DragOutThreshold)
+                            item.steps.AddRange(_linkStartSteps);
+                        if (!item.steps.SequenceEqual(_linkStartSteps)) MarkDirty();
+                    }
+                    else if (op == PointerOp.Move || op == PointerOp.Resize)
                     {
                         var changed = _opStartRects.Any(kv => _doc.Find(kv.Key) is { } it && it.Rect != kv.Value);
                         if (changed) MarkDirty();
@@ -974,6 +1263,18 @@ namespace Mmzkworks.muShortcutPanel.Editor
                 foreach (var selected in SelectedItems()) _opStartRects[selected.id] = selected.Rect;
             }
             GUIUtility.hotControl = controlId;
+        }
+
+        /// <summary>The topmost action whose knob is under <paramref name="p"/>, or null.</summary>
+        private ShortcutPanelItem HitActionKnob(Vector2 p)
+        {
+            for (var i = _doc.items.Count - 1; i >= 0; i--)
+            {
+                var item = _doc.items[i];
+                if (item.kind == ShortcutItemKind.Action && ShortcutPanelLayout.ActionKnobRect(item.Rect).Contains(p))
+                    return item;
+            }
+            return null;
         }
 
         private void MoveGroup(Vector2 delta)
@@ -1113,8 +1414,36 @@ namespace Mmzkworks.muShortcutPanel.Editor
 
         // ------------------------------------------------------------------ actions
 
+        /// <summary>Runs a shortcut clicked by the user.</summary>
         private void Activate(ShortcutPanelItem item)
         {
+            switch (item.kind)
+            {
+                case ShortcutItemKind.Action:
+                    RunAction(item);
+                    break;
+                case ShortcutItemKind.Menu:
+                    // Run outside OnGUI: menu commands may open dialogs or change the window layout.
+                    EditorApplication.delayCall += () =>
+                    {
+                        if (!TryActivateNow(item, out var menuError) && this != null)
+                            ShowNotification(new GUIContent(menuError));
+                    };
+                    break;
+                default:
+                    if (!TryActivateNow(item, out var error))
+                        ShowNotification(new GUIContent(error));
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Runs one shortcut synchronously (asset: select in Project, URL: open, menu: execute).
+        /// Returns false with a reason when it could not be run.
+        /// </summary>
+        private static bool TryActivateNow(ShortcutPanelItem item, out string error)
+        {
+            error = null;
             switch (item.kind)
             {
                 case ShortcutItemKind.Asset:
@@ -1123,55 +1452,149 @@ namespace Mmzkworks.muShortcutPanel.Editor
                     var obj = path != null ? AssetDatabase.LoadAssetAtPath<Object>(path) : null;
                     if (obj == null)
                     {
-                        ShowNotification(new GUIContent($"Missing: {item.path}"));
-                        return;
+                        error = $"Missing: {item.path}";
+                        return false;
                     }
                     SelectInProject(obj);
-                    break;
+                    return true;
                 }
                 case ShortcutItemKind.Url:
-                    if (ShortcutPanelDropParser.TryGetWebUrl(item.url, out var url))
-                        Application.OpenURL(url);
-                    else
-                        ShowNotification(new GUIContent("Invalid URL"));
-                    break;
+                    if (!ShortcutPanelDropParser.TryGetWebUrl(item.url, out var url))
+                    {
+                        error = $"Invalid URL: {item.url}";
+                        return false;
+                    }
+                    Application.OpenURL(url);
+                    return true;
                 case ShortcutItemKind.Menu:
-                    ExecuteMenuCommand(item.menu);
-                    break;
+                    return TryExecuteMenuCommand(item.menu, out error);
+                default:
+                    error = $"Cannot run: {DisplayName(item, out _)}";
+                    return false;
             }
         }
 
-        private void ExecuteMenuCommand(string menuPath)
+        private static bool TryExecuteMenuCommand(string menuPath, out string error)
         {
+            error = null;
             if (string.IsNullOrEmpty(menuPath))
             {
-                ShowNotification(new GUIContent("No menu command set"));
+                error = "No menu command set";
+                return false;
+            }
+
+            // Project / Hierarchy commands act on that window's selection, so bring the window to the front first.
+            switch (ShortcutPanelMenuPath.TargetOf(menuPath))
+            {
+                case ShortcutMenuTarget.Project:
+                    EditorUtility.FocusProjectWindow();
+                    break;
+                case ShortcutMenuTarget.Hierarchy:
+                    var hierarchyType = typeof(EditorWindow).Assembly.GetType("UnityEditor.SceneHierarchyWindow");
+                    if (hierarchyType != null) EditorWindow.FocusWindowIfItsOpen(hierarchyType);
+                    break;
+            }
+
+            if (EditorApplication.ExecuteMenuItem(menuPath)) return true;
+            error = $"Menu command not available: {menuPath}";
+            return false;
+        }
+
+        // ------------------------------------------------------------------ action run
+
+        private void RunAction(ShortcutPanelItem action)
+        {
+            if (_runActionId != null)
+            {
+                ShowNotification(new GUIContent("An action is already running"));
                 return;
             }
 
-            // Run outside OnGUI: menu commands may open dialogs or change the window layout.
-            EditorApplication.delayCall += () =>
+            var steps = ShortcutPanelActionPlan.Expand(_doc, action.id, out var error);
+            if (steps == null)
             {
-                // Project / Hierarchy commands act on that window's selection, so bring the window to the front first.
-                switch (ShortcutPanelMenuPath.TargetOf(menuPath))
-                {
-                    case ShortcutMenuTarget.Project:
-                        EditorUtility.FocusProjectWindow();
-                        break;
-                    case ShortcutMenuTarget.Hierarchy:
-                        var hierarchyType = typeof(EditorWindow).Assembly.GetType("UnityEditor.SceneHierarchyWindow");
-                        if (hierarchyType != null) EditorWindow.FocusWindowIfItsOpen(hierarchyType);
-                        break;
-                }
+                ShowNotification(new GUIContent(error));
+                return;
+            }
+            if (steps.Count == 0)
+            {
+                ShowNotification(new GUIContent("This action has no steps"));
+                return;
+            }
 
-                if (!EditorApplication.ExecuteMenuItem(menuPath) && this != null)
-                    ShowNotification(new GUIContent($"Menu command not available: {menuPath}"));
-            };
+            _runActionId = action.id;
+            _runSteps = steps;
+            _runIndex = 0;
+            _failedId = null;
+            Repaint();
+            EditorApplication.delayCall += RunNextStep;
+        }
+
+        /// <summary>Runs the current step, then schedules the next one. Stops at the first failure.</summary>
+        private void RunNextStep()
+        {
+            if (this == null || _runSteps == null) return;
+            if (_runIndex >= _runSteps.Count)
+            {
+                StopRun();
+                return;
+            }
+
+            var step = _runSteps[_runIndex];
+            bool ok;
+            string error;
+            try
+            {
+                if (_doc?.Find(step.id) == null)
+                {
+                    ok = false;
+                    error = "Step was removed";
+                }
+                else
+                {
+                    ok = TryActivateNow(step, out error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogException(ex);
+                ok = false;
+                error = ex.Message;
+            }
+
+            if (!ok)
+            {
+                var message = $"Action stopped at {_runIndex + 1}/{_runSteps.Count} ({DisplayName(step, out _)}): {error}";
+                Debug.LogWarning($"[muShortcutPanel] {message}");
+                _failedId = step.id;
+                _failedUntil = EditorApplication.timeSinceStartup + FailedHighlightSeconds;
+                StopRun();
+                ShowNotification(new GUIContent(message));
+                return;
+            }
+
+            _runIndex++;
+            Repaint();
+            EditorApplication.delayCall += RunNextStep;
+        }
+
+        private void StopRun()
+        {
+            if (_runActionId == null && _runSteps == null) return;
+            _runActionId = null;
+            _runSteps = null;
+            _runIndex = 0;
+            Repaint();
         }
 
         private static void SelectInProject(Object obj)
         {
             EditorUtility.FocusProjectWindow();
+
+            // Folder in a two-column Project window: open it so the right column lists its contents.
+            if (AssetDatabase.IsValidFolder(AssetDatabase.GetAssetPath(obj)) && ProjectWindowFolder.TryShowContents(obj))
+                return;
+
             Selection.activeObject = obj;
             EditorGUIUtility.PingObject(obj);
         }
@@ -1211,6 +1634,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
             {
                 var activateLabel = hit.kind == ShortcutItemKind.Url ? "Open URL"
                     : hit.kind == ShortcutItemKind.Menu ? "Execute Command"
+                    : hit.kind == ShortcutItemKind.Action ? "Run Action"
                     : "Select in Project";
                 menu.AddItem(new GUIContent(activateLabel), false, () => Activate(hit));
                 if (hit.kind == ShortcutItemKind.Asset)
@@ -1234,6 +1658,10 @@ namespace Mmzkworks.muShortcutPanel.Editor
                         break;
                     case ShortcutItemKind.Menu:
                         menu.AddItem(new GUIContent("Copy Menu Path"), false, () => EditorGUIUtility.systemCopyBuffer = hit.menu);
+                        break;
+                    case ShortcutItemKind.Action:
+                        if (_editMode && hit.steps.Count > 0)
+                            menu.AddItem(new GUIContent("Clear Steps"), false, () => ClearSteps(hit));
                         break;
                     default:
                         menu.AddItem(new GUIContent("Copy Path"), false, () => EditorGUIUtility.systemCopyBuffer = ResolveAssetPath(hit) ?? hit.path);
@@ -1264,6 +1692,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
                         _pendingMenuPickerPos = pos;
                         Repaint();
                     });
+                    menu.AddItem(new GUIContent("Add Action Here"), false, () => AddItem(NewActionItem(pos)));
                     if (_doc.items.Count > 0)
                     {
                         menu.AddSeparator("");
@@ -1323,6 +1752,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
         {
             if (items.Count == 0) return;
             _doc.items.RemoveAll(items.Contains);
+            _doc.RemoveStepReferences(items.Select(i => i.id).ToList());
             PruneSelection();
             GUI.FocusControl(null);
             MarkDirty();
@@ -1391,6 +1821,20 @@ namespace Mmzkworks.muShortcutPanel.Editor
             Rect = new Rect(pos, ShortcutPanelLayout.DefaultShortcutSize)
         };
 
+        private static ShortcutPanelItem NewActionItem(Vector2 pos) => new ShortcutPanelItem
+        {
+            id = ShortcutPanelItem.NewId(),
+            kind = ShortcutItemKind.Action,
+            Rect = new Rect(pos, ShortcutPanelLayout.DefaultShortcutSize)
+        };
+
+        private void ClearSteps(ShortcutPanelItem action)
+        {
+            if (action.steps.Count == 0) return;
+            action.steps.Clear();
+            MarkDirty();
+        }
+
         /// <summary>Below the lowest item, left aligned — where toolbar-added items go.</summary>
         private Vector2 NextFreePosition()
         {
@@ -1456,6 +1900,23 @@ namespace Mmzkworks.muShortcutPanel.Editor
                                 EditorGUILayout.TextField("Asset", path ?? $"(missing) {item.path}");
                         }
                         item.title = EditorGUILayout.TextField(new GUIContent("Title", "Empty = asset name"), item.title);
+                        break;
+
+                    case ShortcutItemKind.Action:
+                        item.title = EditorGUILayout.TextField(new GUIContent("Title", "Empty = \"Action\""), item.title);
+                        using (new EditorGUILayout.HorizontalScope())
+                        {
+                            EditorGUILayout.PrefixLabel(new GUIContent("Steps", "Drag from the knob at the bottom of the action over other elements"));
+                            var text = item.steps.Count == 0
+                                ? "(none) Drag from the bottom knob over elements"
+                                : string.Join("  →  ", StepNames(item).Select((n, i) => $"{i + 1}. {n}"));
+                            GUILayout.Label(text, EditorStyles.wordWrappedMiniLabel);
+                            using (new EditorGUI.DisabledScope(item.steps.Count == 0))
+                            {
+                                if (GUILayout.Button("Clear", EditorStyles.miniButton, GUILayout.Width(48f)))
+                                    ClearSteps(item);
+                            }
+                        }
                         break;
                 }
 

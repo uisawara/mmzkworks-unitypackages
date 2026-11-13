@@ -29,11 +29,14 @@ Switch between `Use Mode` and `Edit Mode` with the toggle button at the right of
 
 The `Path` toggle in the toolbar shows or hides the full path (asset path / URL / menu path) under each shortcut.
 
+In both modes, drag with the middle mouse button to scroll the panel.
+
 ### Use mode
 
 - Click an asset / folder shortcut to select it in the Project window.
 - Click a URL shortcut to open it in the default browser.
 - Click a menu command shortcut to run that menu item (Project / Hierarchy commands act on the current selection in those windows).
+- Click an action to run its linked elements in order (see [Actions](#actions)).
 - Drag a shortcut to drop the asset elsewhere, e.g. onto an Inspector field.
 - Right-click for `Copy Path` / `Copy URL` and `Open Asset`.
 
@@ -44,7 +47,19 @@ The `Path` toggle in the toolbar shows or hides the full path (asset path / URL 
 - Edit the selected element's text, URL, title, font size and rect at the bottom of the window.
 - `+ Label` adds a label and `+ URL` adds a URL shortcut (uses the clipboard if it contains a URL).
 - `+ Menu` (or `Add Menu Command Here...` in the right-click menu) opens a searchable picker of menu commands, grouped into `Editor Menu`, `Project Window (Assets)` and `Hierarchy Window (GameObject)`.
+- `+ Action` (or `Add Action Here` in the right-click menu) adds an action (see [Actions](#actions)).
 - Right-click to duplicate, bring to front, send to back or delete. The `Delete` key also deletes.
+
+## Actions
+
+An action runs several elements of the panel one after another.
+
+- In edit mode, drag from the round knob at the bottom of an action and trace over the elements to run. A line connects them in the traced order. Tracing again replaces the previous line; each element is added only once, and labels are ignored.
+- Hover or select an action to show the step numbers. The steps are also listed in the property panel at the bottom, where `Clear` removes them.
+- In use mode, click the action to run the steps in order: assets are selected in the Project window, URLs are opened, menu commands are executed. So "select an asset, then run a Project window command" works.
+- If a step fails (missing asset, invalid URL, unavailable menu command), the run stops there, the step is outlined in red and a notification shows the reason.
+- An action can include other actions; their steps run in place. A cycle (an action that ends up including itself) is reported as an error and nothing runs.
+- Deleting an element removes it from every action.
 
 ## Adding shortcuts
 
@@ -66,7 +81,8 @@ Make a shortcut 56px tall or more to show it as a tile with a large icon.
         { "id": "…", "kind": "asset", "guid": "…", "path": "Assets/Scenes", "x": 8, "y": 8, "width": 176, "height": 24, … },
         { "id": "…", "kind": "url", "url": "https://docs.unity3d.com/", "title": "Unity Docs", … },
         { "id": "…", "kind": "menu", "menu": "GameObject/Create Empty", … },
-        { "id": "…", "kind": "label", "title": "Scenes", "fontSize": 14, … }
+        { "id": "…", "kind": "label", "title": "Scenes", "fontSize": 14, … },
+        { "id": "…", "kind": "action", "title": "Setup", "steps": ["<item id>", "<item id>"], … }
     ]
 }
 ```
