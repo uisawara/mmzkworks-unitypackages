@@ -638,7 +638,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
 
         /// <summary>
         /// Background per kind, so things that "do" something stand out from plain links:
-        /// assets / URLs are neutral grey, menu commands and commands are blue-tinted, actions are magenta-tinted.
+        /// assets / URLs are blue-grey, menu commands and commands are a dark neutral grey (#222 in the dark skin), actions are magenta-tinted.
         /// </summary>
         private static Color ItemBackground(string kind, bool pro, bool hover)
         {
@@ -647,13 +647,13 @@ namespace Mmzkworks.muShortcutPanel.Editor
             {
                 case ShortcutItemKind.Menu:
                 case ShortcutItemKind.Command:
-                    bg = pro ? new Color(0.22f, 0.24f, 0.275f) : new Color(0.87f, 0.89f, 0.93f);
+                    bg = pro ? new Color32(0x22, 0x22, 0x22, 0xFF) : new Color(0.95f, 0.95f, 0.95f);
                     break;
                 case ShortcutItemKind.Action:
                     bg = pro ? new Color(0.31f, 0.18f, 0.26f) : new Color(0.95f, 0.82f, 0.90f);
                     break;
                 default:
-                    bg = pro ? new Color(0.24f, 0.24f, 0.24f) : new Color(0.90f, 0.90f, 0.90f);
+                    bg = pro ? new Color(0.22f, 0.24f, 0.275f) : new Color(0.87f, 0.89f, 0.93f);
                     break;
             }
             return hover ? Color.Lerp(bg, Color.white, pro ? 0.08f : 0.45f) : bg;
