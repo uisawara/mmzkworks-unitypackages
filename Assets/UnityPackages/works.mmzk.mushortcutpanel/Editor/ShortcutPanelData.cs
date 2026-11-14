@@ -18,8 +18,15 @@ namespace Mmzkworks.muShortcutPanel.Editor
         /// <summary>Runs a built-in automation command (<see cref="ShortcutPanelItem.command"/>) with arguments.</summary>
         public const string Command = "command";
 
+        /// <summary>A picture (a texture asset referenced by <see cref="ShortcutPanelItem.guid"/> / path). Not clickable.</summary>
+        public const string Image = "image";
+
         public static bool IsValid(string kind) =>
-            kind == Asset || kind == Url || kind == Label || kind == Menu || kind == Action || kind == Command;
+            kind == Asset || kind == Url || kind == Label || kind == Menu || kind == Action || kind == Command || kind == Image;
+
+        /// <summary>Kinds that do something when clicked / run as an action step (labels and images are decoration).</summary>
+        public static bool IsRunnable(string kind) =>
+            kind == Asset || kind == Url || kind == Menu || kind == Action || kind == Command;
     }
 
     /// <summary>One argument of a command item. A list of these stands in for a dictionary (JsonUtility cannot store one).</summary>

@@ -13,7 +13,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
         public static bool TryAdd(List<string> steps, ShortcutPanelItem action, ShortcutPanelItem hit)
         {
             if (steps == null || hit == null || string.IsNullOrEmpty(hit.id)) return false;
-            if (hit.kind == ShortcutItemKind.Label) return false;
+            if (hit.kind == ShortcutItemKind.Label || hit.kind == ShortcutItemKind.Image) return false;
             if (action != null && hit.id == action.id) return false;
             if (steps.Contains(hit.id)) return false;
             steps.Add(hit.id);
@@ -65,6 +65,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
                 switch (step.kind)
                 {
                     case ShortcutItemKind.Label:
+                    case ShortcutItemKind.Image:
                         continue;
                     case ShortcutItemKind.Action:
                         if (!ExpandInto(doc, step, stack, result, ref error)) return false;

@@ -93,6 +93,13 @@ Assets are stored by GUID, so shortcuts follow moves and renames.
 
 Make a shortcut 56px tall or more to show it as a tile with a large icon.
 
+## Images
+
+- Hold `Alt` while dropping image assets from the Project window to place them as pictures (a normal drop makes asset shortcuts).
+- Drop image files (PNG, JPG, PSD, …) from Explorer / Finder to place them as pictures. They are copied into `<panel folder>/<panel name> Images/` first.
+- Pictures keep their aspect ratio. Resize them like any element; `Fit to Image` in the property panel restores the image's proportions. You can also swap the image there.
+- Pictures are decoration only: clicking does nothing and they cannot be steps of an action.
+
 ## File format
 
 ```json

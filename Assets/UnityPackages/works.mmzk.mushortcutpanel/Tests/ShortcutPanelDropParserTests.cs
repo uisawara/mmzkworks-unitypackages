@@ -67,6 +67,42 @@ namespace Mmzkworks.muShortcutPanel.Tests
             }));
         }
 
+        [Test]
+        public void Collect_ImageAssets_AreShortcutsUnlessAltIsHeld()
+        {
+            string[] objects = { "Assets/Art/Logo.png", "Assets/A.prefab" };
+            bool IsAsset(string p) => p.StartsWith("Assets/");
+
+            var normal = ShortcutPanelDropParser.Collect(objects, objects, IsAsset, _ => null);
+            Assert.That(normal.Select(e => e.ToString()), Is.EqualTo(new[] { "asset:Assets/Art/Logo.png", "asset:Assets/A.prefab" }));
+
+            var alt = ShortcutPanelDropParser.Collect(objects, objects, IsAsset, _ => null, assetImagesAsPictures: true);
+            Assert.That(alt.Select(e => e.ToString()), Is.EqualTo(new[] { "image:Assets/Art/Logo.png", "asset:Assets/A.prefab" }));
+        }
+
+        [Test]
+        public void Collect_ExternalImageFiles_AreImported()
+        {
+            var entries = ShortcutPanelDropParser.Collect(
+                null,
+                new[] { "C:/Users/me/Pictures/shot.PNG", "C:/Users/me/notes.txt", "relative/shot.png" },
+                p => p.StartsWith("Assets/"),
+                _ => null);
+
+            Assert.That(entries.Select(e => e.ToString()), Is.EqualTo(new[] { ShortcutPanelDropParser.ExternalImage + ":C:/Users/me/Pictures/shot.PNG" }));
+        }
+
+        [TestCase("a.png", true)]
+        [TestCase("a.JPG", true)]
+        [TestCase("a.psd", true)]
+        [TestCase("a.prefab", false)]
+        [TestCase("a", false)]
+        [TestCase(null, false)]
+        public void IsImageFile(string path, bool expected)
+        {
+            Assert.That(ShortcutPanelDropParser.IsImageFile(path), Is.EqualTo(expected));
+        }
+
         [TestCase("https://example.com/", "example.com")]
         [TestCase("https://docs.unity3d.com/Manual/index.html", "docs.unity3d.com/Manual/index.html")]
         [TestCase("not a url", "not a url")]

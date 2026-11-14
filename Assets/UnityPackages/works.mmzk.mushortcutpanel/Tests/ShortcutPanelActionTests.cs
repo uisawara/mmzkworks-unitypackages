@@ -115,6 +115,7 @@ namespace Mmzkworks.muShortcutPanel.Tests
             Assert.That(ShortcutPanelActionTrace.TryAdd(steps, action, Item("a", ShortcutItemKind.Asset)), Is.False, "duplicate");
             Assert.That(ShortcutPanelActionTrace.TryAdd(steps, action, action), Is.False, "self");
             Assert.That(ShortcutPanelActionTrace.TryAdd(steps, action, Item("l", ShortcutItemKind.Label)), Is.False, "label");
+            Assert.That(ShortcutPanelActionTrace.TryAdd(steps, action, Item("i", ShortcutItemKind.Image)), Is.False, "image");
             Assert.That(ShortcutPanelActionTrace.TryAdd(steps, action, null), Is.False, "null");
             Assert.That(ShortcutPanelActionTrace.TryAdd(steps, action, Item("other", ShortcutItemKind.Action)), Is.True, "nested action");
 

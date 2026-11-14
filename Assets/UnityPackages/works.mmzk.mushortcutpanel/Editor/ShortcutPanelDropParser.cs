@@ -25,6 +25,18 @@ namespace Mmzkworks.muShortcutPanel.Editor
     /// </summary>
     internal static class ShortcutPanelDropParser
     {
+        /// <summary>Drop entry kind for an image file outside the project (copied into it on drop).</summary>
+        public const string ExternalImage = "external-image";
+
+        private static readonly string[] ImageExtensions =
+            { ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tga", ".psd", ".tif", ".tiff", ".exr", ".hdr" };
+
+        public static bool IsImageFile(string path)
+        {
+            var ext = Path.GetExtension(path ?? "");
+            return Array.Exists(ImageExtensions, e => string.Equals(e, ext, StringComparison.OrdinalIgnoreCase));
+        }
+
         private static readonly Regex UrlLine = new Regex(@"^\s*URL\s*=\s*(?<url>\S+)\s*$",
             RegexOptions.Multiline | RegexOptions.IgnoreCase);
 
@@ -63,11 +75,16 @@ namespace Mmzkworks.muShortcutPanel.Editor
         /// <param name="paths">DragAndDrop.paths</param>
         /// <param name="isProjectAsset">Whether a path is an asset in this project.</param>
         /// <param name="readExternalFile">Reads an external file's text, or returns null.</param>
+        /// <param name="assetImagesAsPictures">
+        /// True (Alt held): image assets from the project become <see cref="ShortcutItemKind.Image"/> entries instead of shortcuts.
+        /// Image files from outside the project always become <see cref="ExternalImage"/> entries.
+        /// </param>
         public static List<DropEntry> Collect(
             IEnumerable<string> objectAssetPaths,
             IEnumerable<string> paths,
             Func<string, bool> isProjectAsset,
-            Func<string, string> readExternalFile)
+            Func<string, string> readExternalFile,
+            bool assetImagesAsPictures = false)
         {
             var result = new List<DropEntry>();
             var seen = new HashSet<string>(StringComparer.Ordinal);
@@ -77,11 +94,14 @@ namespace Mmzkworks.muShortcutPanel.Editor
                 if (seen.Add(kind + "|" + value)) result.Add(new DropEntry(kind, value));
             }
 
+            string AssetKind(string p) =>
+                assetImagesAsPictures && IsImageFile(p) ? ShortcutItemKind.Image : ShortcutItemKind.Asset;
+
             if (objectAssetPaths != null)
             {
                 foreach (var p in objectAssetPaths)
                 {
-                    if (!string.IsNullOrEmpty(p)) Add(ShortcutItemKind.Asset, p);
+                    if (!string.IsNullOrEmpty(p)) Add(AssetKind(p), p);
                 }
             }
 
@@ -97,7 +117,11 @@ namespace Mmzkworks.muShortcutPanel.Editor
                     }
                     else if (isProjectAsset != null && isProjectAsset(p))
                     {
-                        Add(ShortcutItemKind.Asset, p);
+                        Add(AssetKind(p), p);
+                    }
+                    else if (IsImageFile(p) && Path.IsPathRooted(p))
+                    {
+                        Add(ExternalImage, p);
                     }
                     else if (IsInternetShortcutFile(p) && readExternalFile != null
                              && TryParseInternetShortcut(readExternalFile(p), out var fileUrl))

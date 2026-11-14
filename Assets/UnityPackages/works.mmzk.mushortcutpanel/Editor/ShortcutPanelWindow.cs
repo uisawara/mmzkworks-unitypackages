@@ -581,6 +581,9 @@ namespace Mmzkworks.muShortcutPanel.Editor
                 case ShortcutItemKind.Label:
                     DrawLabelItem(item, r);
                     break;
+                case ShortcutItemKind.Image:
+                    DrawImageItem(item, r);
+                    break;
                 default:
                     DrawShortcutItem(item, r, isHover && !_editMode);
                     break;
@@ -620,6 +623,30 @@ namespace Mmzkworks.muShortcutPanel.Editor
                 EditorGUI.DrawRect(new Rect(h.x + 2f, h.yMax - 3f, h.width - 3f, 2f), hc);
                 EditorGUI.DrawRect(new Rect(h.xMax - 6f, h.yMax - 6f, 3f, 3f), hc);
             }
+        }
+
+        private void DrawImageItem(ShortcutPanelItem item, Rect r)
+        {
+            var texture = LoadImage(item);
+            if (texture != null)
+            {
+                GUI.DrawTexture(r, texture, ScaleMode.ScaleToFit, true);
+                return;
+            }
+
+            // Missing image: a placeholder so the element can still be found and fixed.
+            var pro = EditorGUIUtility.isProSkin;
+            DrawRoundedRect(r, pro ? new Color(0.2f, 0.2f, 0.2f) : new Color(0.85f, 0.85f, 0.85f));
+            var style = _labelTextStyle;
+            style.fontSize = 0;
+            style.normal.textColor = new Color(0.9f, 0.35f, 0.3f);
+            style.Draw(Inset(r, 6f, 2f), new GUIContent($"(missing image) {Path.GetFileName(item.path)}"), false, false, false, false);
+        }
+
+        private static Texture LoadImage(ShortcutPanelItem item)
+        {
+            var path = ResolveAssetPath(item);
+            return path != null ? AssetDatabase.LoadAssetAtPath<Texture>(path) : null;
         }
 
         private void DrawLabelItem(ShortcutPanelItem item, Rect r)
@@ -1196,7 +1223,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
                         e.Use();
                         Repaint();
                     }
-                    else if (hit != null && hit.kind != ShortcutItemKind.Label)
+                    else if (hit != null && ShortcutItemKind.IsRunnable(hit.kind))
                     {
                         _op = PointerOp.Press;
                         BeginOp(hit, local, controlId);
@@ -1444,7 +1471,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
                 return;
             }
 
-            var entries = CollectDropEntries();
+            var entries = CollectDropEntries(e.alt);
             if (entries.Count == 0) return;
 
             DragAndDrop.visualMode = DragAndDropVisualMode.Link;
@@ -1457,7 +1484,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
             e.Use();
         }
 
-        private static List<DropEntry> CollectDropEntries()
+        private static List<DropEntry> CollectDropEntries(bool assetImagesAsPictures)
         {
             var objectPaths = (DragAndDrop.objectReferences ?? Array.Empty<Object>())
                 .Where(o => o != null && EditorUtility.IsPersistent(o))
@@ -1479,7 +1506,8 @@ namespace Mmzkworks.muShortcutPanel.Editor
                     {
                         return null;
                     }
-                });
+                },
+                assetImagesAsPictures);
         }
 
         // ------------------------------------------------------------------ actions
@@ -1748,7 +1776,18 @@ namespace Mmzkworks.muShortcutPanel.Editor
             var menu = new GenericMenu();
             var pos = ShortcutPanelLayout.Snap(local);
 
-            if (hit != null && hit.kind != ShortcutItemKind.Label)
+            if (hit != null && hit.kind == ShortcutItemKind.Image)
+            {
+                menu.AddItem(new GUIContent("Select Image in Project"), false, () =>
+                {
+                    var p = ResolveAssetPath(hit);
+                    var obj = p != null ? AssetDatabase.LoadAssetAtPath<Object>(p) : null;
+                    if (obj != null) SelectInProject(obj);
+                    else ShowNotification(new GUIContent($"Missing: {hit.path}"));
+                });
+            }
+
+            if (hit != null && ShortcutItemKind.IsRunnable(hit.kind))
             {
                 var activateLabel = hit.kind == ShortcutItemKind.Url ? "Open URL"
                     : hit.kind == ShortcutItemKind.Menu ? "Execute Command"
@@ -1908,7 +1947,26 @@ namespace Mmzkworks.muShortcutPanel.Editor
             foreach (var entry in entries)
             {
                 var p = new Vector2(pos.x, y);
-                var item = entry.Kind == ShortcutItemKind.Url ? NewUrlItem(entry.Value, p) : NewAssetItem(entry.Value, p);
+                ShortcutPanelItem item;
+                switch (entry.Kind)
+                {
+                    case ShortcutItemKind.Url:
+                        item = NewUrlItem(entry.Value, p);
+                        break;
+                    case ShortcutItemKind.Image:
+                        item = NewImageItem(entry.Value, p);
+                        break;
+                    case ShortcutPanelDropParser.ExternalImage:
+                    {
+                        var imported = ImportExternalImage(entry.Value);
+                        if (imported == null) continue;
+                        item = NewImageItem(imported, p);
+                        break;
+                    }
+                    default:
+                        item = NewAssetItem(entry.Value, p);
+                        break;
+                }
                 _doc.items.Add(item);
                 added.Add(item.id);
                 y += item.height + ShortcutPanelLayout.GridSize;
@@ -1937,6 +1995,65 @@ namespace Mmzkworks.muShortcutPanel.Editor
         {
             var url = ShortcutPanelDropParser.TryGetWebUrl(EditorGUIUtility.systemCopyBuffer, out var clip) ? clip : "https://";
             AddItem(NewUrlItem(url, pos));
+        }
+
+        private const float ImageMaxInitialSize = 256f;
+
+        private static ShortcutPanelItem NewImageItem(string path, Vector2 pos)
+        {
+            var item = new ShortcutPanelItem
+            {
+                id = ShortcutPanelItem.NewId(),
+                kind = ShortcutItemKind.Image,
+                guid = AssetDatabase.AssetPathToGUID(path),
+                path = path,
+                Rect = new Rect(pos, Vector2.one * ShortcutPanelLayout.GridSize * 8f)
+            };
+            FitImageSize(item);
+            return item;
+        }
+
+        /// <summary>Sets the size to the image's aspect ratio, at most <see cref="ImageMaxInitialSize"/> px, on the grid.</summary>
+        private static void FitImageSize(ShortcutPanelItem item)
+        {
+            var texture = LoadImage(item);
+            if (texture == null || texture.width <= 0 || texture.height <= 0) return;
+
+            var scale = Mathf.Min(1f, ImageMaxInitialSize / Mathf.Max(texture.width, texture.height));
+            var w = Mathf.Max(ShortcutPanelLayout.MinWidth, ShortcutPanelLayout.Snap(texture.width * scale));
+            var h = Mathf.Max(ShortcutPanelLayout.MinHeight, ShortcutPanelLayout.Snap(texture.height * scale));
+            item.width = w;
+            item.height = h;
+        }
+
+        /// <summary>
+        /// Copies an image file from outside the project into "&lt;panel folder&gt;/&lt;panel name&gt; Images/" and imports it.
+        /// Returns the new asset path, or null on failure.
+        /// </summary>
+        private string ImportExternalImage(string absolutePath)
+        {
+            try
+            {
+                var panelDir = Path.GetDirectoryName(_filePath)?.Replace('\\', '/');
+                if (string.IsNullOrEmpty(panelDir) || !panelDir.StartsWith("Assets", StringComparison.Ordinal)) panelDir = "Assets";
+                var folder = $"{panelDir}/{ShortcutPanelFiles.DisplayName(_filePath)} Images";
+                if (!ShortcutCommandUtil.EnsureFolder(folder))
+                {
+                    ShowNotification(new GUIContent($"Cannot create folder: {folder}"));
+                    return null;
+                }
+
+                var target = AssetDatabase.GenerateUniqueAssetPath($"{folder}/{Path.GetFileName(absolutePath)}");
+                File.Copy(absolutePath, FullPath(target));
+                AssetDatabase.ImportAsset(target, ImportAssetOptions.ForceSynchronousImport);
+                return target;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[muShortcutPanel] Could not import {absolutePath}: {ex.Message}");
+                ShowNotification(new GUIContent($"Could not import {Path.GetFileName(absolutePath)}"));
+                return null;
+            }
         }
 
         private static ShortcutPanelItem NewAssetItem(string path, Vector2 pos) => new ShortcutPanelItem
@@ -2081,6 +2198,23 @@ namespace Mmzkworks.muShortcutPanel.Editor
                     case ShortcutItemKind.Label:
                         item.title = EditorGUILayout.TextField("Text", item.title);
                         break;
+
+                    case ShortcutItemKind.Image:
+                    {
+                        var current = LoadImage(item);
+                        var picked = (Texture)EditorGUILayout.ObjectField("Image", current, typeof(Texture), false);
+                        if (picked != current && picked != null)
+                        {
+                            item.path = AssetDatabase.GetAssetPath(picked);
+                            item.guid = AssetDatabase.AssetPathToGUID(item.path);
+                        }
+                        if (GUILayout.Button(new GUIContent("Fit to Image", "Resize to the image's aspect ratio (max 256 px)"), EditorStyles.miniButton))
+                        {
+                            FitImageSize(item);
+                            GUI.changed = true;
+                        }
+                        break;
+                    }
 
                     case ShortcutItemKind.Url:
                         item.url = EditorGUILayout.TextField("URL", item.url);
