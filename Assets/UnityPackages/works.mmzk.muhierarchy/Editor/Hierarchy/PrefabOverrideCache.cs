@@ -2,6 +2,11 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+#if UNITY_6000_4_OR_NEWER
+using ObjectId = UnityEngine.EntityId;
+#else
+using ObjectId = System.Int32;
+#endif
 
 namespace Mmzkworks.muHierarchy.Editor
 {
@@ -14,8 +19,8 @@ namespace Mmzkworks.muHierarchy.Editor
     [InitializeOnLoad]
     internal static class PrefabOverrideCache
     {
-        private static readonly Dictionary<int, bool> SelfCache = new Dictionary<int, bool>(256);
-        private static readonly Dictionary<int, bool> ChildrenCache = new Dictionary<int, bool>(256);
+        private static readonly Dictionary<ObjectId, bool> SelfCache = new Dictionary<ObjectId, bool>(256);
+        private static readonly Dictionary<ObjectId, bool> ChildrenCache = new Dictionary<ObjectId, bool>(256);
 
         static PrefabOverrideCache()
         {
@@ -40,7 +45,7 @@ namespace Mmzkworks.muHierarchy.Editor
         {
             if (go == null)
                 return false;
-            int id = go.GetInstanceID();
+            var id = go.GetObjectId();
             if (SelfCache.TryGetValue(id, out bool result))
                 return result;
             result = ComputeHasOverrides(go);
@@ -55,7 +60,7 @@ namespace Mmzkworks.muHierarchy.Editor
         {
             if (go == null)
                 return false;
-            int id = go.GetInstanceID();
+            var id = go.GetObjectId();
             if (ChildrenCache.TryGetValue(id, out bool result))
                 return result;
             result = ComputeHasChildOverrides(go);

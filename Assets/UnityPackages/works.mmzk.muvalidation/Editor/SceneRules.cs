@@ -430,7 +430,7 @@ namespace Mmzkworks.muValidation.Editor
     internal static class SceneNameIndex
     {
         // scene handle -> name -> count
-        private static readonly Dictionary<int, Dictionary<string, int>> CountsByScene = new Dictionary<int, Dictionary<string, int>>();
+        private static readonly Dictionary<UnityEngine.SceneManagement.Scene, Dictionary<string, int>> CountsByScene = new Dictionary<UnityEngine.SceneManagement.Scene, Dictionary<string, int>>();
 
         static SceneNameIndex()
         {
@@ -452,7 +452,7 @@ namespace Mmzkworks.muValidation.Editor
             var scene = go.scene;
             if (!scene.IsValid()) return 1;
 
-            if (!CountsByScene.TryGetValue(scene.handle, out var counts))
+            if (!CountsByScene.TryGetValue(scene, out var counts))
             {
                 counts = new Dictionary<string, int>();
                 foreach (var root in scene.GetRootGameObjects())
@@ -462,7 +462,7 @@ namespace Mmzkworks.muValidation.Editor
                     counts[root.name] = current + 1;
                 }
 
-                CountsByScene[scene.handle] = counts;
+                CountsByScene[scene] = counts;
             }
 
             return counts.TryGetValue(go.name, out var count) ? count : 1;

@@ -1,6 +1,11 @@
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+#if UNITY_6000_4_OR_NEWER
+using ObjectId = UnityEngine.EntityId;
+#else
+using ObjectId = System.Int32;
+#endif
 
 namespace Mmzkworks.muHierarchy.Editor
 {
@@ -21,11 +26,16 @@ namespace Mmzkworks.muHierarchy.Editor
 
         static SceneHeaderRulesIcon()
         {
+#if UNITY_6000_4_OR_NEWER
+            EditorApplication.hierarchyWindowItemByEntityIdOnGUI -= OnHierarchyGUI;
+            EditorApplication.hierarchyWindowItemByEntityIdOnGUI += OnHierarchyGUI;
+#else
             EditorApplication.hierarchyWindowItemOnGUI -= OnHierarchyGUI;
             EditorApplication.hierarchyWindowItemOnGUI += OnHierarchyGUI;
+#endif
         }
 
-        private static void OnHierarchyGUI(int instanceID, Rect selectionRect)
+        private static void OnHierarchyGUI(ObjectId instanceID, Rect selectionRect)
         {
             // Scene header rows pass the scene handle instead of an object instance ID.
             if (!TryGetSceneByHandle(instanceID, out var scene)) return;
@@ -76,12 +86,16 @@ namespace Mmzkworks.muHierarchy.Editor
             EditorGUIUtility.PingObject(asset);
         }
 
-        private static bool TryGetSceneByHandle(int handle, out Scene scene)
+        private static bool TryGetSceneByHandle(ObjectId handle, out Scene scene)
         {
             for (var i = 0; i < SceneManager.sceneCount; i++)
             {
                 scene = SceneManager.GetSceneAt(i);
+#if UNITY_6000_4_OR_NEWER
+                if (scene.handle.GetRawData() == EntityId.ToULong(handle)) return true;
+#else
                 if (scene.handle == handle) return true;
+#endif
             }
 
             scene = default;

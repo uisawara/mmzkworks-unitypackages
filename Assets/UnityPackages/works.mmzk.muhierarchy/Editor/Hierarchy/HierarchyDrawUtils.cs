@@ -2,6 +2,11 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
+#if UNITY_6000_4_OR_NEWER
+using ObjectId = UnityEngine.EntityId;
+#else
+using ObjectId = System.Int32;
+#endif
 
 namespace Mmzkworks.muHierarchy.Editor
 {
@@ -49,9 +54,9 @@ namespace Mmzkworks.muHierarchy.Editor
             GUI.Label(pillRect, content, _pillLabelStyle);
         }
 
-        public static bool IsSelectedInstanceId(int instanceID)
+        public static bool IsSelectedInstanceId(ObjectId instanceID)
         {
-            var ids = Selection.instanceIDs;
+            var ids = ObjectIdCompat.SelectedIds;
             for (int i = 0; i < ids.Length; i++)
             {
                 if (ids[i] == instanceID)
