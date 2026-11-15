@@ -47,3 +47,13 @@ English | [日本語](README.ja.md)
 - [muLogger](Assets/UnityPackages/works.mmzk.mulogger/README.md) — Named logger with colored log levels and a swappable ILogger interface.
 - [muUnityExtensions](Assets/UnityPackages/works.mmzk.muunityextensions/README.md) — Extension methods for common Unity types such as GameObject, Vector and Texture2D.
 - [muPrimitive](Assets/UnityPackages/works.mmzk.muprimitive/README.md) — Helper primitive shapes (pie, cone, line cylinder) for development, debugging and simple effects.
+
+## Releases
+
+When a package's `version` in `package.json` is bumped and merged into main, the [Release workflow](.github/workflows/release.yml) creates a `<package-name>/<version>` tag and a GitHub Release automatically.
+
+To install a specific version, append the tag to the Git URL:
+
+```
+https://github.com/uisawara/mmzkworks-unitypackages.git?path=Assets/UnityPackages/works.mmzk.muhierarchy#works.mmzk.muhierarchy/0.3.1
+```

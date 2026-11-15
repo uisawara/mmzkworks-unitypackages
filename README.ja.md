@@ -46,3 +46,13 @@
 - [muLogger](Assets/UnityPackages/works.mmzk.mulogger/README.ja.md) — ログレベルの色分けと差し替え可能な ILogger インターフェースを備えた名前付きロガーです。
 - [muUnityExtensions](Assets/UnityPackages/works.mmzk.muunityextensions/README.ja.md) — GameObject・Vector・Texture2D など Unity の主要な型向けの拡張メソッド集です。
 - [muPrimitive](Assets/UnityPackages/works.mmzk.muprimitive/README.ja.md) — 開発・デバッグや簡単な演出に使える補助プリミティブ形状(パイ、コーン、ラインシリンダー)です。
+
+## リリース
+
+各パッケージの `package.json` の `version` を上げて main にマージすると、[Release workflow](.github/workflows/release.yml) が `<パッケージ名>/<version>` のタグと GitHub Release を自動で作成します。
+
+特定バージョンをインストールするには、Git URL の末尾にタグを指定します。
+
+```
+https://github.com/uisawara/mmzkworks-unitypackages.git?path=Assets/UnityPackages/works.mmzk.muhierarchy#works.mmzk.muhierarchy/0.3.1
+```
