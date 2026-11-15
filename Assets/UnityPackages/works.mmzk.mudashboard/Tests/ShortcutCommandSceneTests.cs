@@ -15,6 +15,7 @@ namespace Mmzkworks.muDashboard.Tests
 
         private Scene _previousScene;
         private Scene _scene;
+        private bool _additive;
         private Object[] _previousSelection;
 
         [SetUp]
@@ -22,15 +23,40 @@ namespace Mmzkworks.muDashboard.Tests
         {
             _previousSelection = Selection.objects;
             _previousScene = SceneManager.GetActiveScene();
-            _scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Additive);
+
+            // A scene cannot be added next to an unsaved untitled scene (the Test Runner runs
+            // EditMode tests in one), so replace the scenes in that case. The Test Runner
+            // restores the user's scene setup after the run.
+            _additive = !HasUntitledScene();
+            _scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene,
+                _additive ? NewSceneMode.Additive : NewSceneMode.Single);
             SceneManager.SetActiveScene(_scene);
+        }
+
+        private static bool HasUntitledScene()
+        {
+            for (var i = 0; i < SceneManager.sceneCount; i++)
+            {
+                if (string.IsNullOrEmpty(SceneManager.GetSceneAt(i).path)) return true;
+            }
+
+            return false;
         }
 
         [TearDown]
         public void TearDown()
         {
-            if (_previousScene.IsValid()) SceneManager.SetActiveScene(_previousScene);
-            if (_scene.IsValid()) EditorSceneManager.CloseScene(_scene, true);
+            if (_additive)
+            {
+                if (_previousScene.IsValid()) SceneManager.SetActiveScene(_previousScene);
+                if (_scene.IsValid()) EditorSceneManager.CloseScene(_scene, true);
+            }
+            else
+            {
+                // Drop the objects the test created; the scene itself is untitled and never saved.
+                EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            }
+
             if (AssetDatabase.IsValidFolder(TempFolder)) AssetDatabase.DeleteAsset(TempFolder);
             Selection.objects = _previousSelection;
         }
