@@ -1,17 +1,17 @@
 using System.Linq;
-using Mmzkworks.muShortcutPanel.Editor;
+using Mmzkworks.muDashboard.Editor;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-namespace Mmzkworks.muShortcutPanel.Tests
+namespace Mmzkworks.muDashboard.Tests
 {
     /// <summary>Runs commands end to end in a temporary scene and a temporary asset folder.</summary>
     public sealed class ShortcutCommandSceneTests
     {
-        private const string TempFolder = "Assets/__muShortcutPanelCommandTests";
+        private const string TempFolder = "Assets/__muDashboardCommandTests";
 
         private Scene _previousScene;
         private Scene _scene;
@@ -39,7 +39,7 @@ namespace Mmzkworks.muShortcutPanel.Tests
         {
             var command = ShortcutCommandRegistry.Find(id);
             Assert.That(command, Is.Not.Null, id);
-            var item = new ShortcutPanelItem { kind = ShortcutItemKind.Command, command = id };
+            var item = new DashboardItem { kind = ShortcutItemKind.Command, command = id };
             foreach (var (key, value) in args) item.SetArg(key, value);
 
             var ctx = new ShortcutCommandContext(command, item);

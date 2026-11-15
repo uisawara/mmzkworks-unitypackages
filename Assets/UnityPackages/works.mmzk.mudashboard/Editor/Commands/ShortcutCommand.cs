@@ -5,7 +5,7 @@ using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace Mmzkworks.muShortcutPanel.Editor
+namespace Mmzkworks.muDashboard.Editor
 {
     internal static class ShortcutCommandCategory
     {
@@ -109,14 +109,14 @@ namespace Mmzkworks.muShortcutPanel.Editor
 
         public ShortcutCommandParam FindParam(string key) => Params.FirstOrDefault(p => p.Key == key);
 
-        public bool IsVisible(ShortcutCommandParam p, ShortcutPanelItem item)
+        public bool IsVisible(ShortcutCommandParam p, DashboardItem item)
         {
             if (string.IsNullOrEmpty(p.ShowWhenKey)) return true;
             return ShortcutCommandContext.Value(this, item, p.ShowWhenKey) == p.ShowWhenValue;
         }
 
         /// <summary>Short description of the arguments for the shortcut's second line, e.g. "Assets/Prefabs, Unique".</summary>
-        public string Summary(ShortcutPanelItem item)
+        public string Summary(DashboardItem item)
         {
             var parts = new List<string>();
             foreach (var p in Params)
@@ -152,17 +152,17 @@ namespace Mmzkworks.muShortcutPanel.Editor
     internal sealed class ShortcutCommandContext
     {
         public readonly ShortcutCommand Command;
-        public readonly ShortcutPanelItem Item;
+        public readonly DashboardItem Item;
         public string Error { get; private set; }
 
-        public ShortcutCommandContext(ShortcutCommand command, ShortcutPanelItem item)
+        public ShortcutCommandContext(ShortcutCommand command, DashboardItem item)
         {
             Command = command;
             Item = item;
         }
 
         /// <summary>The stored value, or the parameter's default when it was never set.</summary>
-        internal static string Value(ShortcutCommand command, ShortcutPanelItem item, string key)
+        internal static string Value(ShortcutCommand command, DashboardItem item, string key)
         {
             var v = item?.GetArg(key);
             if (v != null) return v;
@@ -247,7 +247,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
             foreach (var c in _all)
             {
                 if (_byId.ContainsKey(c.Id))
-                    Debug.LogError($"[muShortcutPanel] Duplicate command id: {c.Id}");
+                    Debug.LogError($"[muDashboard] Duplicate command id: {c.Id}");
                 else
                     _byId.Add(c.Id, c);
             }

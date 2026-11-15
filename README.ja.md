@@ -14,6 +14,7 @@
 - [muAsmdefgraph](Assets/UnityPackages/works.mmzk.muasmdefgraph/README.ja.md) — Assembly Definition の依存関係をグラフで可視化します。
 - [muRefgraph](Assets/UnityPackages/works.mmzk.murefgraph/README.ja.md) — GameObject / Prefab の Component と、フィールドが参照しているオブジェクトをグラフで表示します。アセンブリ別の並べ替えもできます。
 - [muShortcut](Assets/UnityPackages/works.mmzk.mushortcut/README.ja.md) — Hierarchy や Project ウィンドウのオブジェクトをショートカットで素早く選択できます。
+- [muDashboard](Assets/UnityPackages/works.mmzk.mudashboard/README.ja.md) — Project のアセット・URL・メニューコマンドへのショートカットと、ラベル・画像・自動化コマンド・複数手順をまとめて実行する Action を自由に配置できるダッシュボードです。`*.dashboard.json` として保存し、作業ごとに切り替えられます。
 - [muValidation](Assets/UnityPackages/works.mmzk.muvalidation/README.ja.md) — パスのルール・検証属性・シーンルールに基づいて、不正なアセットを Project ウィンドウ上でマークします。
 
 #### 紹介画像

@@ -1,9 +1,9 @@
 using System.Linq;
-using Mmzkworks.muShortcutPanel.Editor;
+using Mmzkworks.muDashboard.Editor;
 using NUnit.Framework;
 using UnityEngine;
 
-namespace Mmzkworks.muShortcutPanel.Tests
+namespace Mmzkworks.muDashboard.Tests
 {
     public sealed class ShortcutCommandUtilTests
     {
@@ -153,7 +153,7 @@ namespace Mmzkworks.muShortcutPanel.Tests
         public void Context_UsesDefaultsUntilSet()
         {
             var command = ShortcutCommandRegistry.Find("prefab.create");
-            var item = new ShortcutPanelItem { kind = ShortcutItemKind.Command, command = command.Id };
+            var item = new DashboardItem { kind = ShortcutItemKind.Command, command = command.Id };
             var ctx = new ShortcutCommandContext(command, item);
 
             Assert.That(ctx.GetString("folder"), Is.Empty, "empty = the Project window's folder");

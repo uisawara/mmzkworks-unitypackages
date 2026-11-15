@@ -4,11 +4,11 @@ using UnityEditor;
 using UnityEditor.Callbacks;
 using UnityEngine;
 
-namespace Mmzkworks.muShortcutPanel.Editor
+namespace Mmzkworks.muDashboard.Editor
 {
-    internal static class ShortcutPanelAssetHandler
+    internal static class DashboardAssetHandler
     {
-        // Double-clicking a *.shortcutpanel.json in the Project window opens it in the ShortcutPanel window.
+        // Double-clicking a *.dashboard.json in the Project window opens it in the Dashboard window.
 #if UNITY_6000_3_OR_NEWER
         [OnOpenAsset(0)]
         private static bool OnOpenAsset(EntityId entityId, int line) => TryOpen(AssetDatabase.GetAssetPath(entityId));
@@ -19,12 +19,12 @@ namespace Mmzkworks.muShortcutPanel.Editor
 
         private static bool TryOpen(string path)
         {
-            if (!ShortcutPanelFiles.IsPanelFile(path)) return false;
-            ShortcutPanelWindow.Open(path);
+            if (!DashboardFiles.IsPanelFile(path)) return false;
+            DashboardWindow.Open(path);
             return true;
         }
 
-        [MenuItem("Assets/Create/muShortcutPanel/Shortcut Panel", false, 2040)]
+        [MenuItem("Assets/Create/muDashboard/Dashboard", false, 2040)]
         private static void CreatePanelAsset()
         {
             var folder = "Assets";
@@ -32,9 +32,9 @@ namespace Mmzkworks.muShortcutPanel.Editor
             if (!string.IsNullOrEmpty(selected))
                 folder = AssetDatabase.IsValidFolder(selected) ? selected : Path.GetDirectoryName(selected)?.Replace('\\', '/');
 
-            var path = AssetDatabase.GenerateUniqueAssetPath($"{folder}/NewPanel{ShortcutPanelFiles.Suffix}");
+            var path = AssetDatabase.GenerateUniqueAssetPath($"{folder}/NewPanel{DashboardFiles.Suffix}");
             var full = Path.Combine(Path.GetDirectoryName(Application.dataPath) ?? "", path);
-            File.WriteAllText(full, ShortcutPanelSerializer.ToJson(new ShortcutPanelDocument()), new UTF8Encoding(false));
+            File.WriteAllText(full, DashboardSerializer.ToJson(new DashboardDocument()), new UTF8Encoding(false));
             AssetDatabase.ImportAsset(path);
 
             var asset = AssetDatabase.LoadAssetAtPath<Object>(path);

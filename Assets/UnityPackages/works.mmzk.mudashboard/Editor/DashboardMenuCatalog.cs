@@ -5,7 +5,7 @@ using UnityEditor;
 using UnityEditor.IMGUI.Controls;
 using UnityEngine;
 
-namespace Mmzkworks.muShortcutPanel.Editor
+namespace Mmzkworks.muDashboard.Editor
 {
     /// <summary>Where a menu command shortcut comes from (derived from the menu path).</summary>
     internal static class ShortcutMenuTarget
@@ -21,7 +21,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
     }
 
     /// <summary>Pure helpers for menu item paths (no Unity editor state involved).</summary>
-    internal static class ShortcutPanelMenuPath
+    internal static class DashboardMenuPath
     {
         private const string ProjectRoot = "Assets/";
         private const string HierarchyRoot = "GameObject/";
@@ -101,7 +101,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
     }
 
     /// <summary>All menu item paths currently registered in the editor (built-in and [MenuItem]).</summary>
-    internal static class ShortcutPanelMenuCatalog
+    internal static class DashboardMenuCatalog
     {
         private static readonly string[] BuiltInRoots =
         {
@@ -154,7 +154,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
                 {
                     var mi = (MenuItem)attr;
                     if (mi.validate) continue;
-                    var p = ShortcutPanelMenuPath.StripHotkey(mi.menuItem);
+                    var p = DashboardMenuPath.StripHotkey(mi.menuItem);
                     scriptPaths.Add(p);
                     var slash = p.IndexOf('/');
                     if (slash > 0)
@@ -214,7 +214,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
         /// <summary>Must be called from OnGUI. <paramref name="rect"/> is in GUI coordinates.</summary>
         public static void Show(Rect rect, Action<string> onPicked)
         {
-            ShortcutPanelMenuCatalog.Invalidate(); // pick up menus added since last time
+            DashboardMenuCatalog.Invalidate(); // pick up menus added since last time
             new MenuCommandDropdown(onPicked).Show(rect);
         }
 
@@ -233,9 +233,9 @@ namespace Mmzkworks.muShortcutPanel.Editor
             root.AddChild(groups[ShortcutMenuTarget.Hierarchy]);
 
             var folders = new Dictionary<string, AdvancedDropdownItem>(StringComparer.Ordinal);
-            foreach (var path in ShortcutPanelMenuCatalog.All)
+            foreach (var path in DashboardMenuCatalog.All)
             {
-                var target = ShortcutPanelMenuPath.TargetOf(path);
+                var target = DashboardMenuPath.TargetOf(path);
                 var parent = groups[target];
                 var segments = path.Split('/');
                 // The Project / Hierarchy groups already stand for "Assets" / "GameObject".

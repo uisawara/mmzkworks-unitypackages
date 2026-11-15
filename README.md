@@ -15,6 +15,7 @@ English | [日本語](README.ja.md)
 - [muAsmdefgraph](Assets/UnityPackages/works.mmzk.muasmdefgraph/README.md) — Visualizes Assembly Definition dependencies as a graph.
 - [muRefgraph](Assets/UnityPackages/works.mmzk.murefgraph/README.md) — Shows a GameObject's or Prefab's components and the objects their fields reference as a graph, grouped by assembly if you like.
 - [muShortcut](Assets/UnityPackages/works.mmzk.mushortcut/README.md) — Shortcut tool for quickly selecting objects in the Hierarchy and Project windows.
+- [muDashboard](Assets/UnityPackages/works.mmzk.mudashboard/README.md) — Free-layout dashboard of shortcuts to Project assets, URLs and menu commands, plus labels, images, automation commands and actions that run several steps. Panels are saved as `*.dashboard.json` and can be switched per task.
 - [muValidation](Assets/UnityPackages/works.mmzk.muvalidation/README.md) — Marks invalid assets in the Project window using path rules, validation attributes and scene rules.
 
 #### Highlights

@@ -5,7 +5,7 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace Mmzkworks.muShortcutPanel.Editor
+namespace Mmzkworks.muDashboard.Editor
 {
     internal static class GameObjectCommands
     {

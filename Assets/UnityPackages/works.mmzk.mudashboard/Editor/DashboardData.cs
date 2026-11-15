@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
-namespace Mmzkworks.muShortcutPanel.Editor
+namespace Mmzkworks.muDashboard.Editor
 {
     internal static class ShortcutItemKind
     {
@@ -12,13 +12,13 @@ namespace Mmzkworks.muShortcutPanel.Editor
         public const string Label = "label";
         public const string Menu = "menu";
 
-        /// <summary>Runs the items listed in <see cref="ShortcutPanelItem.steps"/> one after another.</summary>
+        /// <summary>Runs the items listed in <see cref="DashboardItem.steps"/> one after another.</summary>
         public const string Action = "action";
 
-        /// <summary>Runs a built-in automation command (<see cref="ShortcutPanelItem.command"/>) with arguments.</summary>
+        /// <summary>Runs a built-in automation command (<see cref="DashboardItem.command"/>) with arguments.</summary>
         public const string Command = "command";
 
-        /// <summary>A picture (a texture asset referenced by <see cref="ShortcutPanelItem.guid"/> / path). Not clickable.</summary>
+        /// <summary>A picture (a texture asset referenced by <see cref="DashboardItem.guid"/> / path). Not clickable.</summary>
         public const string Image = "image";
 
         public static bool IsValid(string kind) =>
@@ -49,7 +49,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
 
     /// <summary>One element placed on the panel. Position and size are in panel (content) coordinates.</summary>
     [Serializable]
-    internal sealed class ShortcutPanelItem
+    internal sealed class DashboardItem
     {
         public string id = "";
         public string kind = ShortcutItemKind.Label;
@@ -118,9 +118,9 @@ namespace Mmzkworks.muShortcutPanel.Editor
             }
         }
 
-        public ShortcutPanelItem Clone()
+        public DashboardItem Clone()
         {
-            var c = (ShortcutPanelItem)MemberwiseClone();
+            var c = (DashboardItem)MemberwiseClone();
             c.id = NewId();
             c.steps = steps != null ? new List<string>(steps) : new List<string>();
             c.args = new List<ShortcutCommandArg>();
@@ -138,12 +138,12 @@ namespace Mmzkworks.muShortcutPanel.Editor
     }
 
     [Serializable]
-    internal sealed class ShortcutPanelDocument
+    internal sealed class DashboardDocument
     {
-        public int version = ShortcutPanelSerializer.CurrentVersion;
-        public List<ShortcutPanelItem> items = new List<ShortcutPanelItem>();
+        public int version = DashboardSerializer.CurrentVersion;
+        public List<DashboardItem> items = new List<DashboardItem>();
 
-        public ShortcutPanelItem Find(string id)
+        public DashboardItem Find(string id)
         {
             if (string.IsNullOrEmpty(id)) return null;
             foreach (var item in items)
@@ -164,7 +164,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
         }
     }
 
-    internal static class ShortcutPanelLayout
+    internal static class DashboardLayout
     {
         public const float GridSize = 8f;
         public const float MinWidth = 32f;
@@ -191,19 +191,21 @@ namespace Mmzkworks.muShortcutPanel.Editor
             return new Rect(start.x, start.y, w, h);
         }
 
-        public static Rect ResizeHandleRect(Rect itemRect)
+        /// <param name="zoom">Canvas zoom; the handle keeps the same size on screen.</param>
+        public static Rect ResizeHandleRect(Rect itemRect, float zoom = 1f)
         {
-            return new Rect(itemRect.xMax - ResizeHandleSize, itemRect.yMax - ResizeHandleSize,
-                ResizeHandleSize, ResizeHandleSize);
+            var size = ResizeHandleSize / zoom;
+            return new Rect(itemRect.xMax - size, itemRect.yMax - size, size, size);
         }
 
         public const float ActionKnobSize = 12f;
 
         /// <summary>Knob at the bottom center of an action item; drag from it to trace the steps.</summary>
-        public static Rect ActionKnobRect(Rect itemRect)
+        /// <param name="zoom">Canvas zoom; the knob keeps the same size on screen.</param>
+        public static Rect ActionKnobRect(Rect itemRect, float zoom = 1f)
         {
-            return new Rect(itemRect.center.x - ActionKnobSize * 0.5f, itemRect.yMax - ActionKnobSize * 0.5f,
-                ActionKnobSize, ActionKnobSize);
+            var size = ActionKnobSize / zoom;
+            return new Rect(itemRect.center.x - size * 0.5f, itemRect.yMax - size * 0.5f, size, size);
         }
 
         public static Rect RectFromPoints(Vector2 a, Vector2 b)
@@ -219,7 +221,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
             Snap(primaryStart.position + delta) - primaryStart.position;
 
         /// <summary>Bounding rect of all items, or null when there are none.</summary>
-        public static Rect? Bounds(IReadOnlyList<ShortcutPanelItem> items)
+        public static Rect? Bounds(IReadOnlyList<DashboardItem> items)
         {
             if (items == null || items.Count == 0) return null;
             var r = items[0].Rect;
@@ -229,7 +231,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
         }
 
         /// <summary>Returns the topmost item (last in draw order) under <paramref name="p"/>, or null.</summary>
-        public static ShortcutPanelItem HitTest(IReadOnlyList<ShortcutPanelItem> items, Vector2 p)
+        public static DashboardItem HitTest(IReadOnlyList<DashboardItem> items, Vector2 p)
         {
             for (var i = items.Count - 1; i >= 0; i--)
             {
@@ -239,7 +241,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
         }
 
         /// <summary>Bounding size of all items plus a margin, so there is always room to drop below / to the right.</summary>
-        public static Vector2 ContentSize(IReadOnlyList<ShortcutPanelItem> items, float margin)
+        public static Vector2 ContentSize(IReadOnlyList<DashboardItem> items, float margin)
         {
             var size = Vector2.zero;
             foreach (var item in items)
@@ -251,36 +253,36 @@ namespace Mmzkworks.muShortcutPanel.Editor
         }
     }
 
-    internal static class ShortcutPanelSerializer
+    internal static class DashboardSerializer
     {
         public const int CurrentVersion = 1;
 
-        public static string ToJson(ShortcutPanelDocument doc) => JsonUtility.ToJson(doc, true);
+        public static string ToJson(DashboardDocument doc) => JsonUtility.ToJson(doc, true);
 
         /// <summary>Parses JSON leniently. Empty / broken input yields an empty document.</summary>
-        public static ShortcutPanelDocument FromJson(string json)
+        public static DashboardDocument FromJson(string json)
         {
-            ShortcutPanelDocument doc = null;
+            DashboardDocument doc = null;
             if (!string.IsNullOrWhiteSpace(json))
             {
                 try
                 {
-                    doc = JsonUtility.FromJson<ShortcutPanelDocument>(json);
+                    doc = JsonUtility.FromJson<DashboardDocument>(json);
                 }
                 catch (ArgumentException e)
                 {
-                    Debug.LogWarning($"[muShortcutPanel] Failed to parse panel JSON: {e.Message}");
+                    Debug.LogWarning($"[muDashboard] Failed to parse panel JSON: {e.Message}");
                 }
             }
 
-            doc ??= new ShortcutPanelDocument();
+            doc ??= new DashboardDocument();
             Normalize(doc);
             return doc;
         }
 
-        internal static void Normalize(ShortcutPanelDocument doc)
+        internal static void Normalize(DashboardDocument doc)
         {
-            doc.items ??= new List<ShortcutPanelItem>();
+            doc.items ??= new List<DashboardItem>();
             doc.items.RemoveAll(i => i == null);
 
             var seen = new HashSet<string>();
@@ -288,7 +290,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
             {
                 if (string.IsNullOrEmpty(item.id) || !seen.Add(item.id))
                 {
-                    item.id = ShortcutPanelItem.NewId();
+                    item.id = DashboardItem.NewId();
                     seen.Add(item.id);
                 }
 
@@ -306,8 +308,8 @@ namespace Mmzkworks.muShortcutPanel.Editor
                 item.args ??= new List<ShortcutCommandArg>();
                 item.args.RemoveAll(a => a == null || string.IsNullOrEmpty(a.key));
                 foreach (var a in item.args) a.value ??= "";
-                item.width = Mathf.Max(ShortcutPanelLayout.MinWidth, item.width);
-                item.height = Mathf.Max(ShortcutPanelLayout.MinHeight, item.height);
+                item.width = Mathf.Max(DashboardLayout.MinWidth, item.width);
+                item.height = Mathf.Max(DashboardLayout.MinHeight, item.height);
                 if (item.fontSize < 0) item.fontSize = 0;
             }
 
@@ -315,17 +317,21 @@ namespace Mmzkworks.muShortcutPanel.Editor
         }
     }
 
-    /// <summary>Naming rules and discovery of <c>*.shortcutpanel.json</c> files.</summary>
-    internal static class ShortcutPanelFiles
+    /// <summary>Naming rules and discovery of <c>*.dashboard.json</c> files.</summary>
+    internal static class DashboardFiles
     {
-        public const string Suffix = ".shortcutpanel.json";
+        public const string Suffix = ".dashboard.json";
 
+        /// <summary>"x.dashboard.json" counts; a bare "dashboard.json" (no panel name) does not.</summary>
         public static bool IsPanelFile(string path)
         {
-            return !string.IsNullOrEmpty(path) && path.EndsWith(Suffix, StringComparison.OrdinalIgnoreCase);
+            if (string.IsNullOrEmpty(path) || path.Length <= Suffix.Length) return false;
+            if (!path.EndsWith(Suffix, StringComparison.OrdinalIgnoreCase)) return false;
+            var before = path[path.Length - Suffix.Length - 1];
+            return before != '/' && before != '\\';
         }
 
-        /// <summary>"Assets/Foo/Work.shortcutpanel.json" -> "Work"</summary>
+        /// <summary>"Assets/Foo/Work.dashboard.json" -> "Work"</summary>
         public static string DisplayName(string path)
         {
             if (string.IsNullOrEmpty(path)) return "";
@@ -339,8 +345,8 @@ namespace Mmzkworks.muShortcutPanel.Editor
             if (string.IsNullOrEmpty(path) || IsPanelFile(path)) return path;
             if (path.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
                 path = path.Substring(0, path.Length - ".json".Length);
-            if (path.EndsWith(".shortcutpanel", StringComparison.OrdinalIgnoreCase))
-                path = path.Substring(0, path.Length - ".shortcutpanel".Length);
+            if (path.EndsWith(".dashboard", StringComparison.OrdinalIgnoreCase))
+                path = path.Substring(0, path.Length - ".dashboard".Length);
             return path + Suffix;
         }
 
@@ -354,7 +360,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
             foreach (var full in Directory.EnumerateFiles(assetsDir, "*" + Suffix, SearchOption.AllDirectories))
             {
                 var rel = full.Substring(projectRoot.Length).TrimStart('\\', '/').Replace('\\', '/');
-                result.Add(rel);
+                if (IsPanelFile(rel)) result.Add(rel);
             }
 
             result.Sort(StringComparer.OrdinalIgnoreCase);

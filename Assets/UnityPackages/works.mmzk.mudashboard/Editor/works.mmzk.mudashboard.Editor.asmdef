@@ -1,6 +1,6 @@
 {
-    "name": "works.mmzk.mushortcutpanel.Editor",
-    "rootNamespace": "Mmzkworks.muShortcutPanel",
+    "name": "works.mmzk.mudashboard.Editor",
+    "rootNamespace": "Mmzkworks.muDashboard",
     "references": [],
     "includePlatforms": [
         "Editor"

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
-namespace Mmzkworks.muShortcutPanel.Editor
+namespace Mmzkworks.muDashboard.Editor
 {
     /// <summary>
     /// Icon per command category. Built-in icon names differ between Unity versions, so a few names are tried first,

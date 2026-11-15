@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEditor.IMGUI.Controls;
 using UnityEngine;
 
-namespace Mmzkworks.muShortcutPanel.Editor
+namespace Mmzkworks.muDashboard.Editor
 {
     /// <summary>Searchable picker of the built-in commands, grouped by category.</summary>
     internal sealed class ShortcutCommandDropdown : AdvancedDropdown

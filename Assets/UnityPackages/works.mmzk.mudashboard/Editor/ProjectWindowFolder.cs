@@ -5,7 +5,7 @@ using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace Mmzkworks.muShortcutPanel.Editor
+namespace Mmzkworks.muDashboard.Editor
 {
     /// <summary>
     /// Opens a folder in the Project window the way double-clicking it does: in two-column layout the right column then
@@ -42,7 +42,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
             }
             catch (Exception e)
             {
-                Debug.LogWarning($"[muShortcutPanel] Could not open the folder in the Project window: {e.GetBaseException().Message}");
+                Debug.LogWarning($"[muDashboard] Could not open the folder in the Project window: {e.GetBaseException().Message}");
                 return false;
             }
         }

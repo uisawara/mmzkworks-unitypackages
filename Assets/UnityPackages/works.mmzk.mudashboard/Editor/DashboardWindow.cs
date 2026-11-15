@@ -7,20 +7,21 @@ using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace Mmzkworks.muShortcutPanel.Editor
+namespace Mmzkworks.muDashboard.Editor
 {
     /// <summary>
-    /// Free-layout panel of shortcuts (Project assets / URLs) and labels, stored in a <c>*.shortcutpanel.json</c> file.
+    /// Free-layout dashboard of shortcuts (Project assets / URLs / menus / commands / actions), labels and images,
+    /// stored in a <c>*.dashboard.json</c> file.
     /// Use mode: click to select in the Project window / open in the browser.
     /// Edit mode: drag to move, drag the bottom-right corner to resize, drag on empty space to box select,
     /// edit properties at the bottom.
     /// </summary>
-    internal sealed class ShortcutPanelWindow : EditorWindow
+    internal sealed class DashboardWindow : EditorWindow
     {
-        private const string WindowTitle = "ShortcutPanel";
-        private const string LastFilePrefKey = "Mmzkworks.muShortcutPanel.LastFile";
-        private const string ShowFullPathPrefKey = "Mmzkworks.muShortcutPanel.ShowFullPath";
-        private const string DragGenericDataKey = "Mmzkworks.muShortcutPanel.Item";
+        private const string WindowTitle = "Dashboard";
+        private const string LastFilePrefKey = "Mmzkworks.muDashboard.LastFile";
+        private const string ShowFullPathPrefKey = "Mmzkworks.muDashboard.ShowFullPath";
+        private const string DragGenericDataKey = "Mmzkworks.muDashboard.Item";
         private const double SaveDelaySeconds = 0.5;
         private const float DragOutThreshold = 6f;
 
@@ -29,9 +30,15 @@ namespace Mmzkworks.muShortcutPanel.Editor
         [SerializeField] private string _fileGuid = "";
         [SerializeField] private bool _editMode;
         [SerializeField] private Vector2 _scroll;
+
+        /// <summary>Canvas zoom (1 = 100%). Changed with the mouse wheel around the cursor.</summary>
+        [SerializeField] private float _zoom = 1f;
+
+        private const float MinZoom = 0.25f;
+        private const float MaxZoom = 2f;
         [SerializeField] private List<string> _selectedIds = new List<string>();
 
-        private ShortcutPanelDocument _doc;
+        private DashboardDocument _doc;
         private DateTime _loadedWriteTime;
         private bool _dirty;
         private double _saveDueTime;
@@ -76,7 +83,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
         // Action run (use mode). Steps are run one per delayCall so the editor can process each command in between.
         private const double FailedHighlightSeconds = 3.0;
         private string _runActionId;
-        private List<ShortcutPanelItem> _runSteps;
+        private List<DashboardItem> _runSteps;
         private int _runIndex;
         private string _failedId;
         private double _failedUntil;
@@ -91,12 +98,12 @@ namespace Mmzkworks.muShortcutPanel.Editor
 
         // ------------------------------------------------------------------ open / lifecycle
 
-        [MenuItem("Tools/muShortcutPanel/ShortcutPanel", false, 2040)]
+        [MenuItem("Tools/muDashboard/Dashboard", false, 2003)]
         private static void OpenFromMenu() => Open(null);
 
-        public static ShortcutPanelWindow Open(string panelPath)
+        public static DashboardWindow Open(string panelPath)
         {
-            var window = GetWindow<ShortcutPanelWindow>();
+            var window = GetWindow<DashboardWindow>();
             window.ApplyTitle();
             if (!string.IsNullOrEmpty(panelPath)) window.LoadFile(panelPath);
             window.Show();
@@ -155,7 +162,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
 
         private void ApplyTitle()
         {
-            var name = _doc != null ? ShortcutPanelFiles.DisplayName(_filePath) : "";
+            var name = _doc != null ? DashboardFiles.DisplayName(_filePath) : "";
             titleContent = new GUIContent(WindowTitle, string.IsNullOrEmpty(name) ? WindowTitle : $"{WindowTitle} - {name}");
         }
 
@@ -171,7 +178,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
             var full = FullPath(path);
             if (!File.Exists(full))
             {
-                if (!silent) Debug.LogWarning($"[muShortcutPanel] Panel file not found: {path}");
+                if (!silent) Debug.LogWarning($"[muDashboard] Panel file not found: {path}");
                 _doc = null;
                 ApplyTitle();
                 Repaint();
@@ -180,7 +187,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
 
             _filePath = path;
             _fileGuid = AssetDatabase.AssetPathToGUID(path);
-            _doc = ShortcutPanelSerializer.FromJson(File.ReadAllText(full, Encoding.UTF8));
+            _doc = DashboardSerializer.FromJson(File.ReadAllText(full, Encoding.UTF8));
             _loadedWriteTime = File.GetLastWriteTimeUtc(full);
             _dirty = false;
             _op = PointerOp.None;
@@ -228,31 +235,31 @@ namespace Mmzkworks.muShortcutPanel.Editor
             var full = FullPath(_filePath);
             try
             {
-                File.WriteAllText(full, ShortcutPanelSerializer.ToJson(_doc), new UTF8Encoding(false));
+                File.WriteAllText(full, DashboardSerializer.ToJson(_doc), new UTF8Encoding(false));
                 _loadedWriteTime = File.GetLastWriteTimeUtc(full);
                 AssetDatabase.ImportAsset(_filePath);
             }
             catch (Exception e)
             {
-                Debug.LogError($"[muShortcutPanel] Failed to save {_filePath}: {e.Message}");
+                Debug.LogError($"[muDashboard] Failed to save {_filePath}: {e.Message}");
             }
         }
 
         private void CreateNewPanel()
         {
             var dir = string.IsNullOrEmpty(_filePath) ? "Assets" : Path.GetDirectoryName(_filePath)?.Replace('\\', '/');
-            var path = EditorUtility.SaveFilePanelInProject("New Shortcut Panel", "NewPanel.shortcutpanel", "json",
-                "Choose where to save the shortcut panel.", dir);
+            var path = EditorUtility.SaveFilePanelInProject("New Dashboard", "NewPanel.dashboard", "json",
+                "Choose where to save the dashboard.", dir);
             if (string.IsNullOrEmpty(path)) return;
 
-            path = ShortcutPanelFiles.EnsureSuffix(path);
+            path = DashboardFiles.EnsureSuffix(path);
             var doc = File.Exists(FullPath(path))
                 ? null // keep existing content, just open it
-                : new ShortcutPanelDocument();
+                : new DashboardDocument();
 
             if (doc != null)
             {
-                File.WriteAllText(FullPath(path), ShortcutPanelSerializer.ToJson(doc), new UTF8Encoding(false));
+                File.WriteAllText(FullPath(path), DashboardSerializer.ToJson(doc), new UTF8Encoding(false));
                 AssetDatabase.ImportAsset(path);
             }
 
@@ -316,7 +323,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
             {
                 _pendingMenuPicker = false;
                 var canvasPos = _pendingMenuPickerPos;
-                var windowPos = canvasPos - _scroll + _lastCanvasRect.position;
+                var windowPos = V(canvasPos) + _lastCanvasRect.position;
                 MenuCommandDropdown.Show(new Rect(windowPos, new Vector2(1f, 1f)),
                     path => AddItem(NewMenuItem(path, canvasPos)));
             }
@@ -324,7 +331,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
             {
                 _pendingCommandPicker = false;
                 var canvasPos = _pendingMenuPickerPos;
-                var windowPos = canvasPos - _scroll + _lastCanvasRect.position;
+                var windowPos = V(canvasPos) + _lastCanvasRect.position;
                 ShortcutCommandDropdown.Show(new Rect(windowPos, new Vector2(1f, 1f)),
                     id => AddItem(NewCommandItem(id, canvasPos)));
             }
@@ -341,10 +348,10 @@ namespace Mmzkworks.muShortcutPanel.Editor
         }
 
         /// <summary>Selected items in draw order.</summary>
-        private List<ShortcutPanelItem> SelectedItems() => _doc.items.Where(i => _selectedIds.Contains(i.id)).ToList();
+        private List<DashboardItem> SelectedItems() => _doc.items.Where(i => _selectedIds.Contains(i.id)).ToList();
 
         /// <summary>The selected item when exactly one is selected (edit mode only).</summary>
-        private ShortcutPanelItem SingleSelected() =>
+        private DashboardItem SingleSelected() =>
             _editMode && _doc != null && _selectedIds.Count == 1 ? _doc.Find(_selectedIds[0]) : null;
 
         private void PruneSelection()
@@ -354,8 +361,8 @@ namespace Mmzkworks.muShortcutPanel.Editor
         }
 
         /// <summary>The selection when <paramref name="hit"/> is part of it, otherwise just <paramref name="hit"/>.</summary>
-        private List<ShortcutPanelItem> TargetsOf(ShortcutPanelItem hit) =>
-            IsSelected(hit.id) && _selectedIds.Count > 1 ? SelectedItems() : new List<ShortcutPanelItem> { hit };
+        private List<DashboardItem> TargetsOf(DashboardItem hit) =>
+            IsSelected(hit.id) && _selectedIds.Count > 1 ? SelectedItems() : new List<DashboardItem> { hit };
 
         private void SelectAll()
         {
@@ -368,8 +375,8 @@ namespace Mmzkworks.muShortcutPanel.Editor
         {
             using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar))
             {
-                var fileLabel = _doc != null ? ShortcutPanelFiles.DisplayName(_filePath) : "(no panel)";
-                var fileContent = new GUIContent(fileLabel, _doc != null ? _filePath : "Select a .shortcutpanel.json");
+                var fileLabel = _doc != null ? DashboardFiles.DisplayName(_filePath) : "(no panel)";
+                var fileContent = new GUIContent(fileLabel, _doc != null ? _filePath : "Select a .dashboard.json");
                 var fileRect = GUILayoutUtility.GetRect(fileContent, EditorStyles.toolbarDropDown, GUILayout.MinWidth(120f), GUILayout.MaxWidth(260f));
                 if (EditorGUI.DropdownButton(fileRect, fileContent, FocusType.Passive, EditorStyles.toolbarDropDown))
                     ShowFileMenu(fileRect);
@@ -402,6 +409,12 @@ namespace Mmzkworks.muShortcutPanel.Editor
                     GUILayout.Space(8f);
                 }
 
+                if (_doc != null)
+                {
+                    var zoomContent = new GUIContent($"{Mathf.RoundToInt(_zoom * 100f)}%", "Zoom (mouse wheel). Click to reset to 100%");
+                    if (GUILayout.Button(zoomContent, EditorStyles.toolbarButton, GUILayout.Width(44f))) SetZoom(1f, _lastCanvasRect.center);
+                }
+
                 var newShowPath = GUILayout.Toggle(_showFullPath, new GUIContent("Path",
                     "Show the full path / URL / menu path under each shortcut"), EditorStyles.toolbarButton);
                 if (newShowPath != _showFullPath)
@@ -428,17 +441,17 @@ namespace Mmzkworks.muShortcutPanel.Editor
         private void ShowFileMenu(Rect rect)
         {
             var menu = new GenericMenu();
-            var files = ShortcutPanelFiles.FindAll(ProjectRoot);
+            var files = DashboardFiles.FindAll(ProjectRoot);
 
             if (files.Count == 0)
-                menu.AddDisabledItem(new GUIContent("No .shortcutpanel.json in Assets"));
+                menu.AddDisabledItem(new GUIContent("No .dashboard.json in Assets"));
 
             foreach (var f in files)
             {
                 var path = f;
                 var dir = Path.GetDirectoryName(f)?.Replace('/', '\\');
                 // '/' would create submenus in GenericMenu, so show the folder with backslashes.
-                var label = $"{ShortcutPanelFiles.DisplayName(f)}    ({dir})";
+                var label = $"{DashboardFiles.DisplayName(f)}    ({dir})";
                 menu.AddItem(new GUIContent(label), _doc != null && path == _filePath, () => LoadFile(path));
             }
 
@@ -461,7 +474,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
         {
             GUILayout.Space(8f);
             EditorGUILayout.HelpBox(
-                "No shortcut panel is open.\nPick a *.shortcutpanel.json from the dropdown above, or create a new one.",
+                "No dashboard is open.\nPick a *.dashboard.json from the dropdown above, or create a new one.",
                 MessageType.Info);
             if (GUILayout.Button("New Panel...", GUILayout.Height(24f)))
                 CreateNewPanel();
@@ -483,10 +496,11 @@ namespace Mmzkworks.muShortcutPanel.Editor
 
             if (_op == PointerOp.Pan) EditorGUIUtility.AddCursorRect(canvasRect, MouseCursor.Pan);
 
-            // An unbounded canvas: _scroll is the canvas point shown at the top-left, and may be anything (negative too).
-            // Everything inside the clip is drawn in canvas coordinates.
-            var visible = new Rect(_scroll, canvasRect.size);
-            GUI.BeginClip(canvasRect, -_scroll, Vector2.zero, false);
+            // An unbounded, zoomable canvas: _scroll is the canvas point shown at the top-left (may be negative) and
+            // _zoom the scale. Items live in canvas coordinates; everything is drawn through V() into the clip's view space.
+            _zoom = Mathf.Clamp(_zoom, MinZoom, MaxZoom);
+            var visible = new Rect(_scroll, canvasRect.size / _zoom);
+            GUI.BeginClip(canvasRect);
             {
                 if (e.type == EventType.Repaint)
                 {
@@ -507,7 +521,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
                     foreach (var item in items)
                     {
                         var tip = Tooltip(item);
-                        if (!string.IsNullOrEmpty(tip)) GUI.Label(item.Rect, new GUIContent("", tip), GUIStyle.none);
+                        if (!string.IsNullOrEmpty(tip)) GUI.Label(V(item.Rect), new GUIContent("", tip), GUIStyle.none);
                     }
                 }
             }
@@ -518,20 +532,56 @@ namespace Mmzkworks.muShortcutPanel.Editor
             HandleKeyboard();
         }
 
-        private Vector2 ToCanvas(Rect canvasRect, Vector2 windowPos) => windowPos - canvasRect.position + _scroll;
+        private Vector2 ToCanvas(Rect canvasRect, Vector2 windowPos) => (windowPos - canvasRect.position) / _zoom + _scroll;
+
+        // ------------------------------------------------------------------ zoom / view transform
+
+        /// <summary>Canvas point -> view (clip-local) point.</summary>
+        private Vector2 V(Vector2 canvas) => (canvas - _scroll) * _zoom;
+
+        /// <summary>Canvas rect -> view rect.</summary>
+        private Rect V(Rect canvas) => new Rect(V(canvas.position), canvas.size * _zoom);
+
+        /// <summary>A canvas length in view pixels.</summary>
+        private float Z(float canvasLength) => canvasLength * _zoom;
+
+        private static int _labelFontSize;
+        private static int _miniFontSize;
+
+        /// <summary>Font size for the current zoom. 0 (= style default) stays 0 at 100% so the look there is unchanged.</summary>
+        private int ScaledFont(int fontSize, bool mini = false)
+        {
+            if (Mathf.Approximately(_zoom, 1f)) return fontSize;
+            if (_labelFontSize <= 0) _labelFontSize = EditorStyles.label.fontSize > 0 ? EditorStyles.label.fontSize : 12;
+            if (_miniFontSize <= 0) _miniFontSize = EditorStyles.miniLabel.fontSize > 0 ? EditorStyles.miniLabel.fontSize : 9;
+            var size = fontSize > 0 ? fontSize : mini ? _miniFontSize : _labelFontSize;
+            return Mathf.Max(1, Mathf.RoundToInt(size * _zoom));
+        }
+
+        /// <summary>Sets the zoom keeping the canvas point under <paramref name="windowPivot"/> where it is.</summary>
+        private void SetZoom(float zoom, Vector2 windowPivot)
+        {
+            zoom = Mathf.Clamp(zoom, MinZoom, MaxZoom);
+            if (Mathf.Abs(zoom - 1f) < 0.04f) zoom = 1f; // easy to get back to exactly 100%
+            var pivot = ToCanvas(_lastCanvasRect, windowPivot);
+            _zoom = zoom;
+            _scroll = pivot - (windowPivot - _lastCanvasRect.position) / _zoom;
+            Repaint();
+        }
 
         /// <summary>Dot grid: a small dot at every snap point (8px).</summary>
         private void DrawGrid(Rect visible)
         {
             var tex = GetGridDotTexture();
             var tile = tex.width; // = 1 grid cell
+            if (Z(tile) < 4f) return; // too dense to be useful when zoomed far out
             // Start on a grid line at or before the visible top-left so the dots stay on the snap points while panning
             // (the clip cuts off the rest).
             var x0 = Mathf.Floor(visible.x / tile) * tile;
             var y0 = Mathf.Floor(visible.y / tile) * tile;
             var cols = Mathf.Ceil((visible.xMax - x0) / tile);
             var rows = Mathf.Ceil((visible.yMax - y0) / tile);
-            GUI.DrawTextureWithTexCoords(new Rect(x0, y0, cols * tile, rows * tile), tex, new Rect(0f, 0f, cols, rows));
+            GUI.DrawTextureWithTexCoords(V(new Rect(x0, y0, cols * tile, rows * tile)), tex, new Rect(0f, 0f, cols, rows));
         }
 
         private Texture2D GetGridDotTexture()
@@ -541,7 +591,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
 
             if (_gridDotTexture != null) DestroyImmediate(_gridDotTexture);
 
-            var cell = (int)ShortcutPanelLayout.GridSize;
+            var cell = (int)DashboardLayout.GridSize;
             var size = cell;
             var dot = pro ? new Color(1f, 1f, 1f, 0.16f) : new Color(0f, 0f, 0f, 0.18f);
 
@@ -565,14 +615,14 @@ namespace Mmzkworks.muShortcutPanel.Editor
 
         private void DrawSelectionBox()
         {
-            var box = ShortcutPanelLayout.RectFromPoints(_opStartMouse, _boxCurrent);
+            var box = V(DashboardLayout.RectFromPoints(_opStartMouse, _boxCurrent));
             EditorGUI.DrawRect(box, new Color(0.3f, 0.65f, 1f, 0.15f));
             DrawOutline(box, new Color(0.3f, 0.65f, 1f, 0.9f), 1f);
         }
 
-        private void DrawItem(ShortcutPanelItem item)
+        private void DrawItem(DashboardItem item)
         {
-            var r = item.Rect;
+            var r = V(item.Rect);
             var isSelected = _editMode && IsSelected(item.id);
             var isHover = item.id == _hoverId;
 
@@ -608,7 +658,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
 
             if (_editMode && item.kind == ShortcutItemKind.Action)
             {
-                var k = ShortcutPanelLayout.ActionKnobRect(r);
+                var k = V(DashboardLayout.ActionKnobRect(item.Rect, _zoom));
                 var linking = _op == PointerOp.Link && _opItemId == item.id;
                 DrawRoundedRect(k, linking || isSelected ? LinkActiveColor : LinkColor, k.width * 0.5f);
                 DrawRoundedOutline(k, EditorGUIUtility.isProSkin ? new Color(0.1f, 0.1f, 0.1f) : Color.white, 1f, k.width * 0.5f);
@@ -616,7 +666,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
 
             if (_editMode)
             {
-                var h = ShortcutPanelLayout.ResizeHandleRect(r);
+                var h = V(DashboardLayout.ResizeHandleRect(item.Rect, _zoom));
                 var hc = isSelected ? new Color(0.3f, 0.65f, 1f, 1f) : new Color(0.5f, 0.5f, 0.5f, 0.8f);
                 // Small stepped triangle in the corner.
                 EditorGUI.DrawRect(new Rect(h.xMax - 3f, h.y + 2f, 2f, h.height - 3f), hc);
@@ -625,7 +675,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
             }
         }
 
-        private void DrawImageItem(ShortcutPanelItem item, Rect r)
+        private void DrawImageItem(DashboardItem item, Rect r)
         {
             var texture = LoadImage(item);
             if (texture != null)
@@ -638,26 +688,26 @@ namespace Mmzkworks.muShortcutPanel.Editor
             var pro = EditorGUIUtility.isProSkin;
             DrawRoundedRect(r, pro ? new Color(0.2f, 0.2f, 0.2f) : new Color(0.85f, 0.85f, 0.85f));
             var style = _labelTextStyle;
-            style.fontSize = 0;
+            style.fontSize = ScaledFont(0);
             style.normal.textColor = new Color(0.9f, 0.35f, 0.3f);
-            style.Draw(Inset(r, 6f, 2f), new GUIContent($"(missing image) {Path.GetFileName(item.path)}"), false, false, false, false);
+            style.Draw(Inset(r, Z(6f), Z(2f)), new GUIContent($"(missing image) {Path.GetFileName(item.path)}"), false, false, false, false);
         }
 
-        private static Texture LoadImage(ShortcutPanelItem item)
+        private static Texture LoadImage(DashboardItem item)
         {
             var path = ResolveAssetPath(item);
             return path != null ? AssetDatabase.LoadAssetAtPath<Texture>(path) : null;
         }
 
-        private void DrawLabelItem(ShortcutPanelItem item, Rect r)
+        private void DrawLabelItem(DashboardItem item, Rect r)
         {
             var pro = EditorGUIUtility.isProSkin;
             DrawRoundedRect(r, pro ? new Color(0.19f, 0.19f, 0.19f) : new Color(0.72f, 0.72f, 0.72f));
             var style = _labelTextStyle;
-            style.fontSize = item.fontSize > 0 ? item.fontSize : 0;
+            style.fontSize = ScaledFont(item.fontSize > 0 ? item.fontSize : 0);
             style.normal.textColor = pro ? new Color(0.9f, 0.9f, 0.9f) : Color.black;
             var text = string.IsNullOrEmpty(item.title) && _editMode ? "(empty label)" : item.title;
-            style.Draw(Inset(r, 6f, 2f), new GUIContent(text), false, false, false, false);
+            style.Draw(Inset(r, Z(6f), Z(2f)), new GUIContent(text), false, false, false, false);
         }
 
         /// <summary>
@@ -683,7 +733,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
             return hover ? Color.Lerp(bg, Color.white, pro ? 0.08f : 0.45f) : bg;
         }
 
-        private void DrawShortcutItem(ShortcutPanelItem item, Rect r, bool hover)
+        private void DrawShortcutItem(DashboardItem item, Rect r, bool hover)
         {
             var pro = EditorGUIUtility.isProSkin;
             DrawRoundedRect(r, ItemBackground(item.kind, pro, hover));
@@ -693,42 +743,43 @@ namespace Mmzkworks.muShortcutPanel.Editor
             var textColor = missing ? new Color(0.9f, 0.35f, 0.3f) : (pro ? new Color(0.85f, 0.85f, 0.85f) : Color.black);
 
             var labelStyle = _itemLabelStyle;
-            labelStyle.fontSize = item.fontSize > 0 ? item.fontSize : 0;
+            labelStyle.fontSize = ScaledFont(item.fontSize > 0 ? item.fontSize : 0);
             labelStyle.normal.textColor = textColor;
 
-            var inner = Inset(r, 4f, 2f);
-            var tile = r.height >= 56f && r.width >= 48f;
+            var inner = Inset(r, Z(4f), Z(2f));
+            var tile = item.height >= 56f && item.width >= 48f;
 
             if (tile)
             {
                 // Big icon on top, name below (Project window icon view style).
-                var lineH = Mathf.Max(14f, (item.fontSize > 0 ? item.fontSize : 11f) + 4f);
+                var lineH = Z(Mathf.Max(14f, (item.fontSize > 0 ? item.fontSize : 11f) + 4f));
                 var iconSize = Mathf.Min(inner.width, inner.height - lineH * 2f);
-                iconSize = Mathf.Max(16f, iconSize);
-                var iconRect = new Rect(inner.center.x - iconSize * 0.5f, inner.y + 2f, iconSize, iconSize);
+                iconSize = Mathf.Max(Z(16f), iconSize);
+                var iconRect = new Rect(inner.center.x - iconSize * 0.5f, inner.y + Z(2f), iconSize, iconSize);
                 if (icon != null) GUI.DrawTexture(iconRect, icon, ScaleMode.ScaleToFit);
 
-                _tileLabelStyle.fontSize = item.fontSize > 0 ? item.fontSize : 0;
+                _tileLabelStyle.fontSize = ScaledFont(item.fontSize > 0 ? item.fontSize : 0, mini: true);
                 _tileLabelStyle.normal.textColor = textColor;
-                var textRect = new Rect(inner.x, iconRect.yMax + 2f, inner.width, inner.yMax - iconRect.yMax - 2f);
+                var textRect = new Rect(inner.x, iconRect.yMax + Z(2f), inner.width, inner.yMax - iconRect.yMax - Z(2f));
                 _tileLabelStyle.Draw(textRect, new GUIContent(name), false, false, false, false);
             }
             else
             {
-                var iconSize = Mathf.Min(16f, inner.height);
+                var iconSize = Mathf.Min(Z(16f), inner.height);
                 var x = inner.x;
                 if (icon != null)
                 {
                     GUI.DrawTexture(new Rect(x, inner.center.y - iconSize * 0.5f, iconSize, iconSize), icon, ScaleMode.ScaleToFit);
-                    x += iconSize + 4f;
+                    x += iconSize + Z(4f);
                 }
 
                 var textRect = new Rect(x, inner.y, inner.xMax - x, inner.height);
                 // Second line (host / folder) when there is enough height.
-                if (inner.height >= 34f)
+                if (item.height - 4f >= 34f)
                 {
                     var half = inner.height * 0.5f;
                     labelStyle.Draw(new Rect(textRect.x, textRect.y, textRect.width, half), new GUIContent(name), false, false, false, false);
+                    _itemSubStyle.fontSize = ScaledFont(0, mini: true);
                     _itemSubStyle.normal.textColor = pro ? new Color(0.6f, 0.6f, 0.6f) : new Color(0.35f, 0.35f, 0.35f);
                     _itemSubStyle.Draw(new Rect(textRect.x, textRect.y + half, textRect.width, half),
                         new GUIContent(SubText(item)), false, false, false, false);
@@ -774,7 +825,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
             _runSteps != null && _runIndex >= 0 && _runIndex < _runSteps.Count ? _runSteps[_runIndex].id : null;
 
         /// <summary>The action whose step numbers are shown: the one being traced, run, hovered or selected.</summary>
-        private ShortcutPanelItem FocusedAction()
+        private DashboardItem FocusedAction()
         {
             string id = null;
             if (_op == PointerOp.Link) id = _opItemId;
@@ -786,9 +837,9 @@ namespace Mmzkworks.muShortcutPanel.Editor
         }
 
         /// <summary>The action and its existing steps, in order.</summary>
-        private List<ShortcutPanelItem> LinkNodes(ShortcutPanelItem action)
+        private List<DashboardItem> LinkNodes(DashboardItem action)
         {
-            var nodes = new List<ShortcutPanelItem> { action };
+            var nodes = new List<DashboardItem> { action };
             foreach (var id in action.steps)
             {
                 var step = _doc.Find(id);
@@ -818,9 +869,9 @@ namespace Mmzkworks.muShortcutPanel.Editor
                 {
                     // A line into a nested action gets finer dots, so "runs that action" reads differently from a plain step.
                     var toAction = nodes[i].kind == ShortcutItemKind.Action;
-                    DrawDottedArc(nodes[i - 1].Rect.center, nodes[i].Rect.center, width, toAction ? NestedLinkDots : LinkDots);
+                    DrawDottedArc(V(nodes[i - 1].Rect.center), V(nodes[i].Rect.center), width, toAction ? NestedLinkDots : LinkDots);
                 }
-                if (linking) DrawDottedArc(nodes[nodes.Count - 1].Rect.center, _linkCursor, width, LinkDots);
+                if (linking) DrawDottedArc(V(nodes[nodes.Count - 1].Rect.center), V(_linkCursor), width, LinkDots);
             }
             Handles.color = prev;
         }
@@ -902,7 +953,8 @@ namespace Mmzkworks.muShortcutPanel.Editor
                 n++;
                 var content = new GUIContent(n.ToString());
                 var w = Mathf.Max(14f, style.CalcSize(content).x + 6f);
-                var badge = new Rect(step.x - 5f, step.y - 6f, w, 14f);
+                var corner = V(step.Rect.position);
+                var badge = new Rect(corner.x - 5f, corner.y - 6f, w, 14f);
                 DrawRoundedRect(badge, action.id == _runActionId ? RunColor : LinkActiveColor, 7f);
                 var prevColor = style.normal.textColor;
                 var prevAlign = style.alignment;
@@ -927,7 +979,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
 
         // ------------------------------------------------------------------ item info
 
-        internal static string ResolveAssetPath(ShortcutPanelItem item)
+        internal static string ResolveAssetPath(DashboardItem item)
         {
             if (!string.IsNullOrEmpty(item.guid))
             {
@@ -940,13 +992,13 @@ namespace Mmzkworks.muShortcutPanel.Editor
         private static bool AssetExists(string path) =>
             AssetDatabase.IsValidFolder(path) || File.Exists(FullPath(path));
 
-        private static string DisplayName(ShortcutPanelItem item, out bool missing)
+        private static string DisplayName(DashboardItem item, out bool missing)
         {
             missing = false;
             if (item.kind == ShortcutItemKind.Url)
-                return !string.IsNullOrEmpty(item.title) ? item.title : ShortcutPanelDropParser.DefaultUrlTitle(item.url);
+                return !string.IsNullOrEmpty(item.title) ? item.title : DashboardDropParser.DefaultUrlTitle(item.url);
             if (item.kind == ShortcutItemKind.Menu)
-                return !string.IsNullOrEmpty(item.title) ? item.title : ShortcutPanelMenuPath.DefaultTitle(item.menu);
+                return !string.IsNullOrEmpty(item.title) ? item.title : DashboardMenuPath.DefaultTitle(item.menu);
             if (item.kind == ShortcutItemKind.Action)
                 return !string.IsNullOrEmpty(item.title) ? item.title : "Action";
             if (item.kind == ShortcutItemKind.Command)
@@ -967,21 +1019,21 @@ namespace Mmzkworks.muShortcutPanel.Editor
             return missing ? $"{name} (missing)" : name;
         }
 
-        private string SubText(ShortcutPanelItem item)
+        private string SubText(DashboardItem item)
         {
             if (item.kind == ShortcutItemKind.Url) return item.url;
             if (item.kind == ShortcutItemKind.Action) return StepCountText(item);
             if (item.kind == ShortcutItemKind.Command) return CommandSummary(item);
             if (item.kind == ShortcutItemKind.Menu)
             {
-                var target = ShortcutPanelMenuPath.TargetLabel(ShortcutPanelMenuPath.TargetOf(item.menu));
-                return $"{target}: {ShortcutPanelMenuPath.ParentPath(item.menu)}";
+                var target = DashboardMenuPath.TargetLabel(DashboardMenuPath.TargetOf(item.menu));
+                return $"{target}: {DashboardMenuPath.ParentPath(item.menu)}";
             }
             var path = ResolveAssetPath(item) ?? item.path;
             return Path.GetDirectoryName(path)?.Replace('\\', '/') ?? "";
         }
 
-        private string Tooltip(ShortcutPanelItem item)
+        private string Tooltip(DashboardItem item)
         {
             switch (item.kind)
             {
@@ -998,14 +1050,14 @@ namespace Mmzkworks.muShortcutPanel.Editor
                         ? "No steps. In Edit Mode, drag from the bottom knob over other elements."
                         : string.Join(Environment.NewLine, StepNames(item).Select((n, i) => $"{i + 1}. {n}"));
                 case ShortcutItemKind.Menu:
-                    return $"{ShortcutPanelMenuPath.TargetLabel(ShortcutPanelMenuPath.TargetOf(item.menu))} command: {item.menu}";
+                    return $"{DashboardMenuPath.TargetLabel(DashboardMenuPath.TargetOf(item.menu))} command: {item.menu}";
                 case ShortcutItemKind.Asset: return ResolveAssetPath(item) ?? $"Missing: {item.path}";
                 default: return null;
             }
         }
 
         /// <summary>Asset path / URL / menu path of a shortcut, the step names of an action, or null for labels.</summary>
-        private string FullPathText(ShortcutPanelItem item)
+        private string FullPathText(DashboardItem item)
         {
             switch (item.kind)
             {
@@ -1021,14 +1073,14 @@ namespace Mmzkworks.muShortcutPanel.Editor
                 case ShortcutItemKind.Url:
                     return item.url;
                 case ShortcutItemKind.Menu:
-                    return $"[{ShortcutPanelMenuPath.TargetLabel(ShortcutPanelMenuPath.TargetOf(item.menu))}] {item.menu}";
+                    return $"[{DashboardMenuPath.TargetLabel(DashboardMenuPath.TargetOf(item.menu))}] {item.menu}";
                 default:
                     return null;
             }
         }
 
         /// <summary>Small one-line label just below the shortcut, drawn over whatever is there.</summary>
-        private void DrawFullPathLabel(ShortcutPanelItem item)
+        private void DrawFullPathLabel(DashboardItem item)
         {
             var text = FullPathText(item);
             if (string.IsNullOrEmpty(text)) return;
@@ -1046,29 +1098,31 @@ namespace Mmzkworks.muShortcutPanel.Editor
 
             var pro = EditorGUIUtility.isProSkin;
             _fullPathStyle.normal.textColor = pro ? new Color(0.65f, 0.65f, 0.65f) : new Color(0.25f, 0.25f, 0.25f);
+            _fullPathStyle.fontSize = ScaledFont(0, mini: true);
 
             var content = new GUIContent(text);
             var size = _fullPathStyle.CalcSize(content);
             // At least as wide as the item; longer paths may extend to the right up to a limit.
-            var width = Mathf.Min(Mathf.Max(size.x, item.width), Mathf.Max(item.width, 480f));
-            var r = new Rect(item.x, item.y + item.height + 1f, width, size.y);
+            var itemRect = V(item.Rect);
+            var width = Mathf.Min(Mathf.Max(size.x, itemRect.width), Mathf.Max(itemRect.width, Z(480f)));
+            var r = new Rect(itemRect.x, itemRect.yMax + 1f, width, size.y);
 
             var bg = pro ? new Color(0.16f, 0.16f, 0.16f, 0.85f) : new Color(0.78f, 0.78f, 0.78f, 0.85f);
             EditorGUI.DrawRect(new Rect(r.x, r.y, Mathf.Min(size.x, r.width), r.height), bg);
             _fullPathStyle.Draw(r, content, false, false, false, false);
         }
 
-        private static string CommandSummary(ShortcutPanelItem item)
+        private static string CommandSummary(DashboardItem item)
         {
             var command = ShortcutCommandRegistry.Find(item.command);
             return command == null ? $"Unknown command: {item.command}" : command.Summary(item);
         }
 
-        private static string StepCountText(ShortcutPanelItem action) =>
+        private static string StepCountText(DashboardItem action) =>
             action.steps.Count == 1 ? "1 step" : $"{action.steps.Count} steps";
 
         /// <summary>Display names of an action's direct steps, in order (missing ones included as "(missing)").</summary>
-        private IEnumerable<string> StepNames(ShortcutPanelItem action)
+        private IEnumerable<string> StepNames(DashboardItem action)
         {
             foreach (var id in action.steps)
             {
@@ -1077,7 +1131,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
             }
         }
 
-        private static Texture Icon(ShortcutPanelItem item, bool missing)
+        private static Texture Icon(DashboardItem item, bool missing)
         {
             switch (item.kind)
             {
@@ -1092,7 +1146,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
                     return missing ? EditorGUIUtility.IconContent("console.warnicon.sml").image
                         : ShortcutCommandIcons.For(ShortcutCommandRegistry.Find(item.command));
                 case ShortcutItemKind.Menu:
-                    switch (ShortcutPanelMenuPath.TargetOf(item.menu))
+                    switch (DashboardMenuPath.TargetOf(item.menu))
                     {
                         case ShortcutMenuTarget.Project: return KindIcon(ProjectIconNames);
                         case ShortcutMenuTarget.Hierarchy: return KindIcon(HierarchyIconNames);
@@ -1150,7 +1204,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
             {
                 case EventType.MouseMove:
                 {
-                    var hover = inCanvas ? ShortcutPanelLayout.HitTest(_doc.items, local) : null;
+                    var hover = inCanvas ? DashboardLayout.HitTest(_doc.items, local) : null;
                     var hoverId = hover?.id;
                     if (hoverId != _hoverId)
                     {
@@ -1161,6 +1215,14 @@ namespace Mmzkworks.muShortcutPanel.Editor
                     {
                         _lastCanvasMouse = local;
                     }
+                    break;
+                }
+
+                case EventType.ScrollWheel when inCanvas:
+                {
+                    // Wheel zooms around the cursor (about 15% per notch on Windows, where one notch is delta.y = 3).
+                    SetZoom(_zoom * Mathf.Pow(1.05f, -e.delta.y), e.mousePosition);
+                    e.Use();
                     break;
                 }
 
@@ -1178,7 +1240,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
                 case EventType.MouseDown when inCanvas && e.button == 0:
                 {
                     _lastCanvasMouse = local;
-                    var hit = ShortcutPanelLayout.HitTest(_doc.items, local);
+                    var hit = DashboardLayout.HitTest(_doc.items, local);
 
                     if (_editMode)
                     {
@@ -1214,7 +1276,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
                         }
                         else
                         {
-                            var onHandle = ShortcutPanelLayout.ResizeHandleRect(hit.Rect).Contains(local);
+                            var onHandle = DashboardLayout.ResizeHandleRect(hit.Rect, _zoom).Contains(local);
                             // Pressing an already selected item keeps the group so it can be moved together.
                             if (onHandle || !IsSelected(hit.id)) SelectOnly(hit.id);
                             _op = onHandle ? PointerOp.Resize : PointerOp.Move;
@@ -1236,7 +1298,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
                 {
                     if (_op == PointerOp.Pan)
                     {
-                        _scroll = _panStartScroll - (e.mousePosition - _panStartMouse);
+                        _scroll = _panStartScroll - (e.mousePosition - _panStartMouse) / _zoom;
                         e.Use();
                         Repaint();
                         break;
@@ -1269,7 +1331,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
                             for (var i = 1; i <= samples; i++)
                             {
                                 var p = Vector2.Lerp(from, local, i / (float)samples);
-                                ShortcutPanelActionTrace.TryAdd(item.steps, item, ShortcutPanelLayout.HitTest(_doc.items, p));
+                                DashboardActionTrace.TryAdd(item.steps, item, DashboardLayout.HitTest(_doc.items, p));
                             }
                             _linkCursor = local;
                             break;
@@ -1278,7 +1340,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
                             MoveGroup(delta);
                             break;
                         case PointerOp.Resize:
-                            item.Rect = ShortcutPanelLayout.Resized(_opStartRect, delta);
+                            item.Rect = DashboardLayout.Resized(_opStartRect, delta);
                             break;
                         case PointerOp.Press when delta.magnitude > DragOutThreshold
                                                   && (item.kind == ShortcutItemKind.Asset || item.kind == ShortcutItemKind.Url):
@@ -1331,7 +1393,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
                 case EventType.ContextClick when inCanvas:
                 {
                     _lastCanvasMouse = local;
-                    var hit = ShortcutPanelLayout.HitTest(_doc.items, local);
+                    var hit = DashboardLayout.HitTest(_doc.items, local);
                     if (hit != null && _editMode && !IsSelected(hit.id)) SelectOnly(hit.id);
                     ShowContextMenu(hit, local);
                     e.Use();
@@ -1340,7 +1402,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
             }
         }
 
-        private void BeginOp(ShortcutPanelItem item, Vector2 local, int controlId)
+        private void BeginOp(DashboardItem item, Vector2 local, int controlId)
         {
             _opItemId = item.id;
             _opStartMouse = local;
@@ -1355,12 +1417,12 @@ namespace Mmzkworks.muShortcutPanel.Editor
         }
 
         /// <summary>The topmost action whose knob is under <paramref name="p"/>, or null.</summary>
-        private ShortcutPanelItem HitActionKnob(Vector2 p)
+        private DashboardItem HitActionKnob(Vector2 p)
         {
             for (var i = _doc.items.Count - 1; i >= 0; i--)
             {
                 var item = _doc.items[i];
-                if (item.kind == ShortcutItemKind.Action && ShortcutPanelLayout.ActionKnobRect(item.Rect).Contains(p))
+                if (item.kind == ShortcutItemKind.Action && DashboardLayout.ActionKnobRect(item.Rect, _zoom).Contains(p))
                     return item;
             }
             return null;
@@ -1368,7 +1430,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
 
         private void MoveGroup(Vector2 delta)
         {
-            var offset = ShortcutPanelLayout.GroupMoveOffset(_opStartRect, delta);
+            var offset = DashboardLayout.GroupMoveOffset(_opStartRect, delta);
             foreach (var kv in _opStartRects)
             {
                 var item = _doc.Find(kv.Key);
@@ -1378,7 +1440,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
 
         private void UpdateBoxSelection()
         {
-            var box = ShortcutPanelLayout.RectFromPoints(_opStartMouse, _boxCurrent);
+            var box = DashboardLayout.RectFromPoints(_opStartMouse, _boxCurrent);
             _selectedIds.Clear();
             _selectedIds.AddRange(_boxBase);
             foreach (var item in _doc.items)
@@ -1414,13 +1476,13 @@ namespace Mmzkworks.muShortcutPanel.Editor
                 case "Paste":
                 {
                     var clip = EditorGUIUtility.systemCopyBuffer;
-                    var pos = ShortcutPanelLayout.Snap(_lastCanvasMouse);
-                    if (ShortcutPanelDropParser.TryGetWebUrl(clip, out var url))
+                    var pos = DashboardLayout.Snap(_lastCanvasMouse);
+                    if (DashboardDropParser.TryGetWebUrl(clip, out var url))
                     {
                         if (execute) AddItem(NewUrlItem(url, pos));
                     }
-                    else if (_editMode && ShortcutPanelMenuPath.TryParse(clip, out var menuPath)
-                                       && ShortcutPanelMenuCatalog.Exists(menuPath))
+                    else if (_editMode && DashboardMenuPath.TryParse(clip, out var menuPath)
+                                       && DashboardMenuCatalog.Exists(menuPath))
                     {
                         // e.g. "Window/General/Console", "Assets/Create/Folder", "GameObject/Create Empty"
                         if (execute) AddItem(NewMenuItem(menuPath, pos));
@@ -1478,7 +1540,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
             if (e.type == EventType.DragPerform)
             {
                 DragAndDrop.AcceptDrag();
-                var pos = ShortcutPanelLayout.Snap(ToCanvas(canvasRect, e.mousePosition));
+                var pos = DashboardLayout.Snap(ToCanvas(canvasRect, e.mousePosition));
                 AddDropped(entries, pos);
             }
             e.Use();
@@ -1490,7 +1552,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
                 .Where(o => o != null && EditorUtility.IsPersistent(o))
                 .Select(AssetDatabase.GetAssetPath);
 
-            return ShortcutPanelDropParser.Collect(
+            return DashboardDropParser.Collect(
                 objectPaths,
                 DragAndDrop.paths,
                 p => (p.StartsWith("Assets/", StringComparison.Ordinal) || p.StartsWith("Packages/", StringComparison.Ordinal) || p == "Assets")
@@ -1513,7 +1575,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
         // ------------------------------------------------------------------ actions
 
         /// <summary>Runs a shortcut clicked by the user.</summary>
-        private void Activate(ShortcutPanelItem item)
+        private void Activate(DashboardItem item)
         {
             switch (item.kind)
             {
@@ -1541,7 +1603,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
                             runError = ex.Message;
                         }
                         if (ok) return;
-                        Debug.LogWarning($"[muShortcutPanel] {DisplayName(item, out _)}: {runError}");
+                        Debug.LogWarning($"[muDashboard] {DisplayName(item, out _)}: {runError}");
                         ShowNotification(new GUIContent(runError));
                     };
                     break;
@@ -1556,7 +1618,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
         /// Runs one shortcut synchronously (asset: select in Project, URL: open, menu: execute).
         /// Returns false with a reason when it could not be run.
         /// </summary>
-        private static bool TryActivateNow(ShortcutPanelItem item, out string error)
+        private static bool TryActivateNow(DashboardItem item, out string error)
         {
             error = null;
             switch (item.kind)
@@ -1574,7 +1636,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
                     return true;
                 }
                 case ShortcutItemKind.Url:
-                    if (!ShortcutPanelDropParser.TryGetWebUrl(item.url, out var url))
+                    if (!DashboardDropParser.TryGetWebUrl(item.url, out var url))
                     {
                         error = $"Invalid URL: {item.url}";
                         return false;
@@ -1591,7 +1653,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
             }
         }
 
-        private static bool TryRunCommand(ShortcutPanelItem item, out string error)
+        private static bool TryRunCommand(DashboardItem item, out string error)
         {
             var command = ShortcutCommandRegistry.Find(item.command);
             if (command == null)
@@ -1620,7 +1682,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
             }
 
             // Project / Hierarchy commands act on that window's selection, so bring the window to the front first.
-            switch (ShortcutPanelMenuPath.TargetOf(menuPath))
+            switch (DashboardMenuPath.TargetOf(menuPath))
             {
                 case ShortcutMenuTarget.Project:
                     EditorUtility.FocusProjectWindow();
@@ -1638,7 +1700,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
 
         // ------------------------------------------------------------------ action run
 
-        private void RunAction(ShortcutPanelItem action)
+        private void RunAction(DashboardItem action)
         {
             if (_runActionId != null)
             {
@@ -1646,7 +1708,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
                 return;
             }
 
-            var steps = ShortcutPanelActionPlan.Expand(_doc, action.id, out var error);
+            var steps = DashboardActionPlan.Expand(_doc, action.id, out var error);
             if (steps == null)
             {
                 ShowNotification(new GUIContent(error));
@@ -1706,7 +1768,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
             if (!ok)
             {
                 var message = $"Action stopped at {_runIndex + 1}/{_runSteps.Count} ({DisplayName(step, out _)}): {error}";
-                Debug.LogWarning($"[muShortcutPanel] {message}");
+                Debug.LogWarning($"[muDashboard] {message}");
                 _failedId = step.id;
                 _failedUntil = EditorApplication.timeSinceStartup + FailedHighlightSeconds;
                 StopRun();
@@ -1745,7 +1807,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
             EditorGUIUtility.PingObject(obj);
         }
 
-        private void StartDragOut(ShortcutPanelItem item)
+        private void StartDragOut(DashboardItem item)
         {
             DragAndDrop.PrepareStartDrag();
             DragAndDrop.SetGenericData(DragGenericDataKey, item.id);
@@ -1771,10 +1833,10 @@ namespace Mmzkworks.muShortcutPanel.Editor
             DragAndDrop.StartDrag(DisplayName(item, out _));
         }
 
-        private void ShowContextMenu(ShortcutPanelItem hit, Vector2 local)
+        private void ShowContextMenu(DashboardItem hit, Vector2 local)
         {
             var menu = new GenericMenu();
-            var pos = ShortcutPanelLayout.Snap(local);
+            var pos = DashboardLayout.Snap(local);
 
             if (hit != null && hit.kind == ShortcutItemKind.Image)
             {
@@ -1868,7 +1930,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
             }
             else if (hit == null)
             {
-                if (ShortcutPanelDropParser.TryGetWebUrl(EditorGUIUtility.systemCopyBuffer, out var clipUrl))
+                if (DashboardDropParser.TryGetWebUrl(EditorGUIUtility.systemCopyBuffer, out var clipUrl))
                     menu.AddItem(new GUIContent("Paste URL"), false, () => AddItem(NewUrlItem(clipUrl, pos)));
                 menu.AddItem(new GUIContent("Switch to Edit Mode"), false, () => _editMode = true);
             }
@@ -1883,16 +1945,16 @@ namespace Mmzkworks.muShortcutPanel.Editor
         }
 
         /// <summary>Scrolls so the center of the items is at the center of the canvas.</summary>
-        private void FrameItems(IReadOnlyList<ShortcutPanelItem> items)
+        private void FrameItems(IReadOnlyList<DashboardItem> items)
         {
-            var bounds = ShortcutPanelLayout.Bounds(items);
+            var bounds = DashboardLayout.Bounds(items);
             if (bounds == null) return;
-            var scroll = bounds.Value.center - _lastCanvasRect.size * 0.5f;
+            var scroll = bounds.Value.center - _lastCanvasRect.size / _zoom * 0.5f;
             _scroll = new Vector2(Mathf.Round(scroll.x), Mathf.Round(scroll.y));
             Repaint();
         }
 
-        private void Reorder(List<ShortcutPanelItem> targets, bool toFront)
+        private void Reorder(List<DashboardItem> targets, bool toFront)
         {
             // Keep the relative draw order of the moved items.
             var ordered = _doc.items.Where(targets.Contains).ToList();
@@ -1902,21 +1964,21 @@ namespace Mmzkworks.muShortcutPanel.Editor
             MarkDirty();
         }
 
-        private void AddItem(ShortcutPanelItem item)
+        private void AddItem(DashboardItem item)
         {
             _doc.items.Add(item);
             if (_editMode) SelectOnly(item.id);
             MarkDirty();
         }
 
-        private void DuplicateItems(List<ShortcutPanelItem> items)
+        private void DuplicateItems(List<DashboardItem> items)
         {
-            var clones = new List<ShortcutPanelItem>();
+            var clones = new List<DashboardItem>();
             foreach (var item in _doc.items.Where(items.Contains))
             {
                 var c = item.Clone();
-                c.x += ShortcutPanelLayout.GridSize * 2f;
-                c.y += ShortcutPanelLayout.GridSize * 2f;
+                c.x += DashboardLayout.GridSize * 2f;
+                c.y += DashboardLayout.GridSize * 2f;
                 clones.Add(c);
             }
             if (clones.Count == 0) return;
@@ -1930,7 +1992,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
             MarkDirty();
         }
 
-        private void RemoveItems(List<ShortcutPanelItem> items)
+        private void RemoveItems(List<DashboardItem> items)
         {
             if (items.Count == 0) return;
             _doc.items.RemoveAll(items.Contains);
@@ -1947,7 +2009,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
             foreach (var entry in entries)
             {
                 var p = new Vector2(pos.x, y);
-                ShortcutPanelItem item;
+                DashboardItem item;
                 switch (entry.Kind)
                 {
                     case ShortcutItemKind.Url:
@@ -1956,7 +2018,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
                     case ShortcutItemKind.Image:
                         item = NewImageItem(entry.Value, p);
                         break;
-                    case ShortcutPanelDropParser.ExternalImage:
+                    case DashboardDropParser.ExternalImage:
                     {
                         var imported = ImportExternalImage(entry.Value);
                         if (imported == null) continue;
@@ -1969,7 +2031,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
                 }
                 _doc.items.Add(item);
                 added.Add(item.id);
-                y += item.height + ShortcutPanelLayout.GridSize;
+                y += item.height + DashboardLayout.GridSize;
             }
             if (_editMode && added.Count > 0)
             {
@@ -1981,10 +2043,10 @@ namespace Mmzkworks.muShortcutPanel.Editor
 
         private void AddLabel(Vector2 pos)
         {
-            var size = ShortcutPanelLayout.DefaultLabelSize;
-            AddItem(new ShortcutPanelItem
+            var size = DashboardLayout.DefaultLabelSize;
+            AddItem(new DashboardItem
             {
-                id = ShortcutPanelItem.NewId(),
+                id = DashboardItem.NewId(),
                 kind = ShortcutItemKind.Label,
                 title = "Label",
                 Rect = new Rect(pos, size)
@@ -1993,35 +2055,35 @@ namespace Mmzkworks.muShortcutPanel.Editor
 
         private void AddUrlFromClipboardOrBlank(Vector2 pos)
         {
-            var url = ShortcutPanelDropParser.TryGetWebUrl(EditorGUIUtility.systemCopyBuffer, out var clip) ? clip : "https://";
+            var url = DashboardDropParser.TryGetWebUrl(EditorGUIUtility.systemCopyBuffer, out var clip) ? clip : "https://";
             AddItem(NewUrlItem(url, pos));
         }
 
         private const float ImageMaxInitialSize = 256f;
 
-        private static ShortcutPanelItem NewImageItem(string path, Vector2 pos)
+        private static DashboardItem NewImageItem(string path, Vector2 pos)
         {
-            var item = new ShortcutPanelItem
+            var item = new DashboardItem
             {
-                id = ShortcutPanelItem.NewId(),
+                id = DashboardItem.NewId(),
                 kind = ShortcutItemKind.Image,
                 guid = AssetDatabase.AssetPathToGUID(path),
                 path = path,
-                Rect = new Rect(pos, Vector2.one * ShortcutPanelLayout.GridSize * 8f)
+                Rect = new Rect(pos, Vector2.one * DashboardLayout.GridSize * 8f)
             };
             FitImageSize(item);
             return item;
         }
 
         /// <summary>Sets the size to the image's aspect ratio, at most <see cref="ImageMaxInitialSize"/> px, on the grid.</summary>
-        private static void FitImageSize(ShortcutPanelItem item)
+        private static void FitImageSize(DashboardItem item)
         {
             var texture = LoadImage(item);
             if (texture == null || texture.width <= 0 || texture.height <= 0) return;
 
             var scale = Mathf.Min(1f, ImageMaxInitialSize / Mathf.Max(texture.width, texture.height));
-            var w = Mathf.Max(ShortcutPanelLayout.MinWidth, ShortcutPanelLayout.Snap(texture.width * scale));
-            var h = Mathf.Max(ShortcutPanelLayout.MinHeight, ShortcutPanelLayout.Snap(texture.height * scale));
+            var w = Mathf.Max(DashboardLayout.MinWidth, DashboardLayout.Snap(texture.width * scale));
+            var h = Mathf.Max(DashboardLayout.MinHeight, DashboardLayout.Snap(texture.height * scale));
             item.width = w;
             item.height = h;
         }
@@ -2036,7 +2098,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
             {
                 var panelDir = Path.GetDirectoryName(_filePath)?.Replace('\\', '/');
                 if (string.IsNullOrEmpty(panelDir) || !panelDir.StartsWith("Assets", StringComparison.Ordinal)) panelDir = "Assets";
-                var folder = $"{panelDir}/{ShortcutPanelFiles.DisplayName(_filePath)} Images";
+                var folder = $"{panelDir}/{DashboardFiles.DisplayName(_filePath)} Images";
                 if (!ShortcutCommandUtil.EnsureFolder(folder))
                 {
                     ShowNotification(new GUIContent($"Cannot create folder: {folder}"));
@@ -2050,53 +2112,53 @@ namespace Mmzkworks.muShortcutPanel.Editor
             }
             catch (Exception ex)
             {
-                Debug.LogWarning($"[muShortcutPanel] Could not import {absolutePath}: {ex.Message}");
+                Debug.LogWarning($"[muDashboard] Could not import {absolutePath}: {ex.Message}");
                 ShowNotification(new GUIContent($"Could not import {Path.GetFileName(absolutePath)}"));
                 return null;
             }
         }
 
-        private static ShortcutPanelItem NewAssetItem(string path, Vector2 pos) => new ShortcutPanelItem
+        private static DashboardItem NewAssetItem(string path, Vector2 pos) => new DashboardItem
         {
-            id = ShortcutPanelItem.NewId(),
+            id = DashboardItem.NewId(),
             kind = ShortcutItemKind.Asset,
             guid = AssetDatabase.AssetPathToGUID(path),
             path = path,
-            Rect = new Rect(pos, ShortcutPanelLayout.DefaultShortcutSize)
+            Rect = new Rect(pos, DashboardLayout.DefaultShortcutSize)
         };
 
-        private static ShortcutPanelItem NewUrlItem(string url, Vector2 pos) => new ShortcutPanelItem
+        private static DashboardItem NewUrlItem(string url, Vector2 pos) => new DashboardItem
         {
-            id = ShortcutPanelItem.NewId(),
+            id = DashboardItem.NewId(),
             kind = ShortcutItemKind.Url,
             url = url,
-            Rect = new Rect(pos, ShortcutPanelLayout.DefaultShortcutSize)
+            Rect = new Rect(pos, DashboardLayout.DefaultShortcutSize)
         };
 
-        private static ShortcutPanelItem NewMenuItem(string menuPath, Vector2 pos) => new ShortcutPanelItem
+        private static DashboardItem NewMenuItem(string menuPath, Vector2 pos) => new DashboardItem
         {
-            id = ShortcutPanelItem.NewId(),
+            id = DashboardItem.NewId(),
             kind = ShortcutItemKind.Menu,
             menu = menuPath,
-            Rect = new Rect(pos, ShortcutPanelLayout.DefaultShortcutSize)
+            Rect = new Rect(pos, DashboardLayout.DefaultShortcutSize)
         };
 
-        private static ShortcutPanelItem NewActionItem(Vector2 pos) => new ShortcutPanelItem
+        private static DashboardItem NewActionItem(Vector2 pos) => new DashboardItem
         {
-            id = ShortcutPanelItem.NewId(),
+            id = DashboardItem.NewId(),
             kind = ShortcutItemKind.Action,
-            Rect = new Rect(pos, ShortcutPanelLayout.DefaultShortcutSize)
+            Rect = new Rect(pos, DashboardLayout.DefaultShortcutSize)
         };
 
-        private static ShortcutPanelItem NewCommandItem(string commandId, Vector2 pos) => new ShortcutPanelItem
+        private static DashboardItem NewCommandItem(string commandId, Vector2 pos) => new DashboardItem
         {
-            id = ShortcutPanelItem.NewId(),
+            id = DashboardItem.NewId(),
             kind = ShortcutItemKind.Command,
             command = commandId,
-            Rect = new Rect(pos, ShortcutPanelLayout.DefaultShortcutSize)
+            Rect = new Rect(pos, DashboardLayout.DefaultShortcutSize)
         };
 
-        private void ClearSteps(ShortcutPanelItem action)
+        private void ClearSteps(DashboardItem action)
         {
             if (action.steps.Count == 0) return;
             action.steps.Clear();
@@ -2108,12 +2170,12 @@ namespace Mmzkworks.muShortcutPanel.Editor
         {
             var y = 0f;
             foreach (var item in _doc.items) y = Mathf.Max(y, item.y + item.height);
-            return ShortcutPanelLayout.Snap(new Vector2(ShortcutPanelLayout.GridSize, y + ShortcutPanelLayout.GridSize));
+            return DashboardLayout.Snap(new Vector2(DashboardLayout.GridSize, y + DashboardLayout.GridSize));
         }
 
         // ------------------------------------------------------------------ property panel (edit mode)
 
-        private const string SidePanelWidthPrefKey = "Mmzkworks.muShortcutPanel.SidePanelWidth";
+        private const string SidePanelWidthPrefKey = "Mmzkworks.muDashboard.SidePanelWidth";
         private const float SidePanelMinWidth = 200f;
         private const float SidePanelDefaultWidth = 280f;
         private const float SplitterWidth = 4f;
@@ -2185,7 +2247,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
             }
         }
 
-        private void DrawPropertyPanel(ShortcutPanelItem item)
+        private void DrawPropertyPanel(DashboardItem item)
         {
             using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
             {
@@ -2243,8 +2305,8 @@ namespace Mmzkworks.muShortcutPanel.Editor
                         using (new EditorGUILayout.HorizontalScope())
                         {
                             item.title = EditorGUILayout.TextField(new GUIContent("Title", "Empty = last part of the menu path"), item.title);
-                            var targetLabel = ShortcutPanelMenuPath.TargetLabel(ShortcutPanelMenuPath.TargetOf(item.menu));
-                            var exists = ShortcutPanelMenuCatalog.Exists(item.menu);
+                            var targetLabel = DashboardMenuPath.TargetLabel(DashboardMenuPath.TargetOf(item.menu));
+                            var exists = DashboardMenuCatalog.Exists(item.menu);
                             GUILayout.Label(exists ? targetLabel : $"{targetLabel} (not found)", EditorStyles.miniLabel, GUILayout.Width(110f));
                         }
                         break;
@@ -2286,8 +2348,8 @@ namespace Mmzkworks.muShortcutPanel.Editor
                 using (new EditorGUILayout.HorizontalScope())
                 {
                     var r = EditorGUILayout.RectField("Rect", item.Rect);
-                    r.width = Mathf.Max(ShortcutPanelLayout.MinWidth, r.width);
-                    r.height = Mathf.Max(ShortcutPanelLayout.MinHeight, r.height);
+                    r.width = Mathf.Max(DashboardLayout.MinWidth, r.width);
+                    r.height = Mathf.Max(DashboardLayout.MinHeight, r.height);
                     item.Rect = r;
                 }
 
@@ -2308,7 +2370,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
         private string _typeCheckError;
 
         /// <summary>Title plus one field per command parameter (generated from the parameter kinds).</summary>
-        private void DrawCommandFields(ShortcutPanelItem item)
+        private void DrawCommandFields(DashboardItem item)
         {
             var command = ShortcutCommandRegistry.Find(item.command);
             if (command == null)

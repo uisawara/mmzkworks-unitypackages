@@ -8,7 +8,7 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-namespace Mmzkworks.muShortcutPanel.Editor
+namespace Mmzkworks.muDashboard.Editor
 {
     /// <summary>Helpers shared by the commands. The string / path functions are pure and unit tested.</summary>
     internal static class ShortcutCommandUtil
@@ -111,7 +111,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
             }
             catch (Exception e)
             {
-                Debug.LogWarning($"[muShortcutPanel] Could not read the Project window folder: {e.GetBaseException().Message}");
+                Debug.LogWarning($"[muDashboard] Could not read the Project window folder: {e.GetBaseException().Message}");
             }
             return "Assets";
         }

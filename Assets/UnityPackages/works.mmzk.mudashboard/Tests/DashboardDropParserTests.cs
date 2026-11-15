@@ -1,17 +1,17 @@
 using System.Linq;
-using Mmzkworks.muShortcutPanel.Editor;
+using Mmzkworks.muDashboard.Editor;
 using NUnit.Framework;
 
-namespace Mmzkworks.muShortcutPanel.Tests
+namespace Mmzkworks.muDashboard.Tests
 {
-    public sealed class ShortcutPanelDropParserTests
+    public sealed class DashboardDropParserTests
     {
         [TestCase("https://example.com", "https://example.com")]
         [TestCase("  http://example.com/a?b=c  ", "http://example.com/a?b=c")]
         [TestCase("https://example.com/x\r\nSecond line", "https://example.com/x")]
         public void TryGetWebUrl_Accepts(string input, string expected)
         {
-            Assert.That(ShortcutPanelDropParser.TryGetWebUrl(input, out var url), Is.True);
+            Assert.That(DashboardDropParser.TryGetWebUrl(input, out var url), Is.True);
             Assert.That(url, Is.EqualTo(expected));
         }
 
@@ -24,14 +24,14 @@ namespace Mmzkworks.muShortcutPanel.Tests
         [TestCase("example.com")]
         public void TryGetWebUrl_Rejects(string input)
         {
-            Assert.That(ShortcutPanelDropParser.TryGetWebUrl(input, out _), Is.False);
+            Assert.That(DashboardDropParser.TryGetWebUrl(input, out _), Is.False);
         }
 
         [Test]
         public void TryParseInternetShortcut_WindowsUrlFile()
         {
             const string content = "[{000214A0-0000-0000-C000-000000000046}]\r\nProp3=19,11\r\n[InternetShortcut]\r\nIDList=\r\nURL=https://unity.com/\r\n";
-            Assert.That(ShortcutPanelDropParser.TryParseInternetShortcut(content, out var url), Is.True);
+            Assert.That(DashboardDropParser.TryParseInternetShortcut(content, out var url), Is.True);
             Assert.That(url, Is.EqualTo("https://unity.com/"));
         }
 
@@ -39,14 +39,14 @@ namespace Mmzkworks.muShortcutPanel.Tests
         public void TryParseInternetShortcut_Webloc()
         {
             const string content = "<?xml version=\"1.0\"?><plist version=\"1.0\"><dict><key>URL</key><string>https://unity.com/</string></dict></plist>";
-            Assert.That(ShortcutPanelDropParser.TryParseInternetShortcut(content, out var url), Is.True);
+            Assert.That(DashboardDropParser.TryParseInternetShortcut(content, out var url), Is.True);
             Assert.That(url, Is.EqualTo("https://unity.com/"));
         }
 
         [Test]
         public void Collect_MixesAssetsUrlsAndShortcutFiles_WithoutDuplicates()
         {
-            var entries = ShortcutPanelDropParser.Collect(
+            var entries = DashboardDropParser.Collect(
                 new[] { "Assets/A.prefab", "Assets/Folder" },
                 new[]
                 {
@@ -73,23 +73,23 @@ namespace Mmzkworks.muShortcutPanel.Tests
             string[] objects = { "Assets/Art/Logo.png", "Assets/A.prefab" };
             bool IsAsset(string p) => p.StartsWith("Assets/");
 
-            var normal = ShortcutPanelDropParser.Collect(objects, objects, IsAsset, _ => null);
+            var normal = DashboardDropParser.Collect(objects, objects, IsAsset, _ => null);
             Assert.That(normal.Select(e => e.ToString()), Is.EqualTo(new[] { "asset:Assets/Art/Logo.png", "asset:Assets/A.prefab" }));
 
-            var alt = ShortcutPanelDropParser.Collect(objects, objects, IsAsset, _ => null, assetImagesAsPictures: true);
+            var alt = DashboardDropParser.Collect(objects, objects, IsAsset, _ => null, assetImagesAsPictures: true);
             Assert.That(alt.Select(e => e.ToString()), Is.EqualTo(new[] { "image:Assets/Art/Logo.png", "asset:Assets/A.prefab" }));
         }
 
         [Test]
         public void Collect_ExternalImageFiles_AreImported()
         {
-            var entries = ShortcutPanelDropParser.Collect(
+            var entries = DashboardDropParser.Collect(
                 null,
                 new[] { "C:/Users/me/Pictures/shot.PNG", "C:/Users/me/notes.txt", "relative/shot.png" },
                 p => p.StartsWith("Assets/"),
                 _ => null);
 
-            Assert.That(entries.Select(e => e.ToString()), Is.EqualTo(new[] { ShortcutPanelDropParser.ExternalImage + ":C:/Users/me/Pictures/shot.PNG" }));
+            Assert.That(entries.Select(e => e.ToString()), Is.EqualTo(new[] { DashboardDropParser.ExternalImage + ":C:/Users/me/Pictures/shot.PNG" }));
         }
 
         [TestCase("a.png", true)]
@@ -100,7 +100,7 @@ namespace Mmzkworks.muShortcutPanel.Tests
         [TestCase(null, false)]
         public void IsImageFile(string path, bool expected)
         {
-            Assert.That(ShortcutPanelDropParser.IsImageFile(path), Is.EqualTo(expected));
+            Assert.That(DashboardDropParser.IsImageFile(path), Is.EqualTo(expected));
         }
 
         [TestCase("https://example.com/", "example.com")]
@@ -108,7 +108,7 @@ namespace Mmzkworks.muShortcutPanel.Tests
         [TestCase("not a url", "not a url")]
         public void DefaultUrlTitle(string url, string expected)
         {
-            Assert.That(ShortcutPanelDropParser.DefaultUrlTitle(url), Is.EqualTo(expected));
+            Assert.That(DashboardDropParser.DefaultUrlTitle(url), Is.EqualTo(expected));
         }
     }
 }

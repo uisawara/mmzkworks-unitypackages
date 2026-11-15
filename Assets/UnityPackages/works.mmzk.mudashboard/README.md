@@ -1,10 +1,10 @@
 English | [日本語](README.ja.md)
 
-# muShortcutPanel
+# muDashboard
 
 An Editor extension for laying out shortcuts to Project assets and web pages, plus labels, freely on a panel.
 
-Save a panel per task as `<any name>.shortcutpanel.json` and switch between them. Open the window from `Tools/muShortcutPanel/ShortcutPanel`.
+Save a panel per task as `<any name>.dashboard.json` and switch between them. Open the window from `Tools/muDashboard/Dashboard`.
 
 Unity 2022.3 or later. MIT License.
 
@@ -13,14 +13,14 @@ Unity 2022.3 or later. MIT License.
 Add it from Unity Package Manager with a Git URL.
 
 ```
-https://github.com/uisawara/mmzkworks-unitypackages.git?path=Assets/UnityPackages/works.mmzk.mushortcutpanel
+https://github.com/uisawara/mmzkworks-unitypackages.git?path=Assets/UnityPackages/works.mmzk.mudashboard
 ```
 
 ## Panel files
 
-- The dropdown at the left of the toolbar lists every `*.shortcutpanel.json` under Assets. Pick one to switch the working file.
-- Create a new panel with `New Panel...` in the dropdown, or `Create/muShortcutPanel/Shortcut Panel` in the Project window.
-- Double-click a `*.shortcutpanel.json` in the Project window to open it directly in the ShortcutPanel window.
+- The dropdown at the left of the toolbar lists every `*.dashboard.json` under Assets. Pick one to switch the working file.
+- Create a new panel with `New Panel...` in the dropdown, or `Create/muDashboard/Dashboard` in the Project window.
+- Double-click a `*.dashboard.json` in the Project window to open it directly in the Dashboard window.
 - Changes are saved automatically.
 
 ## Use mode and edit mode
@@ -29,7 +29,7 @@ Switch between `Use Mode` and `Edit Mode` with the toggle button at the right of
 
 The `Path` toggle in the toolbar shows or hides the full path (asset path / URL / menu path) under each shortcut.
 
-The panel is an unbounded canvas with no scroll bars. In both modes, drag with the middle mouse button to move around in any direction. Press `F` (or right-click empty space > `Frame All`) to scroll to the center of all elements.
+The panel is an unbounded canvas with no scroll bars. In both modes, drag with the middle mouse button to move around in any direction, and use the mouse wheel to zoom in / out around the cursor (25% – 200%). The zoom level is shown in the toolbar; click it to go back to 100%. Press `F` (or right-click empty space > `Frame All`) to scroll to the center of all elements.
 
 ### Use mode
 

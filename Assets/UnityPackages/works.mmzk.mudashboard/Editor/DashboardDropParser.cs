@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text.RegularExpressions;
 
-namespace Mmzkworks.muShortcutPanel.Editor
+namespace Mmzkworks.muDashboard.Editor
 {
     internal readonly struct DropEntry
     {
@@ -23,7 +23,7 @@ namespace Mmzkworks.muShortcutPanel.Editor
     /// Turns the contents of a drag and drop into shortcut entries.
     /// Handles Project window assets, URLs (as text) and internet shortcut files (.url / .webloc).
     /// </summary>
-    internal static class ShortcutPanelDropParser
+    internal static class DashboardDropParser
     {
         /// <summary>Drop entry kind for an image file outside the project (copied into it on drop).</summary>
         public const string ExternalImage = "external-image";

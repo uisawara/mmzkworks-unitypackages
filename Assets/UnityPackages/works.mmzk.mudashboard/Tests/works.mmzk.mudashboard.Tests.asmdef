@@ -1,10 +1,10 @@
 {
-    "name": "works.mmzk.mushortcutpanel.Tests",
-    "rootNamespace": "Mmzkworks.muShortcutPanel.Tests",
+    "name": "works.mmzk.mudashboard.Tests",
+    "rootNamespace": "Mmzkworks.muDashboard.Tests",
     "references": [
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
-        "works.mmzk.mushortcutpanel.Editor"
+        "works.mmzk.mudashboard.Editor"
     ],
     "includePlatforms": [
         "Editor"

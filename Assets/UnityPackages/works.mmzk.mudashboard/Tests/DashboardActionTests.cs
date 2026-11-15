@@ -1,18 +1,18 @@
 using System.Collections.Generic;
 using System.Linq;
-using Mmzkworks.muShortcutPanel.Editor;
+using Mmzkworks.muDashboard.Editor;
 using NUnit.Framework;
 
-namespace Mmzkworks.muShortcutPanel.Tests
+namespace Mmzkworks.muDashboard.Tests
 {
-    public sealed class ShortcutPanelActionTests
+    public sealed class DashboardActionTests
     {
-        private static ShortcutPanelItem Item(string id, string kind, params string[] steps) =>
-            new ShortcutPanelItem { id = id, kind = kind, title = id, steps = steps.ToList() };
+        private static DashboardItem Item(string id, string kind, params string[] steps) =>
+            new DashboardItem { id = id, kind = kind, title = id, steps = steps.ToList() };
 
-        private static ShortcutPanelDocument Doc(params ShortcutPanelItem[] items)
+        private static DashboardDocument Doc(params DashboardItem[] items)
         {
-            var doc = new ShortcutPanelDocument();
+            var doc = new DashboardDocument();
             doc.items.AddRange(items);
             return doc;
         }
@@ -26,7 +26,7 @@ namespace Mmzkworks.muShortcutPanel.Tests
                 Item("u", ShortcutItemKind.Url),
                 Item("m", ShortcutItemKind.Menu));
 
-            var steps = ShortcutPanelActionPlan.Expand(doc, "act", out var error);
+            var steps = DashboardActionPlan.Expand(doc, "act", out var error);
 
             Assert.That(error, Is.Null);
             Assert.That(steps.Select(s => s.id), Is.EqualTo(new[] { "m", "a", "u" }));
@@ -44,7 +44,7 @@ namespace Mmzkworks.muShortcutPanel.Tests
                 Item("d", ShortcutItemKind.Menu),
                 Item("l", ShortcutItemKind.Label));
 
-            var steps = ShortcutPanelActionPlan.Expand(doc, "outer", out var error);
+            var steps = DashboardActionPlan.Expand(doc, "outer", out var error);
 
             Assert.That(error, Is.Null);
             Assert.That(steps.Select(s => s.id), Is.EqualTo(new[] { "a", "c", "d", "b" }));
@@ -59,7 +59,7 @@ namespace Mmzkworks.muShortcutPanel.Tests
                 Item("inner", ShortcutItemKind.Action, "m"),
                 Item("m", ShortcutItemKind.Menu));
 
-            var steps = ShortcutPanelActionPlan.Expand(doc, "outer", out var error);
+            var steps = DashboardActionPlan.Expand(doc, "outer", out var error);
 
             Assert.That(error, Is.Null);
             Assert.That(steps.Select(s => s.id), Is.EqualTo(new[] { "m", "m" }));
@@ -70,7 +70,7 @@ namespace Mmzkworks.muShortcutPanel.Tests
         {
             var doc = Doc(Item("act", ShortcutItemKind.Action, "act"));
 
-            Assert.That(ShortcutPanelActionPlan.Expand(doc, "act", out var error), Is.Null);
+            Assert.That(DashboardActionPlan.Expand(doc, "act", out var error), Is.Null);
             Assert.That(error, Does.Contain("cycle"));
         }
 
@@ -82,7 +82,7 @@ namespace Mmzkworks.muShortcutPanel.Tests
                 Item("b", ShortcutItemKind.Action, "a"),
                 Item("m", ShortcutItemKind.Menu));
 
-            Assert.That(ShortcutPanelActionPlan.Expand(doc, "a", out var error), Is.Null);
+            Assert.That(DashboardActionPlan.Expand(doc, "a", out var error), Is.Null);
             Assert.That(error, Does.Contain("cycle"));
         }
 
@@ -91,7 +91,7 @@ namespace Mmzkworks.muShortcutPanel.Tests
         {
             var doc = Doc(Item("act", ShortcutItemKind.Action, "gone"));
 
-            Assert.That(ShortcutPanelActionPlan.Expand(doc, "act", out var error), Is.Null);
+            Assert.That(DashboardActionPlan.Expand(doc, "act", out var error), Is.Null);
             Assert.That(error, Does.Contain("Missing"));
         }
 
@@ -100,7 +100,7 @@ namespace Mmzkworks.muShortcutPanel.Tests
         {
             var doc = Doc(Item("m", ShortcutItemKind.Menu));
 
-            Assert.That(ShortcutPanelActionPlan.Expand(doc, "m", out var error), Is.Null);
+            Assert.That(DashboardActionPlan.Expand(doc, "m", out var error), Is.Null);
             Assert.That(error, Is.Not.Null);
         }
 
@@ -110,14 +110,14 @@ namespace Mmzkworks.muShortcutPanel.Tests
             var action = Item("act", ShortcutItemKind.Action);
             var steps = new List<string>();
 
-            Assert.That(ShortcutPanelActionTrace.TryAdd(steps, action, Item("a", ShortcutItemKind.Asset)), Is.True);
-            Assert.That(ShortcutPanelActionTrace.TryAdd(steps, action, Item("b", ShortcutItemKind.Menu)), Is.True);
-            Assert.That(ShortcutPanelActionTrace.TryAdd(steps, action, Item("a", ShortcutItemKind.Asset)), Is.False, "duplicate");
-            Assert.That(ShortcutPanelActionTrace.TryAdd(steps, action, action), Is.False, "self");
-            Assert.That(ShortcutPanelActionTrace.TryAdd(steps, action, Item("l", ShortcutItemKind.Label)), Is.False, "label");
-            Assert.That(ShortcutPanelActionTrace.TryAdd(steps, action, Item("i", ShortcutItemKind.Image)), Is.False, "image");
-            Assert.That(ShortcutPanelActionTrace.TryAdd(steps, action, null), Is.False, "null");
-            Assert.That(ShortcutPanelActionTrace.TryAdd(steps, action, Item("other", ShortcutItemKind.Action)), Is.True, "nested action");
+            Assert.That(DashboardActionTrace.TryAdd(steps, action, Item("a", ShortcutItemKind.Asset)), Is.True);
+            Assert.That(DashboardActionTrace.TryAdd(steps, action, Item("b", ShortcutItemKind.Menu)), Is.True);
+            Assert.That(DashboardActionTrace.TryAdd(steps, action, Item("a", ShortcutItemKind.Asset)), Is.False, "duplicate");
+            Assert.That(DashboardActionTrace.TryAdd(steps, action, action), Is.False, "self");
+            Assert.That(DashboardActionTrace.TryAdd(steps, action, Item("l", ShortcutItemKind.Label)), Is.False, "label");
+            Assert.That(DashboardActionTrace.TryAdd(steps, action, Item("i", ShortcutItemKind.Image)), Is.False, "image");
+            Assert.That(DashboardActionTrace.TryAdd(steps, action, null), Is.False, "null");
+            Assert.That(DashboardActionTrace.TryAdd(steps, action, Item("other", ShortcutItemKind.Action)), Is.True, "nested action");
 
             Assert.That(steps, Is.EqualTo(new[] { "a", "b", "other" }));
         }
