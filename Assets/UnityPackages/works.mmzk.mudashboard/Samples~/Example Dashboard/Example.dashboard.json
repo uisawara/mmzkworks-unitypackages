@@ -1,0 +1,28 @@
+{
+    "version": 1,
+    "items": [
+        { "id": "c75fb6993d0240d88d32ce75b52df462", "kind": "label", "title": "Project", "fontSize": 14, "x": 16, "y": 16, "width": 176, "height": 24 },
+        { "id": "ad1546e56e634971a8100833f728cd94", "kind": "asset", "guid": "00000000000000001000000000000000", "path": "Assets", "x": 16, "y": 48, "width": 176, "height": 24 },
+        { "id": "19bc6001d764416f90bbf982de7b47cb", "kind": "asset", "guid": "13133a99ab49481cb2a6f440b1bde168", "path": "Assets/Samples/muDashboard/0.1.0/Example Dashboard/Images", "x": 16, "y": 80, "width": 176, "height": 24 },
+        { "id": "267cfa25c4e945e788391e33ebb90913", "kind": "asset", "guid": "8e58f33119fd49048dc3e9ed4b7599f1", "path": "Assets/Samples/muDashboard/0.1.0/Example Dashboard/Images/Level Sketch.png", "x": 16, "y": 112, "width": 88, "height": 72 },
+
+        { "id": "0292202fdd87462983b6197da2ae7f36", "kind": "label", "title": "Docs", "fontSize": 14, "x": 216, "y": 16, "width": 176, "height": 24 },
+        { "id": "880db9f1a2c7431697bb03e0e2a013c4", "kind": "url", "title": "Unity Manual", "url": "https://docs.unity3d.com/Manual/index.html", "x": 216, "y": 48, "width": 176, "height": 24 },
+        { "id": "ae4e130616164b69a03d713cab967d5f", "kind": "url", "title": "Scripting API", "url": "https://docs.unity3d.com/ScriptReference/index.html", "x": 216, "y": 80, "width": 176, "height": 24 },
+        { "id": "64f9c2fa0c1c43bf8dc61e39bd4af108", "kind": "url", "title": "muDashboard README", "url": "https://github.com/uisawara/mmzkworks-unitypackages/tree/main/Assets/UnityPackages/works.mmzk.mudashboard", "x": 216, "y": 112, "width": 176, "height": 24 },
+
+        { "id": "720e344405154786a59fda5a0c63e2f9", "kind": "label", "title": "Editor Menu", "fontSize": 14, "x": 416, "y": 16, "width": 176, "height": 24 },
+        { "id": "61614843bb6b4ddfab4e140cfd907109", "kind": "menu", "menu": "Window/General/Console", "x": 416, "y": 48, "width": 176, "height": 24 },
+        { "id": "f38bf01e031c47ea85d40bfcae13141d", "kind": "menu", "menu": "Edit/Project Settings...", "x": 416, "y": 80, "width": 176, "height": 24 },
+        { "id": "9c21b54dcaf243158de97840d11b17e7", "kind": "menu", "menu": "Assets/Create/Folder", "x": 416, "y": 112, "width": 176, "height": 24 },
+        { "id": "3d88f8c5a4614d68ae7ebeaaf72b7886", "kind": "menu", "menu": "GameObject/Create Empty", "x": 416, "y": 144, "width": 176, "height": 24 },
+
+        { "id": "ad811e8562af412ea77708a442ad5740", "kind": "image", "guid": "8e58f33119fd49048dc3e9ed4b7599f1", "path": "Assets/Samples/muDashboard/0.1.0/Example Dashboard/Images/Level Sketch.png", "x": 616, "y": 16, "width": 224, "height": 140 },
+
+        { "id": "adf5c955dd5e4a32baf7d30cf69b18db", "kind": "label", "title": "Automation: build a prop prefab in one click", "fontSize": 14, "x": 16, "y": 208, "width": 576, "height": 24 },
+        { "id": "6ea6cd3ba68a4be887cce220970aee1e", "kind": "command", "command": "go.createPrimitive", "args": [{ "key": "type", "value": "Cube" }, { "key": "name", "value": "Crate" }], "x": 16, "y": 240, "width": 176, "height": 24 },
+        { "id": "0caf5f2c7a4345adb74d770e3761b109", "kind": "command", "command": "go.addComponent", "args": [{ "key": "type", "value": "Rigidbody" }], "x": 216, "y": 240, "width": 176, "height": 24 },
+        { "id": "a7140ecdb7ac4d7391716b8768eb5d33", "kind": "command", "command": "prefab.create", "args": [{ "key": "folder", "value": "" }, { "key": "connect", "value": "true" }], "x": 416, "y": 240, "width": 176, "height": 24 },
+        { "id": "3e1f0f7c2b8a4f7e9a51c6d2b0e4a913", "kind": "action", "title": "Make Crate Prefab", "steps": ["6ea6cd3ba68a4be887cce220970aee1e", "0caf5f2c7a4345adb74d770e3761b109", "a7140ecdb7ac4d7391716b8768eb5d33"], "x": 16, "y": 296, "width": 176, "height": 32 }
+    ]
+}

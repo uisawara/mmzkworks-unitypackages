@@ -8,6 +8,8 @@ Save a panel per task as `<any name>.dashboard.json` and switch between them. Op
 
 Unity 2022.3 or later. MIT License.
 
+![The sample panel in use mode](Documentation~/img/use-mode.png)
+
 ## Installation
 
 Add it from Unity Package Manager with a Git URL.
@@ -15,6 +17,16 @@ Add it from Unity Package Manager with a Git URL.
 ```
 https://github.com/uisawara/mmzkworks-unitypackages.git?path=Assets/UnityPackages/works.mmzk.mudashboard
 ```
+
+## Sample
+
+Select this package in the Package Manager and `Import` `Example Dashboard` under `Samples`. A sample panel is added under `Assets/Samples/muDashboard/<version>/Example Dashboard/`; double-click `Example.dashboard.json` to open it in the Dashboard window. The image above is this sample.
+
+- **Project**: shortcuts to the `Assets` folder and to the sample's `Images` folder. An image asset shortcut 56px or taller is drawn as a tile.
+- **Docs**: URL shortcuts to the Unity Manual, the Scripting API and this README.
+- **Editor Menu**: menu command shortcuts. `Console` and `Project Settings...` are editor menus, `Folder` (`Assets/Create/Folder`) acts on the Project window selection and `Create Empty` (`GameObject/Create Empty`) on the Hierarchy window selection.
+- **Image**: a picture pasted onto the panel (`Level Sketch`), for keeping references and notes at hand.
+- **Automation**: the action `Make Crate Prefab`, linking `Create Primitive` (Cube named `Crate`) → `Add Component` (Rigidbody) → `Create Prefab`. Click it in use mode to create a Crate in the scene, add a Rigidbody and save it as a prefab in the folder open in the Project window. One Undo reverts the scene changes (the prefab asset stays).
 
 ## Panel files
 
@@ -53,6 +65,10 @@ The panel is an unbounded canvas with no scroll bars. In both modes, drag with t
 
 ## Actions
 
+![An action selected in edit mode](Documentation~/img/edit-mode-action.png)
+
+Select an action in edit mode to see the run order numbered on its linked elements and listed in the property panel on the right.
+
 An action runs several elements of the panel one after another.
 
 - In edit mode, drag from the round knob at the bottom of an action and trace over the elements to run. A line connects them in the traced order. Tracing again replaces the previous line; each element is added only once, and labels are ignored.
@@ -65,6 +81,8 @@ An action runs several elements of the panel one after another.
 ## Commands
 
 Commands are built-in automation steps with settings, e.g. "create a prefab from the selection" or "place a prefab in the scene". Add one with `+ Command` (or `Add Command Here...` in the right-click menu), set its arguments in the property panel, and click it in use mode, or link it into an [action](#actions).
+
+![A command selected in edit mode](Documentation~/img/edit-mode-command.png)
 
 Commands pass results through the **Selection**: each command works on what is selected and leaves its result selected, so the next step picks it up. If a command has nothing to work on or an argument is invalid, it fails and the action stops there.
 

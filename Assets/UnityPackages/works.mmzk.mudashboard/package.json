@@ -7,5 +7,12 @@
   "license": "MIT",
   "author": {
     "name": "mmzkworks"
-  }
+  },
+  "samples": [
+    {
+      "displayName": "Example Dashboard",
+      "description": "A sample panel with asset, URL and menu shortcuts, an image, and an action that builds a prefab with automation commands.",
+      "path": "Samples~/Example Dashboard"
+    }
+  ]
 }

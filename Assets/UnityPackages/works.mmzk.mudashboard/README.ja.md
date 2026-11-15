@@ -8,6 +8,8 @@ Project のアセットや Web ページへのショートカットとラベル�
 
 Unity 2022.3 以降。MIT License。
 
+![サンプルパネル(利用モード)](Documentation~/img/use-mode.png)
+
 ## インストール
 
 Unity Package Manager から Git URL で追加します。
@@ -15,6 +17,16 @@ Unity Package Manager から Git URL で追加します。
 ```
 https://github.com/uisawara/mmzkworks-unitypackages.git?path=Assets/UnityPackages/works.mmzk.mudashboard
 ```
+
+## サンプル
+
+Package Manager でこのパッケージを選び、`Samples` の `Example Dashboard` を `Import` すると、`Assets/Samples/muDashboard/<バージョン>/Example Dashboard/` にサンプルパネルが入ります。`Example.dashboard.json` をダブルクリックすると Dashboard ウィンドウで開きます。上の画像がこのサンプルです。
+
+- **Project**: `Assets` フォルダと、サンプル内の `Images` フォルダへのショートカット。高さを 56px 以上にした画像アセットのショートカットはタイル表示になります。
+- **Docs**: Unity Manual・Scripting API・この README への URL ショートカット。
+- **Editor Menu**: メニューコマンドのショートカット。`Console`・`Project Settings...` はエディタのメニュー、`Folder`(`Assets/Create/Folder`)は Project ウィンドウ、`Create Empty`(`GameObject/Create Empty`)は Hierarchy ウィンドウの選択に対して実行されます。
+- **画像**: パネルに貼り付けた画像(`Level Sketch`)。資料やメモを並べておけます。
+- **Automation**: `Create Primitive`(Cube、名前 `Crate`)→ `Add Component`(Rigidbody)→ `Create Prefab` を線でつないだ Action `Make Crate Prefab`。利用モードでクリックすると、シーンに Crate を作り、Rigidbody を付け、Project ウィンドウで開いているフォルダに Prefab として保存します。Undo 1 回でシーンの変更を戻せます(作られた Prefab アセットは残ります)。
 
 ## パネルファイル
 
@@ -53,6 +65,10 @@ https://github.com/uisawara/mmzkworks-unitypackages.git?path=Assets/UnityPackage
 
 ## Action
 
+![編集モードで Action を選択したところ](Documentation~/img/edit-mode-action.png)
+
+編集モードで Action を選択すると、つないだ要素に実行順の番号が付き、右のプロパティパネルに手順が一覧されます。
+
 パネル上の複数の要素を、順番にまとめて実行するボタンです。
 
 - 編集モードで Action 下部の丸いノブからドラッグし、実行したい要素をなぞります。なぞった順に要素が線でつながります。もう一度なぞると線は置き換わります。同じ要素は 1 回だけ追加され、ラベルは対象外です。
@@ -65,6 +81,8 @@ https://github.com/uisawara/mmzkworks-unitypackages.git?path=Assets/UnityPackage
 ## コマンド
 
 「選択から Prefab を作る」「Prefab をシーンに置く」のような、引数付きの組み込み自動化コマンドです。`+ Command`(または右クリックの `Add Command Here...`)で追加し、プロパティパネルで引数を設定します。利用モードでクリックして単体で実行するか、[Action](#action) の線でつないで使います。
+
+![編集モードでコマンドを選択したところ](Documentation~/img/edit-mode-command.png)
 
 コマンド間の受け渡しは **Selection** で行います。各コマンドは現在の選択を対象にし、結果を選択した状態で終わるので、次のステップがそれを引き継ぎます。対象が無い・引数が不正な場合は失敗し、Action はそこで止まります。
 
