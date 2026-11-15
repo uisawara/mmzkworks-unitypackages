@@ -2,6 +2,11 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 using UnityEditorInternal;
+#if UNITY_6000_4_OR_NEWER
+using ObjectId = UnityEngine.EntityId;
+#else
+using ObjectId = System.Int32;
+#endif
 
 namespace Mmzkworks.muHierarchy.Editor
 {
@@ -110,7 +115,7 @@ namespace Mmzkworks.muHierarchy.Editor
 
         internal static GameObject[] GetTargets(GameObject go)
         {
-            if (HierarchyDrawUtils.IsSelectedInstanceId(go.GetInstanceID()))
+            if (HierarchyDrawUtils.IsSelectedInstanceId(go.GetObjectId()))
             {
                 var selected = Selection.gameObjects;
                 if (selected.Length > 0)
