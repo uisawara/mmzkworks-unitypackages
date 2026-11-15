@@ -16,6 +16,8 @@ concurrency:
 
 jobs:
   release:
+    # Tags and releases are only cut from main (a manual run on another branch does nothing).
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
