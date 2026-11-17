@@ -52,6 +52,8 @@
 
 各パッケージの `package.json` の `version` を上げて main にマージすると、[Release workflow](.github/workflows/release.yml) が `<パッケージ名>/<version>` のタグと GitHub Release を自動で作成します。
 
+開発は `develop` ブランチで行い、リリース時に develop → main の PR で取り込みます。リリースに入れるバージョンは、前回タグ以降のコミットの種類(Conventional Commits)から [`next-versions.sh`](.github/scripts/next-versions.sh) で決めます(`feat` → minor、`fix` / `perf` / `refactor` → patch)。
+
 特定バージョンをインストールするには、Git URL の末尾にタグを指定します。
 
 ```

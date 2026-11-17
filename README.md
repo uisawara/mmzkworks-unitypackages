@@ -53,6 +53,8 @@ English | [日本語](README.ja.md)
 
 When a package's `version` in `package.json` is bumped and merged into main, the [Release workflow](.github/workflows/release.yml) creates a `<package-name>/<version>` tag and a GitHub Release automatically.
 
+Development happens on the `develop` branch, which is merged into main by a develop → main PR for each release. The versions for a release are decided by [`next-versions.sh`](.github/scripts/next-versions.sh) from the types of the commits since the previous tag (Conventional Commits: `feat` → minor, `fix` / `perf` / `refactor` → patch).
+
 To install a specific version, append the tag to the Git URL:
 
 ```
