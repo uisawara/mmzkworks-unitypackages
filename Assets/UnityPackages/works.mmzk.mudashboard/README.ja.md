@@ -32,7 +32,8 @@ Package Manager でこのパッケージを選び、`Samples` の `Example Dashb
 
 - ツールバー左のドロップダウンに、Assets 以下にある `*.dashboard.json` が一覧表示されます。選ぶと作業ファイルが切り替わります。
 - ドロップダウンの `New Panel...`、または Project ウィンドウの `Create/muDashboard/Dashboard` で新しいパネルを作成できます。
-- Project ウィンドウで `*.dashboard.json` をダブルクリックすると、そのパネルを Dashboard ウィンドウで直接開きます。
+- Project ウィンドウで `*.dashboard.json` をダブルクリックすると、そのパネル用の Dashboard ウィンドウで開きます。別のパネルを開くとウィンドウが追加され(既存のウィンドウの隣にタブとして配置)、すでに開いているパネルはそのウィンドウにフォーカスします。
+- ドロップダウンの `Open in New Window` で、今のウィンドウを切り替えずに別ウィンドウでパネルを開けます。
 - 変更は自動で保存されます。
 
 ## 利用モードと編集モード
