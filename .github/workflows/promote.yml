@@ -1,11 +1,16 @@
 name: Promote develop to main
 
+# main は protect-main ルールセットで PR 必須のため、GITHUB_TOKEN では直接 push できない。
+# develop → main の PR を作るだけにして、マージはリポジトリオーナーが行う。
+# マージ(オーナーによる push)で release workflow の push トリガーが発火する。
+# develop は protect-develop ルールセットで削除禁止なので、マージ後の自動削除で消えない。
+
 on:
   workflow_dispatch:
 
 permissions:
-  contents: write
-  actions: write
+  contents: read
+  pull-requests: write
 
 concurrency:
   group: promote
@@ -16,24 +21,31 @@ jobs:
     # リポジトリオーナー以外が起動した場合は何もしない
     if: github.actor == github.repository_owner
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: main
-          fetch-depth: 0
-
-      - name: Configure git
+      - name: Open pull request from develop to main
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          existing=$(gh pr list --base main --head develop --state open --json url --jq '.[0].url // empty')
+          if [ -n "$existing" ]; then
+            echo "Pull request already open: $existing" | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
 
-      - name: Merge develop into main
-        run: |
-          git merge --no-edit origin/develop
-          git push origin main
+          ahead=$(gh api "repos/$GH_REPO/compare/main...develop" --jq '.ahead_by')
+          if [ "$ahead" = "0" ]; then
+            echo "develop has no commits to promote." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
 
-      # GITHUB_TOKEN による push では Release の push トリガーが発火しないため、明示的に起動する
-      - name: Run release workflow
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh workflow run release.yml --ref main
+          {
+            echo "develop の変更を main に取り込みます。マージすると release workflow が起動します。"
+            echo
+            echo "## Commits"
+            gh api "repos/$GH_REPO/compare/main...develop" \
+              --jq '.commits[] | select(.parents | length == 1) | "- \(.commit.message | split("\n")[0]) (\(.sha[0:7]))"'
+          } > body.md
+
+          url=$(gh pr create --base main --head develop --title "Promote develop to main" --body-file body.md)
+          echo "Opened: $url" | tee -a "$GITHUB_STEP_SUMMARY"
