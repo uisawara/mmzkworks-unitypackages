@@ -679,6 +679,11 @@ namespace Mmzkworks.muHierarchy.Editor
                 return;
             }
 
+            // Keep the configured space free at the right end (backgrounds above stay full width).
+            float rightMargin = MuHierarchyProjectSettings.instance.RightMargin;
+            if (rightMargin > 0f)
+                selectionRect.width = Mathf.Max(0f, selectionRect.width - rightMargin);
+
             const float iconSize = 16f;
             const float spacing = 4f;
             const float componentIconSpacing = 1f;

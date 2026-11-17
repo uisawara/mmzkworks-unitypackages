@@ -113,3 +113,13 @@ Shows the source asset path of Prefab instances.
 Shows the names of the Mesh, Material, and Shader in use.
 
 All of these can be switched from `Tools/muHierarchy`.
+
+## Settings
+
+Open `Tools/muHierarchy/Settings...` (or `Project Settings > muHierarchy`).
+
+### Right Margin
+
+Space (px) kept free at the right end of each Hierarchy row. Everything muHierarchy draws on the right — Component icons, Tag / Layer, Prefab icons, and the text of each View Mode — moves left by this amount. Use it when another Hierarchy extension draws at the right edge and they overlap. Row backgrounds still span the full width.
+
+The value is saved in `ProjectSettings/muHierarchySettings.asset`. Commit that file to share the setting with your team.
