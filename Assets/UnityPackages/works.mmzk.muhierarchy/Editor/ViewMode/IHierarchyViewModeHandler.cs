@@ -1,5 +1,10 @@
 using UnityEngine;
 using UnityEditor;
+#if UNITY_6000_4_OR_NEWER
+using ObjectId = UnityEngine.EntityId;
+#else
+using ObjectId = System.Int32;
+#endif
 
 namespace Mmzkworks.muHierarchy.Editor
 {
@@ -9,6 +14,6 @@ namespace Mmzkworks.muHierarchy.Editor
 
         bool RecordPosition { get; }
 
-        void Draw(int instanceID, Rect selectionRect, GameObject go, HierarchyDrawContext ctx);
+        void Draw(ObjectId instanceID, Rect selectionRect, GameObject go, HierarchyDrawContext ctx);
     }
 }

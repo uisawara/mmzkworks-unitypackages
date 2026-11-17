@@ -2,6 +2,11 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
+#if UNITY_6000_4_OR_NEWER
+using ObjectId = UnityEngine.EntityId;
+#else
+using ObjectId = System.Int32;
+#endif
 
 namespace Mmzkworks.muHierarchy.Editor
 {
@@ -10,7 +15,7 @@ namespace Mmzkworks.muHierarchy.Editor
         public static readonly IHierarchyViewModeHandler Instance = new HierarchyViewModeComponentViewHandler();
 
         private const int MaxComponentIcons = 8;
-        private static readonly Dictionary<int, Texture2D> ComponentIconCache = new Dictionary<int, Texture2D>(1024);
+        private static readonly Dictionary<ObjectId, Texture2D> ComponentIconCache = new Dictionary<ObjectId, Texture2D>(1024);
 
         public static void ClearComponentIconCache()
         {
@@ -20,7 +25,7 @@ namespace Mmzkworks.muHierarchy.Editor
         public HierarchyViewMode ViewMode => HierarchyViewMode.ComponentView;
         public bool RecordPosition => false;
 
-        public void Draw(int instanceID, Rect selectionRect, GameObject go, HierarchyDrawContext ctx)
+        public void Draw(ObjectId instanceID, Rect selectionRect, GameObject go, HierarchyDrawContext ctx)
         {
             bool showLayer = ctx.ShowLayerName;
             bool showTag = ctx.ShowTagName;
@@ -337,7 +342,7 @@ namespace Mmzkworks.muHierarchy.Editor
             enabled = true;
             if (c == null)
                 return false;
-            int id = c.GetInstanceID();
+            var id = c.GetObjectId();
             enabled = IsComponentEnabled(c);
             if (ComponentIconCache.TryGetValue(id, out var cachedIcon))
             {

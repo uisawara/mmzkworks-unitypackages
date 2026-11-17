@@ -1,6 +1,11 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
+#if UNITY_6000_4_OR_NEWER
+using ObjectId = UnityEngine.EntityId;
+#else
+using ObjectId = System.Int32;
+#endif
 
 namespace Mmzkworks.muHierarchy.Editor
 {
@@ -12,13 +17,18 @@ namespace Mmzkworks.muHierarchy.Editor
         private const float RowAlpha = 0.35f;
         private const float AncestorAlpha = 0.12f;
 
-        private static readonly Dictionary<int, Color> RowColors = new Dictionary<int, Color>();
-        private static readonly Dictionary<int, Color> AncestorColors = new Dictionary<int, Color>();
+        private static readonly Dictionary<ObjectId, Color> RowColors = new Dictionary<ObjectId, Color>();
+        private static readonly Dictionary<ObjectId, Color> AncestorColors = new Dictionary<ObjectId, Color>();
 
         static ComponentListHighlighter()
         {
+#if UNITY_6000_4_OR_NEWER
+            EditorApplication.hierarchyWindowItemByEntityIdOnGUI -= OnHierarchyGUI;
+            EditorApplication.hierarchyWindowItemByEntityIdOnGUI += OnHierarchyGUI;
+#else
             EditorApplication.hierarchyWindowItemOnGUI -= OnHierarchyGUI;
             EditorApplication.hierarchyWindowItemOnGUI += OnHierarchyGUI;
+#endif
         }
 
         public static void Set(IEnumerable<(GameObject go, Color color)> items)
@@ -29,12 +39,12 @@ namespace Mmzkworks.muHierarchy.Editor
             {
                 if (go == null)
                     continue;
-                var id = go.GetInstanceID();
+                var id = go.GetObjectId();
                 if (!RowColors.ContainsKey(id))
                     RowColors[id] = color;
                 for (var p = go.transform.parent; p != null; p = p.parent)
                 {
-                    var pid = p.gameObject.GetInstanceID();
+                    var pid = p.gameObject.GetObjectId();
                     if (AncestorColors.ContainsKey(pid))
                         break;
                     AncestorColors[pid] = color;
@@ -52,7 +62,7 @@ namespace Mmzkworks.muHierarchy.Editor
             EditorApplication.RepaintHierarchyWindow();
         }
 
-        private static void OnHierarchyGUI(int instanceID, Rect selectionRect)
+        private static void OnHierarchyGUI(ObjectId instanceID, Rect selectionRect)
         {
             if (RowColors.Count == 0)
                 return;

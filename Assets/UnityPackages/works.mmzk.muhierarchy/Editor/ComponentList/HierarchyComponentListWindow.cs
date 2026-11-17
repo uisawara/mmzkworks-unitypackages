@@ -6,6 +6,11 @@ using UnityEngine.SceneManagement;
 using UnityEditor;
 using UnityEditor.IMGUI.Controls;
 using UnityEditor.SceneManagement;
+#if UNITY_6000_4_OR_NEWER
+using ObjectId = UnityEngine.EntityId;
+#else
+using ObjectId = System.Int32;
+#endif
 
 namespace Mmzkworks.muHierarchy.Editor
 {
@@ -43,7 +48,7 @@ namespace Mmzkworks.muHierarchy.Editor
             public Component FirstComponent;
             public int ComponentCount;
             public readonly List<GameObject> GameObjects = new List<GameObject>();
-            public readonly HashSet<int> GameObjectIds = new HashSet<int>();
+            public readonly HashSet<ObjectId> GameObjectIds = new HashSet<ObjectId>();
         }
 
         private sealed class Section
@@ -416,7 +421,7 @@ namespace Mmzkworks.muHierarchy.Editor
                         entry.ComponentCount++;
                         if (entry.FirstComponent == null)
                             entry.FirstComponent = c;
-                        if (entry.GameObjectIds.Add(go.GetInstanceID()))
+                        if (entry.GameObjectIds.Add(go.GetObjectId()))
                             entry.GameObjects.Add(go);
                     }
                 }

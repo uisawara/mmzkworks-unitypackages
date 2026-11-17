@@ -4,6 +4,11 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 using UnityEditor;
+#if UNITY_6000_4_OR_NEWER
+using ObjectId = UnityEngine.EntityId;
+#else
+using ObjectId = System.Int32;
+#endif
 
 namespace Mmzkworks.muHierarchy.Editor
 {
@@ -118,7 +123,11 @@ namespace Mmzkworks.muHierarchy.Editor
 
         static PrefabOverrideIconInHierarchy()
         {
+#if UNITY_6000_4_OR_NEWER
+            EditorApplication.hierarchyWindowItemByEntityIdOnGUI += OnHierarchyGUI;
+#else
             EditorApplication.hierarchyWindowItemOnGUI += OnHierarchyGUI;
+#endif
             EditorApplication.hierarchyChanged += HierarchyViewModeComponentViewHandler.ClearComponentIconCache;
             Undo.undoRedoPerformed += HierarchyViewModeComponentViewHandler.ClearComponentIconCache;
             EditorApplication.hierarchyChanged += AsmdefResolver.ClearCaches;
@@ -569,12 +578,12 @@ namespace Mmzkworks.muHierarchy.Editor
             return EditorPrefs.HasKey(GetTagColorKey(tag));
         }
 
-        private static void OnHierarchyGUI(int instanceID, Rect selectionRect)
+        private static void OnHierarchyGUI(ObjectId instanceID, Rect selectionRect)
         {
             // Ensure icons are initialized (assumed to run on main thread)
             EnsureIconsInitialized();
             
-            var go = EditorUtility.InstanceIDToObject(instanceID) as GameObject;
+            var go = ObjectIdCompat.ToObject(instanceID) as GameObject;
             if (go == null)
                 return;
 

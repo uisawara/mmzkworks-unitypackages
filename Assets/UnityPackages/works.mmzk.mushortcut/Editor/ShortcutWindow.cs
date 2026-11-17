@@ -1105,7 +1105,11 @@ namespace Mmzkworks.mushortcut.Editor
                 
                 // Select in tree side first, then show folder contents in next frame
                 TrySelectFolderInTree(obj);
+#if UNITY_6000_3_OR_NEWER
+                var instanceId = obj.GetEntityId();
+#else
                 var instanceId = obj.GetInstanceID();
+#endif
                 EditorApplication.delayCall += () =>
                 {
                     TryShowFolderContents(instanceId);
@@ -1128,6 +1132,20 @@ namespace Mmzkworks.mushortcut.Editor
             var windows = Resources.FindObjectsOfTypeAll(projectBrowserType);
             foreach (var window in windows)
             {
+#if UNITY_6000_3_OR_NEWER
+                // Unity 6.3+: FrameObject(EntityId, bool) and no SetSelection(int[])
+                var frameObjectMethod = projectBrowserType.GetMethod(
+                    "FrameObject",
+                    BindingFlags.Instance | BindingFlags.NonPublic,
+                    null,
+                    new[] { typeof(EntityId), typeof(bool) },
+                    null);
+
+                if (frameObjectMethod != null)
+                {
+                    frameObjectMethod.Invoke(window, new object[] { obj.GetEntityId(), false });
+                }
+#else
                 // Try method to select in tree side
                 var frameObjectMethod = projectBrowserType.GetMethod(
                     "FrameObject",
@@ -1154,10 +1172,15 @@ namespace Mmzkworks.mushortcut.Editor
                 {
                     setSelectionMethod.Invoke(window, new object[] { new[] { obj.GetInstanceID() } });
                 }
+#endif
             }
         }
 
+#if UNITY_6000_3_OR_NEWER
+        private static void TryShowFolderContents(EntityId instanceId)
+#else
         private static void TryShowFolderContents(int instanceId)
+#endif
         {
             var projectBrowserType = typeof(UnityEditor.Editor).Assembly.GetType("UnityEditor.ProjectBrowser");
             if (projectBrowserType == null)
@@ -1169,7 +1192,11 @@ namespace Mmzkworks.mushortcut.Editor
                 "ShowFolderContents",
                 BindingFlags.Instance | BindingFlags.NonPublic,
                 null,
+#if UNITY_6000_3_OR_NEWER
+                new[] { typeof(EntityId), typeof(bool) },
+#else
                 new[] { typeof(int), typeof(bool) },
+#endif
                 null);
 
             if (showMethod == null)

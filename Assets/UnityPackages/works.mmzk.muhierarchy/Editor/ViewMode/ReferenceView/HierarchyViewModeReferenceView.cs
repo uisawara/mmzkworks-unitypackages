@@ -2,6 +2,11 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
+#if UNITY_6000_4_OR_NEWER
+using ObjectId = UnityEngine.EntityId;
+#else
+using ObjectId = System.Int32;
+#endif
 
 namespace Mmzkworks.muHierarchy.Editor
 {
@@ -15,10 +20,10 @@ namespace Mmzkworks.muHierarchy.Editor
         public HashSet<string> ChildHierarchyReferenceNames;
         public HashSet<string> ExternalHierarchyReferenceNames;
         public HashSet<string> AssetReferenceNames;
-        public HashSet<int> ParentHierarchyReferenceIds;
-        public HashSet<int> ChildHierarchyReferenceIds;
-        public HashSet<int> ExternalHierarchyReferenceIds;
-        public HashSet<int> AssetReferenceIds;
+        public HashSet<ObjectId> ParentHierarchyReferenceIds;
+        public HashSet<ObjectId> ChildHierarchyReferenceIds;
+        public HashSet<ObjectId> ExternalHierarchyReferenceIds;
+        public HashSet<ObjectId> AssetReferenceIds;
         public bool HasAnyReference => HasParentHierarchyReference || HasChildHierarchyReference ||
             HasExternalHierarchyReference || HasAssetReference;
 
@@ -32,10 +37,10 @@ namespace Mmzkworks.muHierarchy.Editor
             ChildHierarchyReferenceNames = new HashSet<string>();
             ExternalHierarchyReferenceNames = new HashSet<string>();
             AssetReferenceNames = new HashSet<string>();
-            ParentHierarchyReferenceIds = new HashSet<int>();
-            ChildHierarchyReferenceIds = new HashSet<int>();
-            ExternalHierarchyReferenceIds = new HashSet<int>();
-            AssetReferenceIds = new HashSet<int>();
+            ParentHierarchyReferenceIds = new HashSet<ObjectId>();
+            ChildHierarchyReferenceIds = new HashSet<ObjectId>();
+            ExternalHierarchyReferenceIds = new HashSet<ObjectId>();
+            AssetReferenceIds = new HashSet<ObjectId>();
         }
     }
 
@@ -43,12 +48,12 @@ namespace Mmzkworks.muHierarchy.Editor
     {
         public static readonly IHierarchyViewModeHandler Instance = new HierarchyViewModeReferenceViewHandler();
 
-        private static readonly Dictionary<int, ReferenceInfo> ReferenceInfoCache = new Dictionary<int, ReferenceInfo>(1024);
-        private static readonly Dictionary<int, Rect> GameObjectPositions = new Dictionary<int, Rect>(1024);
-        private static readonly Dictionary<int, Color> ReferencedFromItems = new Dictionary<int, Color>(1024);
-        private static readonly Dictionary<int, Color> ReferencedToItems = new Dictionary<int, Color>(1024);
-        private static List<int> _highlightedReferenceIds;
-        private static int[] _originalSelectionBeforeHighlight;
+        private static readonly Dictionary<ObjectId, ReferenceInfo> ReferenceInfoCache = new Dictionary<ObjectId, ReferenceInfo>(1024);
+        private static readonly Dictionary<ObjectId, Rect> GameObjectPositions = new Dictionary<ObjectId, Rect>(1024);
+        private static readonly Dictionary<ObjectId, Color> ReferencedFromItems = new Dictionary<ObjectId, Color>(1024);
+        private static readonly Dictionary<ObjectId, Color> ReferencedToItems = new Dictionary<ObjectId, Color>(1024);
+        private static List<ObjectId> _highlightedReferenceIds;
+        private static ObjectId[] _originalSelectionBeforeHighlight;
         private static int _lastFrameCount = -1;
         private static int _lastHighlightFrame = -1;
 
@@ -72,17 +77,17 @@ namespace Mmzkworks.muHierarchy.Editor
             if (_highlightedReferenceIds != null && _highlightedReferenceIds.Count > 0)
             {
                 if (_originalSelectionBeforeHighlight != null)
-                    Selection.instanceIDs = _originalSelectionBeforeHighlight;
+                    ObjectIdCompat.SelectedIds = _originalSelectionBeforeHighlight;
                 _highlightedReferenceIds = null;
                 _originalSelectionBeforeHighlight = null;
                 _lastHighlightFrame = -1;
             }
         }
 
-        public static bool IsHighlighted(int instanceID) =>
+        public static bool IsHighlighted(ObjectId instanceID) =>
             _highlightedReferenceIds != null && _highlightedReferenceIds.Contains(instanceID);
 
-        public static void ProcessInput(int instanceID, Rect selectionRect, int currentFrame)
+        public static void ProcessInput(ObjectId instanceID, Rect selectionRect, int currentFrame)
         {
             if (currentFrame != _lastFrameCount)
             {
@@ -99,9 +104,9 @@ namespace Mmzkworks.muHierarchy.Editor
                 {
                     _lastHighlightFrame = currentFrame;
                     var highlightedObjects = new List<GameObject>(_highlightedReferenceIds.Count);
-                    foreach (int refId in _highlightedReferenceIds)
+                    foreach (var refId in _highlightedReferenceIds)
                     {
-                        var refGo = EditorUtility.InstanceIDToObject(refId) as GameObject;
+                        var refGo = ObjectIdCompat.ToObject(refId) as GameObject;
                         if (refGo != null)
                             highlightedObjects.Add(refGo);
                     }
@@ -122,7 +127,7 @@ namespace Mmzkworks.muHierarchy.Editor
         public HierarchyViewMode ViewMode => HierarchyViewMode.ReferenceView;
         public bool RecordPosition => true;
 
-        public void Draw(int instanceID, Rect selectionRect, GameObject go, HierarchyDrawContext ctx)
+        public void Draw(ObjectId instanceID, Rect selectionRect, GameObject go, HierarchyDrawContext ctx)
         {
             EnsureIconsInitialized();
             bool isPrefabRoot = PrefabUtility.IsPartOfPrefabInstance(go) && PrefabUtility.IsAnyPrefabInstanceRoot(go);
@@ -215,7 +220,7 @@ namespace Mmzkworks.muHierarchy.Editor
         {
             if (go == null)
                 return default;
-            int id = go.GetInstanceID();
+            var id = go.GetObjectId();
             if (ReferenceInfoCache.TryGetValue(id, out var cached))
                 return cached;
             var info = CollectReferences(go);
@@ -250,7 +255,7 @@ namespace Mmzkworks.muHierarchy.Editor
                         info.HasAssetReference = true;
                         if (!string.IsNullOrEmpty(refObj.name))
                             info.AssetReferenceNames.Add(refObj.name);
-                        info.AssetReferenceIds.Add(refObj.GetInstanceID());
+                        info.AssetReferenceIds.Add(refObj.GetObjectId());
                         continue;
                     }
                     var refGo = GetGameObjectFromReference(refObj);
@@ -259,7 +264,7 @@ namespace Mmzkworks.muHierarchy.Editor
                     if (!refGo.scene.IsValid() || refGo.scene != go.scene)
                         continue;
                     string refName = refGo.name;
-                    int refId = refGo.GetInstanceID();
+                    var refId = refGo.GetObjectId();
                     if (IsParentHierarchy(go, refGo))
                     {
                         info.HasParentHierarchyReference = true;
@@ -340,7 +345,7 @@ namespace Mmzkworks.muHierarchy.Editor
             GUI.Label(iconRect, new GUIContent(_iconSelectPrefabAsset, "Select Prefab Asset in Project View"));
         }
 
-        private static void DrawAssetReferenceIcon(Rect iconRect, Texture2D icon, string tooltip, ICollection<int> assetIds)
+        private static void DrawAssetReferenceIcon(Rect iconRect, Texture2D icon, string tooltip, ICollection<ObjectId> assetIds)
         {
             if (icon == null) return;
             EditorGUIUtility.AddCursorRect(iconRect, MouseCursor.Link);
@@ -351,9 +356,9 @@ namespace Mmzkworks.muHierarchy.Editor
                 {
                     if (assetIds.Count == 1)
                     {
-                        foreach (int id in assetIds)
+                        foreach (var id in assetIds)
                         {
-                            var asset = EditorUtility.InstanceIDToObject(id);
+                            var asset = ObjectIdCompat.ToObject(id);
                             if (asset != null)
                             {
                                 EditorUtility.FocusProjectWindow();
@@ -371,7 +376,7 @@ namespace Mmzkworks.muHierarchy.Editor
             GUI.Label(iconRect, new GUIContent(icon, tooltip));
         }
 
-        private static void DrawReferenceIconWithHighlight(Rect iconRect, Texture2D icon, string tooltip, ICollection<int> referenceIds)
+        private static void DrawReferenceIconWithHighlight(Rect iconRect, Texture2D icon, string tooltip, ICollection<ObjectId> referenceIds)
         {
             if (icon == null) return;
             GUI.Label(iconRect, new GUIContent(icon, tooltip));
@@ -381,16 +386,16 @@ namespace Mmzkworks.muHierarchy.Editor
                 if (referenceIds != null && referenceIds.Count > 0)
                 {
                     if (_originalSelectionBeforeHighlight == null)
-                        _originalSelectionBeforeHighlight = Selection.instanceIDs;
+                        _originalSelectionBeforeHighlight = ObjectIdCompat.SelectedIds;
                     var list = new List<GameObject>();
-                    foreach (int refId in referenceIds)
+                    foreach (var refId in referenceIds)
                     {
-                        var refGo = EditorUtility.InstanceIDToObject(refId) as GameObject;
+                        var refGo = ObjectIdCompat.ToObject(refId) as GameObject;
                         if (refGo != null) list.Add(refGo);
                     }
                     if (list.Count > 0)
                     {
-                        _highlightedReferenceIds = new List<int>(referenceIds);
+                        _highlightedReferenceIds = new List<ObjectId>(referenceIds);
                         Selection.objects = list.ToArray();
                     }
                     e.Use();
@@ -403,7 +408,7 @@ namespace Mmzkworks.muHierarchy.Editor
             }
         }
 
-        private static void DrawReferenceArrows(Rect fromRect, int fromInstanceID, ReferenceInfo refInfo)
+        private static void DrawReferenceArrows(Rect fromRect, ObjectId fromInstanceID, ReferenceInfo refInfo)
         {
             if (!refInfo.HasAnyReference) return;
             Color parentColor = new Color(0.2f, 0.6f, 1f, 0.8f);
@@ -415,7 +420,7 @@ namespace Mmzkworks.muHierarchy.Editor
             float es = baseOffsetX + offsetStep * 2f, ee = baseOffsetX + offsetStep * 2f + endOffsetDelta;
 
             if (refInfo.ParentHierarchyReferenceIds != null)
-                foreach (int refId in refInfo.ParentHierarchyReferenceIds)
+                foreach (var refId in refInfo.ParentHierarchyReferenceIds)
                     if (GameObjectPositions.TryGetValue(refId, out Rect toRect))
                     {
                         DrawReferenceArrow(fromRect, toRect, parentColor, ps, pe, false);
@@ -423,7 +428,7 @@ namespace Mmzkworks.muHierarchy.Editor
                         ReferencedToItems[refId] = parentColor;
                     }
             if (refInfo.ChildHierarchyReferenceIds != null)
-                foreach (int refId in refInfo.ChildHierarchyReferenceIds)
+                foreach (var refId in refInfo.ChildHierarchyReferenceIds)
                     if (GameObjectPositions.TryGetValue(refId, out Rect toRect))
                     {
                         DrawReferenceArrow(fromRect, toRect, childColor, cs, ce, true);
@@ -431,7 +436,7 @@ namespace Mmzkworks.muHierarchy.Editor
                         ReferencedToItems[refId] = childColor;
                     }
             if (refInfo.ExternalHierarchyReferenceIds != null)
-                foreach (int refId in refInfo.ExternalHierarchyReferenceIds)
+                foreach (var refId in refInfo.ExternalHierarchyReferenceIds)
                     if (GameObjectPositions.TryGetValue(refId, out Rect toRect))
                     {
                         DrawReferenceArrow(fromRect, toRect, externalColor, es, ee, false);
@@ -503,13 +508,13 @@ namespace Mmzkworks.muHierarchy.Editor
             private List<UnityEngine.Object> _assets;
             private Vector2 _scrollPosition;
 
-            public static void Open(Rect buttonRect, ICollection<int> assetIds)
+            public static void Open(Rect buttonRect, ICollection<ObjectId> assetIds)
             {
                 var window = CreateInstance<AssetSelectionPopupWindow>();
                 window._assets = new List<UnityEngine.Object>();
-                foreach (int id in assetIds)
+                foreach (var id in assetIds)
                 {
-                    var asset = EditorUtility.InstanceIDToObject(id);
+                    var asset = ObjectIdCompat.ToObject(id);
                     if (asset != null) window._assets.Add(asset);
                 }
                 var screenRect = GUIUtility.GUIToScreenRect(buttonRect);

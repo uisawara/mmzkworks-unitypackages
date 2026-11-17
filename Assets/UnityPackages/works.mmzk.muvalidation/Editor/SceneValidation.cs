@@ -2,6 +2,11 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+#if UNITY_6000_4_OR_NEWER
+using ObjectId = UnityEngine.EntityId;
+#else
+using ObjectId = System.Int32;
+#endif
 
 namespace Mmzkworks.muValidation.Editor
 {
@@ -42,21 +47,21 @@ namespace Mmzkworks.muValidation.Editor
         }
 
         // GameObject instance ID -> result for its own components. Only GameObjects with validated components.
-        private static readonly Dictionary<int, ValidationSummary> OwnResults = new Dictionary<int, ValidationSummary>();
+        private static readonly Dictionary<ObjectId, ValidationSummary> OwnResults = new Dictionary<ObjectId, ValidationSummary>();
 
         // GameObject instance ID -> number of descendants with errors / only warnings. Only ancestors of invalid objects.
-        private static readonly Dictionary<int, ChildCounts> ChildResults = new Dictionary<int, ChildCounts>();
+        private static readonly Dictionary<ObjectId, ChildCounts> ChildResults = new Dictionary<ObjectId, ChildCounts>();
 
         // GameObjects whose validations depend on other objects; re-validated after any change.
         private static readonly HashSet<GameObject> DependentObjects = new HashSet<GameObject>();
 
         // GameObjects tagged EditorOnly at the last build. Changing that tag changes the prefab rule result
         // of all descendants, so it triggers a rebuild.
-        private static readonly HashSet<int> EditorOnlyObjects = new HashSet<int>();
+        private static readonly HashSet<ObjectId> EditorOnlyObjects = new HashSet<ObjectId>();
 
         // Root GameObject instance ID -> name at the last build, when a SceneRules forbids duplicate root names.
         // Renaming changes the results of other roots with the old or new name, so it triggers a rebuild.
-        private static readonly Dictionary<int, string> ObjectNames = new Dictionary<int, string>();
+        private static readonly Dictionary<ObjectId, string> ObjectNames = new Dictionary<ObjectId, string>();
 
         private static bool _dirty = true;
         private static double _lastBuildTime;
@@ -122,7 +127,7 @@ namespace Mmzkworks.muValidation.Editor
         public static ValidationSummary GetSummary(GameObject go)
         {
             if (go == null || !EnsureBuilt()) return ValidationSummary.Valid;
-            return OwnResults.TryGetValue(go.GetInstanceID(), out var summary) ? summary : ValidationSummary.Valid;
+            return OwnResults.TryGetValue(IdOf(go), out var summary) ? summary : ValidationSummary.Valid;
         }
 
         /// <summary>
@@ -131,7 +136,7 @@ namespace Mmzkworks.muValidation.Editor
         public static ValidationSummary GetSummaryIncludingChildren(GameObject go)
         {
             var summary = GetSummary(go);
-            if (go == null || !ChildResults.TryGetValue(go.GetInstanceID(), out var counts)) return summary;
+            if (go == null || !ChildResults.TryGetValue(IdOf(go), out var counts)) return summary;
 
             if (counts.Errors > 0)
             {
@@ -210,10 +215,10 @@ namespace Mmzkworks.muValidation.Editor
             var trackNames = SceneRulesRegistry.HasUniqueNameRules;
             foreach (var go in FindValidatedObjects())
             {
-                if (go.tag == SceneRules.EditorOnlyTag) EditorOnlyObjects.Add(go.GetInstanceID());
-                if (trackNames && go.transform.parent == null) ObjectNames[go.GetInstanceID()] = go.name;
+                if (go.tag == SceneRules.EditorOnlyTag) EditorOnlyObjects.Add(IdOf(go));
+                if (trackNames && go.transform.parent == null) ObjectNames[IdOf(go)] = go.name;
                 var summary = Validate(go, out var dependsOnOthers);
-                OwnResults[go.GetInstanceID()] = summary;
+                OwnResults[IdOf(go)] = summary;
                 if (dependsOnOthers) DependentObjects.Add(go);
                 AddToAncestors(go, summary.Severity, 1);
             }
@@ -297,7 +302,7 @@ namespace Mmzkworks.muValidation.Editor
         {
             if (go == null) return;
 
-            var id = go.GetInstanceID();
+            var id = IdOf(go);
             OwnResults.TryGetValue(id, out var previous);
 
             var summary = Validate(go, out var dependsOnOthers);
@@ -329,7 +334,7 @@ namespace Mmzkworks.muValidation.Editor
 
             for (var parent = go.transform.parent; parent != null; parent = parent.parent)
             {
-                var id = parent.gameObject.GetInstanceID();
+                var id = IdOf(parent.gameObject);
                 ChildResults.TryGetValue(id, out var counts);
                 counts = severity == ValidationSeverity.Error
                     ? new ChildCounts(counts.Errors + delta, counts.Warnings)
@@ -351,12 +356,20 @@ namespace Mmzkworks.muValidation.Editor
                 {
                     case ObjectChangeKind.ChangeGameObjectOrComponentProperties:
                         stream.GetChangeGameObjectOrComponentPropertiesEvent(i, out var properties);
+                        #if UNITY_6000_4_OR_NEWER
+                        AddGameObject(changed, properties.entityId);
+#else
                         AddGameObject(changed, properties.instanceId);
+#endif
                         break;
 
                     case ObjectChangeKind.ChangeGameObjectStructure:
                         stream.GetChangeGameObjectStructureEvent(i, out var structure);
+                        #if UNITY_6000_4_OR_NEWER
+                        AddGameObject(changed, structure.entityId);
+#else
                         AddGameObject(changed, structure.instanceId);
+#endif
                         break;
 
                     // Do not affect scene validation (asset results are handled by AssetValidation).
@@ -379,7 +392,7 @@ namespace Mmzkworks.muValidation.Editor
             {
                 foreach (var go in changed)
                 {
-                    var id = go.GetInstanceID();
+                    var id = IdOf(go);
                     var renamed = ObjectNames.TryGetValue(id, out var previousName) && previousName != go.name;
                     if (!renamed && (go.tag == SceneRules.EditorOnlyTag) == EditorOnlyObjects.Contains(id)) continue;
                     Invalidate();
@@ -400,9 +413,22 @@ namespace Mmzkworks.muValidation.Editor
             EditorApplication.RepaintHierarchyWindow();
         }
 
-        private static void AddGameObject(HashSet<GameObject> set, int instanceId)
+        private static ObjectId IdOf(Object obj)
         {
-            var obj = EditorUtility.InstanceIDToObject(instanceId);
+#if UNITY_6000_4_OR_NEWER
+            return obj.GetEntityId();
+#else
+            return obj.GetInstanceID();
+#endif
+        }
+
+        private static void AddGameObject(HashSet<GameObject> set, ObjectId id)
+        {
+#if UNITY_6000_4_OR_NEWER
+            var obj = EditorUtility.EntityIdToObject(id);
+#else
+            var obj = EditorUtility.InstanceIDToObject(id);
+#endif
             var go = obj as GameObject ?? (obj as Component)?.gameObject;
             if (go != null && !EditorUtility.IsPersistent(go)) set.Add(go);
         }

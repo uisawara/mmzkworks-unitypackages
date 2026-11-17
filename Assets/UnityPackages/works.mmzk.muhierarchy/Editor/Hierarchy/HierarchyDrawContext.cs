@@ -1,11 +1,16 @@
 using UnityEngine;
 using UnityEditor;
+#if UNITY_6000_4_OR_NEWER
+using ObjectId = UnityEngine.EntityId;
+#else
+using ObjectId = System.Int32;
+#endif
 
 namespace Mmzkworks.muHierarchy.Editor
 {
     public struct HierarchyDrawContext
     {
-        public int InstanceId { get; set; }
+        public ObjectId InstanceId { get; set; }
         public Rect SelectionRect { get; set; }
         public GameObject GameObject { get; set; }
         public float FixedRightPosition { get; set; }
