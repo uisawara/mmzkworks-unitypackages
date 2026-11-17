@@ -32,7 +32,8 @@ Select this package in the Package Manager and `Import` `Example Dashboard` unde
 
 - The dropdown at the left of the toolbar lists every `*.dashboard.json` under Assets. Pick one to switch the working file.
 - Create a new panel with `New Panel...` in the dropdown, or `Create/muDashboard/Dashboard` in the Project window.
-- Double-click a `*.dashboard.json` in the Project window to open it directly in the Dashboard window.
+- Double-click a `*.dashboard.json` in the Project window to open it in its own Dashboard window. Opening another panel adds another window (docked as a tab next to the existing ones); a panel that is already open just gets focused.
+- `Open in New Window` in the dropdown opens a panel in a separate window instead of switching the current one.
 - Changes are saved automatically.
 
 ## Use mode and edit mode

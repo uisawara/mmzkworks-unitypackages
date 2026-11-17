@@ -101,14 +101,57 @@ namespace Mmzkworks.muDashboard.Editor
         [MenuItem("Tools/muDashboard/Dashboard", false, 2003)]
         private static void OpenFromMenu() => Open(null);
 
+        /// <summary>
+        /// Opens <paramref name="panelPath"/> in a Dashboard window. Each panel gets its own window:
+        /// a window already showing the panel is focused, an empty window is reused, otherwise a new window is
+        /// docked next to the existing ones. With no path, the existing window (or a new one) is focused.
+        /// </summary>
         public static DashboardWindow Open(string panelPath)
         {
-            var window = GetWindow<DashboardWindow>();
+            DashboardWindow window;
+            if (string.IsNullOrEmpty(panelPath))
+                window = GetWindow<DashboardWindow>();
+            else
+                window = FindShowing(panelPath) ?? FindEmpty() ?? CreateWindow<DashboardWindow>(typeof(DashboardWindow));
+
             window.ApplyTitle();
-            if (!string.IsNullOrEmpty(panelPath)) window.LoadFile(panelPath);
+            if (!string.IsNullOrEmpty(panelPath) && !window.IsShowing(panelPath)) window.LoadFile(panelPath);
             window.Show();
             window.Focus();
             return window;
+        }
+
+        /// <summary>Opens the panel in a new window (or focuses the window that already shows it).</summary>
+        private static void OpenInNewWindow(string panelPath)
+        {
+            var window = FindShowing(panelPath) ?? CreateWindow<DashboardWindow>(typeof(DashboardWindow));
+            if (!window.IsShowing(panelPath)) window.LoadFile(panelPath);
+            window.Show();
+            window.Focus();
+        }
+
+        private static DashboardWindow FindShowing(string panelPath, DashboardWindow except = null) =>
+            Resources.FindObjectsOfTypeAll<DashboardWindow>().FirstOrDefault(w => w != except && w.IsShowing(panelPath));
+
+        private static DashboardWindow FindEmpty() =>
+            Resources.FindObjectsOfTypeAll<DashboardWindow>().FirstOrDefault(w => w._doc == null);
+
+        private bool IsShowing(string panelPath) =>
+            _doc != null && string.Equals(NormalizePath(_filePath), NormalizePath(panelPath), StringComparison.OrdinalIgnoreCase);
+
+        private static string NormalizePath(string path) => (path ?? "").Replace('\\', '/');
+
+        /// <summary>Switches this window to the panel, or focuses another window that already shows it
+        /// (two windows editing the same file would overwrite each other's saves).</summary>
+        private void SwitchTo(string panelPath)
+        {
+            var other = FindShowing(panelPath, except: this);
+            if (other != null)
+            {
+                other.Focus();
+                return;
+            }
+            LoadFile(panelPath);
         }
 
         private void OnEnable()
@@ -163,7 +206,10 @@ namespace Mmzkworks.muDashboard.Editor
         private void ApplyTitle()
         {
             var name = _doc != null ? DashboardFiles.DisplayName(_filePath) : "";
-            titleContent = new GUIContent(WindowTitle, string.IsNullOrEmpty(name) ? WindowTitle : $"{WindowTitle} - {name}");
+            // Show the panel name on the tab so several Dashboard windows can be told apart.
+            titleContent = string.IsNullOrEmpty(name)
+                ? new GUIContent(WindowTitle, WindowTitle)
+                : new GUIContent(name, $"{WindowTitle} - {name}");
         }
 
         // ------------------------------------------------------------------ file IO
@@ -263,7 +309,7 @@ namespace Mmzkworks.muDashboard.Editor
                 AssetDatabase.ImportAsset(path);
             }
 
-            LoadFile(path);
+            SwitchTo(path);
         }
 
         // ------------------------------------------------------------------ GUI
@@ -452,7 +498,19 @@ namespace Mmzkworks.muDashboard.Editor
                 var dir = Path.GetDirectoryName(f)?.Replace('/', '\\');
                 // '/' would create submenus in GenericMenu, so show the folder with backslashes.
                 var label = $"{DashboardFiles.DisplayName(f)}    ({dir})";
-                menu.AddItem(new GUIContent(label), _doc != null && path == _filePath, () => LoadFile(path));
+                menu.AddItem(new GUIContent(label), IsShowing(path), () => SwitchTo(path));
+            }
+
+            if (files.Count > 0)
+            {
+                menu.AddSeparator("");
+                foreach (var f in files)
+                {
+                    var path = f;
+                    var dir = Path.GetDirectoryName(f)?.Replace('/', '\\');
+                    menu.AddItem(new GUIContent($"Open in New Window/{DashboardFiles.DisplayName(f)}    ({dir})"), false,
+                        () => OpenInNewWindow(path));
+                }
             }
 
             menu.AddSeparator("");
