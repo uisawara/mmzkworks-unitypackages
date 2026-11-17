@@ -9,7 +9,10 @@ Unity の UPM パッケージを集めたモノレポ。各パッケージは `A
 - PR の base は必ず `develop`（`gh pr create --base develop`）。`main` 向けの PR は develop → main のリリース PR だけ。
 - `main` / `develop` に直接 push しない（ruleset で PR 必須）。
 - マージはユーザーが明示的に指示したときだけ行う。方式は merge commit（`gh pr merge <n> --merge`）。リモートのブランチは GitHub が自動削除する。
-- PR の作成は `/pr`、リリースは `/release` の手順に従う。どちらもマージ前に Claude によるローカルレビューと修正を挟む。
+- 手順はスキルにまとめてある。どれもマージ前に Claude によるローカルレビューと修正を挟む。
+  - `/review-develop`: 最新の develop（既定はまだ main に入っていない変更すべて）をレビューし、指摘を修正して develop 向けの PR を作る。
+  - `/pr`: 作業中の変更をレビュー・修正してから develop 向けの PR にする。
+  - `/release`: `/review-develop` → バージョンを上げる準備 PR → develop → main のリリース PR。
 
 ## 作業ツリー
 

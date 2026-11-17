@@ -1,6 +1,6 @@
 ---
 name: release
-description: このリポジトリのリリース手順。develop と main の差分を Claude がローカルでレビュー・修正し、パッケージのバージョンを上げる準備 PR（develop 向け）を作り、マージ後に develop → main のリリース PR を作る。「リリースして」「リリース準備」と言われたとき、または /release で使う。
+description: このリポジトリのリリース手順。review-develop で develop をレビュー・修正したうえで、パッケージのバージョンを上げる準備 PR（develop 向け）を作り、マージ後に develop → main のリリース PR を作る。「リリースして」「リリース準備」と言われたとき、または /release で使う。
 ---
 
 # リリースする
@@ -16,15 +16,17 @@ git log --oneline --no-merges origin/main..origin/develop
 
 差分がなければ、リリースするものがないと伝えて終える。
 
-## 2. 準備ブランチを作る
+## 2. develop をレビューして直す
+
+`review-develop` スキルを（既定の対象 `origin/main...origin/develop` で）実行する。
+
+- 修正の PR ができた場合は、URL を伝えてマージの指示を待つ。develop にマージされてから手順 3 に進む（`git fetch` して、`origin/develop` にその修正が入っていることを確かめる）。
+- 修正がなかった場合は、そのまま手順 3 に進む。
+- レビュー結果（レベル、指摘数、修正したもの、修正しなかったものと理由）は、手順 5 の準備 PR の本文に載せるので控えておく。
+
+## 3. 準備ブランチを作る
 
 スクラッチ領域に `git worktree add -b release/prepare-<YYYYMMDD> <path> origin/develop` で作業ツリーを作る。以降の作業はすべてそこで行い、ユーザーの作業ツリーには触れない。
-
-## 3. ローカルでレビューして直す
-
-1. `code-review` スキルを、`origin/main...origin/develop` の差分（リリースに入る変更すべて）を対象に `--fix` 付きで実行する（レベルはユーザーの指定がなければ `high`）。
-2. 修正は `fix(<scope>): リリース前レビューの指摘を修正する` としてパッケージごとにコミットする。直さなかった指摘は理由を控える。
-3. `/pr` の「確認できる範囲で検証する」と同じ確認をする。特に、パッケージを Unity 2022.3 でもコンパイルできる書き方になっているか（新しい API が `#if UNITY_6000_x_OR_NEWER` で囲まれているか）を見る。
 
 ## 4. バージョンを上げる
 
@@ -41,7 +43,7 @@ bash .github/scripts/next-versions.sh --apply   # package.json を書き換え�
 
 push して `gh pr create --base develop` で PR を作る。タイトルは `chore(release): リリース準備 <YYYY-MM-DD>`。本文には次を書く:
 
-- ローカルレビューの結果（レベル、指摘数、修正したもの、修正しなかったものと理由）
+- 手順 2 のレビュー結果（修正 PR があればそのリンク、修正しなかった指摘と理由）
 - バージョン一覧（next-versions.sh の表）
 - main に入ったときに作られるタグの一覧
 - 未確認の項目のチェックリスト（Unity 6000.x / 2022.3 でのコンパイル・テスト）
