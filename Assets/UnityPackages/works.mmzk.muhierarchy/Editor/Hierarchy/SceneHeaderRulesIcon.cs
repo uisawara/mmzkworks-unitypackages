@@ -20,7 +20,7 @@ namespace Mmzkworks.muHierarchy.Editor
         private const float IconSize = 16f;
 
         // Keeps clear of the scene header's own menu button at the right end.
-        private const float RightMargin = 20f;
+        private const float HeaderMenuMargin = 20f;
 
         private static Texture _icon;
 
@@ -45,7 +45,7 @@ namespace Mmzkworks.muHierarchy.Editor
 
             _icon ??= EditorGUIUtility.IconContent("console.infoicon.sml").image;
             var rect = new Rect(
-                selectionRect.xMax - RightMargin - IconSize,
+                selectionRect.xMax - HeaderMenuMargin - MuHierarchyProjectSettings.instance.RightMargin - IconSize,
                 selectionRect.y + (selectionRect.height - IconSize) * 0.5f,
                 IconSize,
                 IconSize);

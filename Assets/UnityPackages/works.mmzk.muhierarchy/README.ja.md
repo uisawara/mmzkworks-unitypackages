@@ -113,3 +113,13 @@ Prefab インスタンスの元アセットパスを表示します。
 使っている Mesh、Material、Shader の名前を表示します。
 
 どれも `Tools/muHierarchy` から切り替えられます。
+
+## 設定
+
+`Tools/muHierarchy/Settings...`(または `Project Settings > muHierarchy`)で開きます。
+
+### Right Margin
+
+Hierarchy の各行の右端に空けておく幅(px)です。Component アイコン、Tag / Layer、Prefab アイコン、各 View Mode のテキストなど、muHierarchy が右側に描くものがまとめてこの分だけ左にずれます。他の Hierarchy 拡張も右端に描画していて重なるときに使います。行の背景色は全幅のままです。
+
+値は `ProjectSettings/muHierarchySettings.asset` に保存されます。このファイルをコミットすると、チームで同じ設定を共有できます。
