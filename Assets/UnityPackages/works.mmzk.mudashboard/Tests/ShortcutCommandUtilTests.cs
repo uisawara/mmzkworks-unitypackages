@@ -1,6 +1,7 @@
 using System.Linq;
 using Mmzkworks.muDashboard.Editor;
 using NUnit.Framework;
+using UnityEditor;
 using UnityEngine;
 
 namespace Mmzkworks.muDashboard.Tests
@@ -165,6 +166,38 @@ namespace Mmzkworks.muDashboard.Tests
             Assert.That(ctx.GetString("folder"), Is.EqualTo("Assets/Other"));
             Assert.That(ctx.GetBool("connect"), Is.False);
             Assert.That(item.args.Count, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void OpenDashboard_AcceptsOnlyPanelFiles()
+        {
+            var command = ShortcutCommandRegistry.Find("dashboard.open");
+            Assert.That(command, Is.Not.Null);
+            Assert.That(command.Category, Is.EqualTo(ShortcutCommandCategory.Dashboard));
+
+            var param = command.FindParam("dashboard");
+            Assert.That(param.AcceptsAssetPath("Assets/Work.dashboard.json"), Is.True);
+            Assert.That(param.AcceptsAssetPath("Assets/data.json"), Is.False);
+            Assert.That(param.AcceptsAssetPath("Assets/dashboard.json"), Is.False);
+        }
+
+        [Test]
+        public void OpenDashboard_FailsWithoutDashboard()
+        {
+            var command = ShortcutCommandRegistry.Find("dashboard.open");
+            var item = new DashboardItem { kind = ShortcutItemKind.Command, command = command.Id };
+            var previous = Selection.objects;
+            try
+            {
+                Selection.objects = new Object[0];
+                var ctx = new ShortcutCommandContext(command, item);
+                Assert.That(command.Run(ctx), Is.False);
+                Assert.That(ctx.Error, Does.Contain("dashboard"));
+            }
+            finally
+            {
+                Selection.objects = previous;
+            }
         }
     }
 }

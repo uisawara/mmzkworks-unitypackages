@@ -121,6 +121,21 @@ namespace Mmzkworks.muDashboard.Editor
             return window;
         }
 
+        /// <summary>
+        /// Opens a panel for the Open Dashboard command. With <paramref name="replace"/> the panel is switched into that
+        /// window (or the window already showing it is focused); without it, it behaves like <see cref="Open"/>.
+        /// </summary>
+        internal static void OpenPanel(string panelPath, DashboardWindow replace)
+        {
+            if (replace == null)
+            {
+                Open(panelPath);
+                return;
+            }
+            if (!replace.IsShowing(panelPath)) replace.SwitchTo(panelPath);
+            else replace.Focus();
+        }
+
         /// <summary>Opens the panel in a new window (or focuses the window that already shows it).</summary>
         private static void OpenInNewWindow(string panelPath)
         {
@@ -1652,7 +1667,7 @@ namespace Mmzkworks.muDashboard.Editor
                         {
                             Undo.IncrementCurrentGroup();
                             Undo.SetCurrentGroupName(DisplayName(item, out _));
-                            ok = TryActivateNow(item, out runError);
+                            ok = TryActivateNow(item, this, out runError);
                         }
                         catch (Exception ex)
                         {
@@ -1666,7 +1681,7 @@ namespace Mmzkworks.muDashboard.Editor
                     };
                     break;
                 default:
-                    if (!TryActivateNow(item, out var error))
+                    if (!TryActivateNow(item, this, out var error))
                         ShowNotification(new GUIContent(error));
                     break;
             }
@@ -1676,7 +1691,7 @@ namespace Mmzkworks.muDashboard.Editor
         /// Runs one shortcut synchronously (asset: select in Project, URL: open, menu: execute).
         /// Returns false with a reason when it could not be run.
         /// </summary>
-        private static bool TryActivateNow(DashboardItem item, out string error)
+        private static bool TryActivateNow(DashboardItem item, DashboardWindow window, out string error)
         {
             error = null;
             switch (item.kind)
@@ -1704,14 +1719,14 @@ namespace Mmzkworks.muDashboard.Editor
                 case ShortcutItemKind.Menu:
                     return TryExecuteMenuCommand(item.menu, out error);
                 case ShortcutItemKind.Command:
-                    return TryRunCommand(item, out error);
+                    return TryRunCommand(item, window, out error);
                 default:
                     error = $"Cannot run: {DisplayName(item, out _)}";
                     return false;
             }
         }
 
-        private static bool TryRunCommand(DashboardItem item, out string error)
+        private static bool TryRunCommand(DashboardItem item, DashboardWindow window, out string error)
         {
             var command = ShortcutCommandRegistry.Find(item.command);
             if (command == null)
@@ -1720,7 +1735,7 @@ namespace Mmzkworks.muDashboard.Editor
                 return false;
             }
 
-            var ctx = new ShortcutCommandContext(command, item);
+            var ctx = new ShortcutCommandContext(command, item, window);
             if (command.Run(ctx))
             {
                 error = null;
@@ -1813,7 +1828,7 @@ namespace Mmzkworks.muDashboard.Editor
                 }
                 else
                 {
-                    ok = TryActivateNow(step, out error);
+                    ok = TryActivateNow(step, this, out error);
                 }
             }
             catch (Exception ex)
@@ -2470,7 +2485,13 @@ namespace Mmzkworks.muDashboard.Editor
                         var asset = string.IsNullOrEmpty(path) ? null : AssetDatabase.LoadAssetAtPath(path, p.AssetType);
                         var picked = EditorGUILayout.ObjectField(label, asset, p.AssetType, false);
                         if (picked != asset)
-                            next = picked != null ? AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(picked)) : "";
+                        {
+                            var pickedPath = picked != null ? AssetDatabase.GetAssetPath(picked) : null;
+                            if (picked != null && !p.AcceptsAssetPath(pickedPath))
+                                ShowNotification(new GUIContent(p.AssetFilterHint ?? $"Not accepted: {pickedPath}"));
+                            else
+                                next = picked != null ? AssetDatabase.AssetPathToGUID(pickedPath) : "";
+                        }
                         break;
                     }
 
