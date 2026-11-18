@@ -227,6 +227,25 @@ namespace Mmzkworks.muValidation.Editor
             if (EditorApplication.isPlaying) _dirty = true;
         }
 
+        // Unity 6.5 deprecated the FindObjectsSortMode overloads; older versions only have those.
+        private static T[] FindAllIncludingInactive<T>() where T : Object
+        {
+#if UNITY_6000_5_OR_NEWER
+            return Object.FindObjectsByType<T>(FindObjectsInactive.Include);
+#else
+            return Object.FindObjectsByType<T>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+#endif
+        }
+
+        private static Object[] FindAllIncludingInactive(System.Type type)
+        {
+#if UNITY_6000_5_OR_NEWER
+            return Object.FindObjectsByType(type, FindObjectsInactive.Include);
+#else
+            return Object.FindObjectsByType(type, FindObjectsInactive.Include, FindObjectsSortMode.None);
+#endif
+        }
+
         private static HashSet<GameObject> FindValidatedObjects()
         {
             var result = new HashSet<GameObject>();
@@ -235,7 +254,7 @@ namespace Mmzkworks.muValidation.Editor
 
             if (VisitsAllObjects)
             {
-                foreach (var transform in Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+                foreach (var transform in FindAllIncludingInactive<Transform>())
                 {
                     if (!EditorUtility.IsPersistent(transform) && (transform.hideFlags & HideFlags.HideInHierarchy) == 0)
                     {
@@ -255,7 +274,7 @@ namespace Mmzkworks.muValidation.Editor
             // Loaded scenes. Includes subclasses, so a type may be visited more than once; the set dedupes.
             foreach (var type in types)
             {
-                foreach (var found in Object.FindObjectsByType(type, FindObjectsInactive.Include, FindObjectsSortMode.None))
+                foreach (var found in FindAllIncludingInactive(type))
                 {
                     if (found is Component component && !EditorUtility.IsPersistent(component)) result.Add(component.gameObject);
                 }
