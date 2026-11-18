@@ -24,7 +24,8 @@ namespace Mmzkworks.muDashboard.Editor
             return true;
         }
 
-        [MenuItem("Assets/Create/muDashboard/Dashboard", false, 2040)]
+        // Same priority as [CreateAssetMenu]'s default order, so it sits in one group with the other mu* packages.
+        [MenuItem("Assets/Create/muDashboard/Dashboard", false, 0)]
         private static void CreatePanelAsset()
         {
             var folder = "Assets";
