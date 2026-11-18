@@ -13,8 +13,9 @@ namespace Mmzkworks.muDashboard.Editor
         public const string GameObject = "GameObject";
         public const string Scene = "Scene";
         public const string Asset = "Asset";
+        public const string Dashboard = "Dashboard";
 
-        public static readonly string[] All = { Prefab, GameObject, Scene, Asset };
+        public static readonly string[] All = { Prefab, GameObject, Scene, Asset, Dashboard };
     }
 
     internal enum ShortcutParamKind
@@ -49,6 +50,22 @@ namespace Mmzkworks.muDashboard.Editor
 
         /// <summary>Asset type accepted by an <see cref="ShortcutParamKind.Asset"/> parameter.</summary>
         public Type AssetType = typeof(Object);
+
+        /// <summary>
+        /// Optional check on the asset path an <see cref="ShortcutParamKind.Asset"/> field accepts
+        /// (e.g. only "*.dashboard.json" among TextAssets). <see cref="AssetFilterHint"/> is shown when a pick is refused.
+        /// </summary>
+        public Func<string, bool> AssetPathFilter;
+        public string AssetFilterHint;
+
+        public bool AcceptsAssetPath(string path) => AssetPathFilter == null || AssetPathFilter(path);
+
+        public ShortcutCommandParam WithAssetFilter(Func<string, bool> filter, string hint)
+        {
+            AssetPathFilter = filter;
+            AssetFilterHint = hint;
+            return this;
+        }
 
         /// <summary>When set, the field is shown only while the parameter <c>ShowWhenKey</c> has the value <c>ShowWhenValue</c>.</summary>
         public string ShowWhenKey;
@@ -132,7 +149,9 @@ namespace Mmzkworks.muDashboard.Editor
                         if (!string.IsNullOrEmpty(v))
                         {
                             var path = AssetDatabase.GUIDToAssetPath(v);
-                            parts.Add(string.IsNullOrEmpty(path) ? "(missing asset)" : System.IO.Path.GetFileNameWithoutExtension(path));
+                            parts.Add(string.IsNullOrEmpty(path) ? "(missing asset)"
+                                : DashboardFiles.IsPanelFile(path) ? DashboardFiles.DisplayName(path)
+                                : System.IO.Path.GetFileNameWithoutExtension(path));
                         }
                         break;
                     case ShortcutParamKind.Vector3:
@@ -153,12 +172,17 @@ namespace Mmzkworks.muDashboard.Editor
     {
         public readonly ShortcutCommand Command;
         public readonly DashboardItem Item;
+
+        /// <summary>The Dashboard window the command was run from; null when run from elsewhere (e.g. tests).</summary>
+        public readonly DashboardWindow Window;
+
         public string Error { get; private set; }
 
-        public ShortcutCommandContext(ShortcutCommand command, DashboardItem item)
+        public ShortcutCommandContext(ShortcutCommand command, DashboardItem item, DashboardWindow window = null)
         {
             Command = command;
             Item = item;
+            Window = window;
         }
 
         /// <summary>The stored value, or the parameter's default when it was never set.</summary>
@@ -242,6 +266,7 @@ namespace Mmzkworks.muDashboard.Editor
             _all.AddRange(PrefabCommands.Create());
             _all.AddRange(GameObjectCommands.Create());
             _all.AddRange(SceneAssetCommands.Create());
+            _all.AddRange(DashboardCommands.Create());
 
             _byId = new Dictionary<string, ShortcutCommand>(StringComparer.Ordinal);
             foreach (var c in _all)

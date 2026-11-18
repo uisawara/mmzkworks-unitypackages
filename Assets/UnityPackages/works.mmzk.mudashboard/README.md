@@ -93,6 +93,7 @@ Commands pass results through the **Selection**: each command works on what is s
 | GameObject | Create Empty, Create Primitive, Select GameObjects (by path / name / tag / component), Select Relative (parent / children / root), Rename (`{name}`, `{index}`), Set Parent, Add Component, Remove Component, Reset Transform, Set Active, Duplicate, Delete |
 | Scene | Open Scene, New Scene, Save Scene |
 | Asset | Create Folder, Duplicate Asset, Move Asset, Save Assets |
+| Dashboard | Open Dashboard (in its own window, or switch the window that ran it) |
 
 Examples:
 

@@ -34,7 +34,7 @@ Package Manager でこのパッケージを選び、`Samples` の `Example Dashb
 - ドロップダウンの `New Panel...`、または Project ウィンドウの `Create/muDashboard/Dashboard` で新しいパネルを作成できます。
 - Project ウィンドウで `*.dashboard.json` をダブルクリックすると、そのパネル用の Dashboard ウィンドウで開きます。別のパネルを開くとウィンドウが追加され(既存のウィンドウの隣にタブとして配置)、すでに開いているパネルはそのウィンドウにフォーカスします。
 - ドロップダウンの `Open in New Window` で、今のウィンドウを切り替えずに別ウィンドウでパネルを開けます。
-- 変更は自動で保存されます。
+- 変更は自動で保存されます。
 
 ## 利用モードと編集モード
 
@@ -93,6 +93,7 @@ Package Manager でこのパッケージを選び、`Samples` の `Example Dashb
 | GameObject | Create Empty、Create Primitive、Select GameObjects(パス / 名前 / タグ / Component で検索)、Select Relative(親 / 子 / ルート)、Rename(`{name}`、`{index}`)、Set Parent、Add Component、Remove Component、Reset Transform、Set Active、Duplicate、Delete |
 | Scene | Open Scene、New Scene、Save Scene |
 | Asset | Create Folder、Duplicate Asset、Move Asset、Save Assets |
+| Dashboard | Open Dashboard(専用のウィンドウで開く / 実行したウィンドウの表示を切り替える) |
 
 例:
 
