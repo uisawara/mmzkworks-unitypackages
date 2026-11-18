@@ -14,10 +14,11 @@ namespace Mmzkworks.muDatastore.Tests
     private static string TestFilePath => Path.Combine(Application.temporaryCachePath, "LocalFileDataStore_tests", "data.json");
 
     [UnityTest]
-    public IEnumerator DataStore_New() => UniTask.ToCoroutine(async () =>
+    public IEnumerator DataStore_New() => UniTask.ToCoroutine(() =>
     {
         Cleanup();
         using var store = new LocalFileDataStore(TestFilePath);
+        return UniTask.CompletedTask;
     });
 
     [UnityTest]

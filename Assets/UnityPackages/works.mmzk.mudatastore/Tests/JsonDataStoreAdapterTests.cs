@@ -11,10 +11,11 @@ namespace Mmzkworks.muDatastore.Tests
 	private const string TestKeyPrefix = "DataStore_";
 
 	[UnityTest]
-	public IEnumerator Adapter_New() => UniTask.ToCoroutine(async () =>
+	public IEnumerator Adapter_New() => UniTask.ToCoroutine(() =>
 	{
 		using IDataStore dataStore = new PlayerPrefsDataStore(TestKeyPrefix);
 		var adapter = new JsonDataStoreAdapter(dataStore);
+		return UniTask.CompletedTask;
 	});
 
 	[UnityTest]
