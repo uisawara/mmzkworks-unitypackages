@@ -56,12 +56,24 @@ Releases are managed with [release-please](https://github.com/googleapis/release
 1. Each time a pull request is merged into `develop`, the [Release workflow](.github/workflows/release.yml) opens or updates a release PR. It bumps `version` in `package.json` and updates `CHANGELOG.md` for every package with user-facing commits (`feat`, `fix`, `perf`, `revert`) since its last release (`feat` → minor, `fix` → patch while below 1.0.0). Packages are matched by the paths of the changed files, not by the commit scope. Commits such as `docs`, `test`, `refactor`, `ci` and `chore` alone do not trigger a release.
 2. Merging the release PR creates a `<package-name>/<version>` tag and a GitHub Release for each bumped package, and opens a pull request from `develop` to `main`.
 
-Pull requests into `develop` can only be squash-merged, and the PR title becomes the commit message, so write the title as a Conventional Commit. The pull request from `develop` to `main` can only be merged with a merge commit.
+Pull requests into `develop` can only be squash-merged, and the PR title alone becomes the commit message, so write the title as a Conventional Commit. The pull request from `develop` to `main` can only be merged with a merge commit.
+
+The PR title is applied to every package the PR touches, so keep each PR to one package; split changes to several packages into separate PRs. Changes only under a package's `Tests` folder are ignored. To record more than one entry for the package (for example a feature and a fix), list them in the PR description, separated by blank lines; they replace the PR title for release-please:
+
+```
+BEGIN_COMMIT_OVERRIDE
+feat(mudashboard): ...
+
+fix(mudashboard): ...
+END_COMMIT_OVERRIDE
+```
 
 Do not edit `version` in `package.json` by hand. When adding a package:
 
-- Add it to `release-please-config.json` with `"initial-version": "0.1.0"`, and to `.release-please-manifest.json` as `"0.0.0"`.
+- Add it to `release-please-config.json` with `"initial-version": "0.1.0"` and `"exclude-paths"` for its `Tests` folder, and to `.release-please-manifest.json` as `"0.0.0"`.
 - Add an empty `CHANGELOG.md` (with its `.meta`) to the package.
+
+Keep `last-release-sha` in `release-please-config.json`. It marks where release-please starts reading history; without it, already released commits are picked up again for muAsmdefgraph and muRefgraph.
 
 To install a specific version, append the tag to the Git URL:
 

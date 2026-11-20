@@ -12,8 +12,9 @@ permissions:
   contents: read
   pull-requests: write
 
+# release workflow も同じ処理を行うため、同時に PR を作ろうとしないよう同じグループで直列にする
 concurrency:
-  group: promote
+  group: release
   cancel-in-progress: false
 
 jobs:

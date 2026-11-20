@@ -7,6 +7,7 @@ name: Release
 # release PR を develop にマージすると、
 #   - "<name>/<version>" タグと GitHub Release を作成し、リリースノートにインストール方法を追記する。
 #   - develop → main の PR を開く(main は PR 必須のため。マージはリポジトリオーナーが行う)。
+# 手動実行(workflow_dispatch)するときは、ブランチに develop を選ぶ(既定の main では何もしない)。
 
 on:
   push:
@@ -35,37 +36,47 @@ jobs:
 
       # 起動したコミットではなく最新の develop を見る。
       # 待機中に release PR がマージされ、この run でリリースされた場合も version を正しく読めるようにする。
+      # main に取り込み済みかを判定するため、全ブランチとタグを取得する。
       - uses: actions/checkout@v7
         with:
           ref: develop
+          fetch-depth: 0
 
-      # releases_created は release を作った run でしか true にならないため、条件を付けずに毎回実行する。
-      # 途中で失敗して Re-run した場合も、インストール方法がまだ無い Release に追記できる。
+      # releases_created は release を作った run でしか true にならないため、
+      # 「その run で何をしたか」ではなく、Release と main の状態から毎回判定する。
+      # 途中で失敗して Re-run した場合も、追記と develop → main の PR 作成をやり直せる。
       - id: notes
         name: Add install instructions to release notes
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           repo_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
-          updated=false
+          promote=false
           for manifest in Assets/UnityPackages/*/package.json; do
             dir="$(dirname "$manifest")"
             tag="$(jq -r '.name + "/" + .version' "$manifest")"
-            if ! gh release view "$tag" --json body --jq .body > notes.md 2>/dev/null; then
-              continue
+            if ! gh release view "$tag" --json body --jq .body > notes.md 2> err.txt; then
+              # 未リリースの version は飛ばし、それ以外のエラー(認証・レート制限など)は失敗させる
+              if grep -q 'release not found' err.txt; then
+                continue
+              fi
+              cat err.txt >&2
+              exit 1
             fi
-            if grep -q '^## Install' notes.md; then
-              continue
+            if ! grep -q '^## Install' notes.md; then
+              printf '\n## Install\n\n```\n%s?path=%s#%s\n```\n' "$repo_url" "$dir" "$tag" >> notes.md
+              gh release edit "$tag" --notes-file notes.md
+              echo "released: $tag" | tee -a "$GITHUB_STEP_SUMMARY"
             fi
-            printf '\n## Install\n\n```\n%s?path=%s#%s\n```\n' "$repo_url" "$dir" "$tag" >> notes.md
-            gh release edit "$tag" --notes-file notes.md
-            echo "released: $tag" | tee -a "$GITHUB_STEP_SUMMARY"
-            updated=true
+            # リリース済みの version がまだ main に入っていなければ、develop → main の PR が必要
+            if ! git merge-base --is-ancestor "refs/tags/$tag" origin/main; then
+              promote=true
+            fi
           done
-          echo "updated=$updated" >> "$GITHUB_OUTPUT"
+          echo "promote=$promote" >> "$GITHUB_OUTPUT"
 
       - name: Open pull request from develop to main
-        if: steps.release.outputs.releases_created == 'true' || steps.notes.outputs.updated == 'true'
+        if: steps.notes.outputs.promote == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
