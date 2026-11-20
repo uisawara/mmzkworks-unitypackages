@@ -41,13 +41,20 @@ for file in "$@"; do
       if (scope == "" || !match(s, /^\* \*\*[^*]+:\*\* /)) return 0
       len = RLENGTH
       label = substr(s, 5, len - 8)
+      # ラベルにインラインの記法が入っていると、消したときにラベルの外の表示が壊れうるので消さない
+      # (awk の実装による違いを避けるため、角括弧の文字クラスではなく index で調べる)
+      for (k = 1; k <= 8; k++) if (index(label, substr("`[]<>\\&_", k, 1)) > 0) return 0
       n = split(label, names, /, */)
       for (k = 1; k <= n; k++) if (tolower(names[k]) == tolower(scope)) return len
       return 0
     }
     # 項目の本文の先頭にあると、Markdown のブロックの記法として解釈される文字列か
     function starts_block_syntax(body) {
-      return body ~ /^([-+*]([ \t]|$)|[ \t>#<=|]|~~~|```|\*\*\*|___|---|_[ \t]+_[ \t]+_|[0-9]+[.)]([ \t]|$)|\[[ xX]\]|\[[^]]*\]:)/ || body == ""
+      if (body ~ /^([-+*]([ \t]|$)|[ \t>#<=|]|~~~|```|\*\*\*|___|---|_[ \t]+_[ \t]+_|[0-9]+[.)]([ \t]|$)|\[[ xX]\]|\[[^]]*\]:)/ || body == "") return 1
+      # "-"・"*"・"_" と空白だけの行は区切り線になりうる("** ** **"、"-- -" など)
+      if (body ~ /^[-*_ \t]+$/) return 1
+      # "[" で始まり "]:" を含むか "]" がない行は、リンクの参照定義(複数行にまたがるものも含む)になりうる
+      return body ~ /^\[/ && (index(body, "]:") > 0 || index(body, "]") == 0)
     }
     function strip_scope(s,   len, stripped) {
       len = scope_label_length(s)
@@ -71,9 +78,10 @@ for file in "$@"; do
       for (k = 1; k <= n; k++) if (!is_ref(parts[k])) return 0
       return n > 0
     }
-    # 1 行の項目か("* " で始まり、区切り線 "* * *" ではない)
+    # 1 行の項目か("* " で始まり、区切り線 "* * *" ではない)。
+    # "*" の後の空白が 5 個以上か、タブを含む行は、項目の中の字下げコードになりうるので項目として扱わない
     function is_entry(s) {
-      return s ~ /^\* / && s !~ /^\*[ \t]*\*[ \t]*\*[* \t]*$/
+      return s ~ /^\* / && s !~ /^\*[ \t]*\*[ \t]*\*[* \t]*$/ && s !~ /^\*     / && s !~ /^\* *\t/
     }
     function indent_of(s) {
       match(s, /^ */)
