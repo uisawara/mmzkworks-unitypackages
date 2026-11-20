@@ -3,14 +3,15 @@
 #
 #   tidy-changelog.sh -s <scope> <file>...
 #
-#   - パッケージごとのファイルなので、行頭の scope 表示が <scope>(例: mudashboard)を含むときだけ消す
-#     ("* **mudashboard:** foo" → "* foo")。ほかのパッケージの scope や、本文の "**Note:**" などは消さない。
-#     -s を省略したときは scope を消さない。
+#   - パッケージごとのファイルなので、行頭の scope 表示が <scope>(例: mudashboard)を含むときだけ、
+#     そのラベルごと消す("* **mudashboard:** foo" → "* foo"、"* **mudashboard, muhierarchy:** foo" → "* foo")。
+#     ほかのパッケージだけのラベルや、本文の "**Note:**" などは消さない。-s を省略したときは何も消さない。
 #   - 箇条書きのまとまりごとに、末尾の参照リンク(PR の "([#12](...))" と commit の "([abc1234](...))")を
 #     除いた内容が同じ行を 1 行にまとめ、参照リンクを ", " 区切りで並べる。本文の普通のリンクは外さない。
 #     例: "* foo ([#12](u1)) ([abc1234](u2))" と "* foo ([def5678](u3))"
 #         → "* foo ([#12](u1), [abc1234](u2), [def5678](u3))"
-#   - 項目の下の字下げ行のまとまり(BREAKING CHANGES の説明など)は、その項目に付けたまま移動する。
+#   - 項目の下の続きの行(字下げ行と、空行なしで続く字下げなしの行。BREAKING CHANGES の説明など)は、
+#     その項目に付けたまま移動する。字下げなしの行には、表示が変わらない 2 スペースの字下げを付ける。
 #     まとめた項目どうしで完全に同じまとまりは 1 回だけ残し、違うまとまりは空行をはさんで並べる。
 # 何度実行しても結果は同じになる。CRLF のファイルでも行末の改行コードを保つ。
 set -euo pipefail
@@ -30,14 +31,24 @@ trap 'rm -f "$tmp"' EXIT
 for file in "$@"; do
   [ -f "$file" ] || continue
   awk -v scope="$scope" '
-    # 行頭の "**a, b:** " が scope を含むときだけ取り除く
-    function strip_scope(s,   label, names, n, k) {
-      if (scope == "" || !match(s, /^\* \*\*[^*]+:\*\* /)) return s
-      label = substr(s, 5, RLENGTH - 8)
+    # 行頭が "* **a, b:** " で、ラベルが scope を含むなら、その長さを返す(含まなければ 0)
+    function scope_label_length(s,   len, label, names, n, k) {
+      if (scope == "" || !match(s, /^\* \*\*[^*]+:\*\* /)) return 0
+      len = RLENGTH
+      label = substr(s, 5, len - 8)
       n = split(label, names, /, */)
-      for (k = 1; k <= n; k++) {
-        if (tolower(names[k]) == tolower(scope)) return "* " substr(s, RLENGTH + 1)
-      }
+      for (k = 1; k <= n; k++) if (tolower(names[k]) == tolower(scope)) return len
+      return 0
+    }
+    # 行頭の "**a, b:** " が scope を含むときだけ取り除く
+    function strip_scope(s,   len) {
+      len = scope_label_length(s)
+      if (len == 0) return s
+      s = "* " substr(s, len + 1)
+      # 取り除いた後も同じ形のラベルが残るなら、それは本文なので、次の実行で消さないよう
+      # 見た目が同じ "__a:__ " に書き換える
+      len = scope_label_length(s)
+      if (len > 0) s = "* __" substr(s, 5, len - 8) ":__ " substr(s, len + 1)
       return s
     }
     # release-please が付ける参照リンク(PR 番号か commit の SHA)かどうか
@@ -134,6 +145,13 @@ for file in "$@"; do
     /^[ \t]/ && cur > 0 {
       cur_tail = cur_tail blanks $0 "\n"
       blanks = ""
+      next
+    }
+    # 項目のすぐ下(空行なし)の字下げなしの行は、Markdown では前の項目の続きになる
+    # (BREAKING CHANGES の説明の 2 行目以降など)。移動しても項目の続きのままになるよう、
+    # 表示が変わらない 2 スペースの字下げを付けて項目に付ける。見出し・HTML・区切り線は除く。
+    cur > 0 && blanks == "" && raw !~ /^(#|<|---)/ {
+      cur_tail = cur_tail "  " $0 "\n"
       next
     }
     # それ以外(見出し・本文など)が来たら、まとまりを閉じて出力する
