@@ -52,10 +52,15 @@
 
 リリースは [Conventional Commits](https://www.conventionalcommits.org/ja/)(`feat(scope): ...`、`fix(scope): ...`)をもとに [release-please](https://github.com/googleapis/release-please) で管理しています。
 
-1. `develop` に PR をマージするたびに、[Release workflow](.github/workflows/release.yml) が release PR を作成・更新します。release PR には、前回のリリース以降に変更があったパッケージの `package.json` の `version` の更新と `CHANGELOG.md` の追記が入ります(1.0.0 未満では `feat` でマイナー、`fix` でパッチが上がります)。
+1. `develop` に PR をマージするたびに、[Release workflow](.github/workflows/release.yml) が release PR を作成・更新します。release PR には、前回のリリース以降にユーザー向けのコミット(`feat`、`fix`、`perf`、`revert`)があったパッケージの `package.json` の `version` の更新と `CHANGELOG.md` の追記が入ります(1.0.0 未満では `feat` でマイナー、`fix` でパッチが上がります)。対象のパッケージは、commit の scope ではなく変更したファイルのパスで決まります。`docs`、`test`、`refactor`、`ci`、`chore` などのコミットだけではリリースされません。
 2. release PR をマージすると、更新されたパッケージごとに `<パッケージ名>/<version>` のタグと GitHub Release を作成し、`develop` → `main` の PR を開きます。
 
-`package.json` の `version` は手で編集しないでください。パッケージを追加するときは、`release-please-config.json` と `.release-please-manifest.json` に登録し、パッケージに `CHANGELOG.md`(と `.meta`)を追加します。
+`develop` への PR は squash でしかマージできず、PR タイトルがそのまま commit メッセージになります。PR タイトルは Conventional Commits の形式で書いてください。`develop` → `main` の PR は merge commit でしかマージできません。
+
+`package.json` の `version` は手で編集しないでください。パッケージを追加するときは、次の 2 つを行います。
+
+- `release-please-config.json` に `"initial-version": "0.1.0"` を付けて登録し、`.release-please-manifest.json` には `"0.0.0"` で登録する
+- パッケージに空の `CHANGELOG.md`(と `.meta`)を追加する
 
 特定バージョンをインストールするには、Git URL の末尾にタグを指定します。
 

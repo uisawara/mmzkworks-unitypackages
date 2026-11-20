@@ -53,10 +53,15 @@ English | [日本語](README.ja.md)
 
 Releases are managed with [release-please](https://github.com/googleapis/release-please) based on [Conventional Commits](https://www.conventionalcommits.org/) (`feat(scope): ...`, `fix(scope): ...`).
 
-1. Each time a pull request is merged into `develop`, the [Release workflow](.github/workflows/release.yml) opens or updates a release PR. It bumps `version` in `package.json` and updates `CHANGELOG.md` for every package that changed since its last release (`feat` → minor, `fix` → patch while below 1.0.0).
+1. Each time a pull request is merged into `develop`, the [Release workflow](.github/workflows/release.yml) opens or updates a release PR. It bumps `version` in `package.json` and updates `CHANGELOG.md` for every package with user-facing commits (`feat`, `fix`, `perf`, `revert`) since its last release (`feat` → minor, `fix` → patch while below 1.0.0). Packages are matched by the paths of the changed files, not by the commit scope. Commits such as `docs`, `test`, `refactor`, `ci` and `chore` alone do not trigger a release.
 2. Merging the release PR creates a `<package-name>/<version>` tag and a GitHub Release for each bumped package, and opens a pull request from `develop` to `main`.
 
-Do not edit `version` in `package.json` by hand. When adding a package, add it to `release-please-config.json` and `.release-please-manifest.json`, and add a `CHANGELOG.md` (with its `.meta`) to the package.
+Pull requests into `develop` can only be squash-merged, and the PR title becomes the commit message, so write the title as a Conventional Commit. The pull request from `develop` to `main` can only be merged with a merge commit.
+
+Do not edit `version` in `package.json` by hand. When adding a package:
+
+- Add it to `release-please-config.json` with `"initial-version": "0.1.0"`, and to `.release-please-manifest.json` as `"0.0.0"`.
+- Add an empty `CHANGELOG.md` (with its `.meta`) to the package.
 
 To install a specific version, append the tag to the Git URL:
 

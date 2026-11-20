@@ -1,8 +1,8 @@
 name: Release
 
 # develop への push(PR のマージ)のたびに release-please が release PR を作成・更新する。
-#   - release PR には、前回リリース以降に変更のあったパッケージの CHANGELOG.md と
-#     package.json の version 更新が入る(Conventional Commits の feat/fix などから決まる)。
+#   - release PR には、前回リリース以降にユーザー向けの変更(feat/fix/perf/revert)があったパッケージの
+#     CHANGELOG.md と package.json の version 更新が入る。対象パッケージは変更したファイルのパスで決まる。
 #   - 設定は release-please-config.json、各パッケージの現在の version は .release-please-manifest.json。
 # release PR を develop にマージすると、
 #   - "<name>/<version>" タグと GitHub Release を作成し、リリースノートにインストール方法を追記する。
@@ -15,6 +15,7 @@ on:
 
 permissions:
   contents: write
+  issues: write
   pull-requests: write
 
 concurrency:
@@ -32,30 +33,39 @@ jobs:
         with:
           target-branch: develop
 
-      - if: steps.release.outputs.releases_created == 'true'
-        uses: actions/checkout@v7
+      # 起動したコミットではなく最新の develop を見る。
+      # 待機中に release PR がマージされ、この run でリリースされた場合も version を正しく読めるようにする。
+      - uses: actions/checkout@v7
+        with:
+          ref: develop
 
-      - name: Add install instructions to release notes
-        if: steps.release.outputs.releases_created == 'true'
+      # releases_created は release を作った run でしか true にならないため、条件を付けずに毎回実行する。
+      # 途中で失敗して Re-run した場合も、インストール方法がまだ無い Release に追記できる。
+      - id: notes
+        name: Add install instructions to release notes
         env:
           GH_TOKEN: ${{ github.token }}
-          PATHS_RELEASED: ${{ steps.release.outputs.paths_released }}
         run: |
           repo_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
-          for dir in $(jq -r '.[]' <<<"$PATHS_RELEASED"); do
-            tag="$(jq -r '.name + "/" + .version' "$dir/package.json")"
-            gh release view "$tag" --json body --jq .body > notes.md
+          updated=false
+          for manifest in Assets/UnityPackages/*/package.json; do
+            dir="$(dirname "$manifest")"
+            tag="$(jq -r '.name + "/" + .version' "$manifest")"
+            if ! gh release view "$tag" --json body --jq .body > notes.md 2>/dev/null; then
+              continue
+            fi
             if grep -q '^## Install' notes.md; then
-              echo "skip: $tag (already has install instructions)"
               continue
             fi
             printf '\n## Install\n\n```\n%s?path=%s#%s\n```\n' "$repo_url" "$dir" "$tag" >> notes.md
             gh release edit "$tag" --notes-file notes.md
             echo "released: $tag" | tee -a "$GITHUB_STEP_SUMMARY"
+            updated=true
           done
+          echo "updated=$updated" >> "$GITHUB_OUTPUT"
 
       - name: Open pull request from develop to main
-        if: steps.release.outputs.releases_created == 'true'
+        if: steps.release.outputs.releases_created == 'true' || steps.notes.outputs.updated == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
