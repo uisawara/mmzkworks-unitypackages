@@ -47,7 +47,7 @@ for file in "$@"; do
     }
     # 項目の本文の先頭にあると、Markdown のブロックの記法として解釈される文字列か
     function starts_block_syntax(body) {
-      return body ~ /^([-+*]([ \t]|$)|[ \t>#<=|]|~~~|```|\*\*\*|___|---|[0-9]+[.)]([ \t]|$)|\[[ xX]\])/ || body == ""
+      return body ~ /^([-+*]([ \t]|$)|[ \t>#<=|]|~~~|```|\*\*\*|___|---|_[ \t]+_[ \t]+_|[0-9]+[.)]([ \t]|$)|\[[ xX]\]|\[[^]]*\]:)/ || body == ""
     }
     function strip_scope(s,   len, stripped) {
       len = scope_label_length(s)
@@ -103,7 +103,7 @@ for file in "$@"; do
       if (t ~ /^(   |  | )?<\/?[a-z]/) return 1
       return 0
     }
-    # 見出しはリストを終わらせるだけで、項目の続きにはならない
+    # 見出しの行か(字下げのない見出しはリストを終わらせ、項目の続きにはならない)
     function is_heading(s) {
       return s ~ /^(   |  | )?#(#?#?#?#?#?)([ \t]|$)/
     }
@@ -173,6 +173,8 @@ for file in "$@"; do
     fence != "" {
       print
       if (raw ~ /^[ \t]*$/) next
+      # タブで字下げした閉じ記号は、閉じるかどうか(字下げの深さ)を判定しきれないので、後ろは書き換えない
+      if (raw ~ /^ *\t/ && is_fence_close(raw)) { frozen = 1; next }
       ind = indent_of(raw)
       if (is_fence_close(raw) && ind <= fence_indent + 3) {
         # 開いたときと違う字下げで閉じた場合は、どこで閉じたかの解釈がずれうるので、後ろは書き換えない
@@ -188,6 +190,9 @@ for file in "$@"; do
     in_html {
       print
       if (raw ~ /^[ \t]*$/) in_html = 0
+      # HTML に見えた行が実は段落だった場合、ここからコードブロックや <pre> が始まっていることがあるので、
+      # その範囲を判定しきれない。後ろは書き換えない
+      else if (fence_open(raw) != "" || html_kind(raw) == 2) frozen = 1
       next
     }
     # 空行(空白だけの行も含む)は、次の行が来るまで保留する。
@@ -225,7 +230,8 @@ for file in "$@"; do
       next
     }
     is_heading(raw) {
-      flush_block(0)
+      # 字下げした見出しは直前の項目に属しうるので、直前の並びはそのままにする
+      flush_block(raw ~ /^ /)
       print
       next
     }
