@@ -46,7 +46,7 @@ jobs:
           ref: develop
           fetch-depth: 0
 
-      # release PR の CHANGELOG.md から scope 表示と重複行を消す commit を release ブランチに積む。
+      # release PR の CHANGELOG.md から scope 表示を消し、内容が同じ行をまとめる commit を release ブランチに積む。
       # release-please は PR 本文が変わらない限り release ブランチを書き換えないので、この commit は残る。
       # 新しい変更で release-please がブランチを作り直したときは、同じ run のこのステップで整え直す。
       # 整う前の release PR がマージされる隙間を短くするため、checkout の直後に実行する。
