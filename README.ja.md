@@ -57,7 +57,7 @@
 
 `CHANGELOG.md` とリリースノートはパッケージごとに分かれているので、workflow が各行の scope 表示を、そのパッケージ自身を含むときだけ消します(muDashboard の CHANGELOG なら `**mudashboard:**`)。ほかのパッケージだけを指す scope 表示は残します。空行をはさまずに並んだ 1 行だけの項目の中では、内容が同じ行を 1 行にまとめ、PR と commit へのリンクを 1 つの括弧に `,` 区切りで並べます。複数行にわたる項目(続きの行・入れ子のリスト・コードブロック・HTML)や、本文が Markdown のブロックの記法で始まる項目を含む並びは、行が別の項目に付かないよう、生成されたまま残します(scope 表示は消します)。安全に解釈できない構造(`<pre>`、HTML のコメント、開き方と閉じ方の合わないコードブロックなど)があれば、そこから後ろはすべて生成されたまま残します。また、scope 表示を消すと本文が `#` や `>` などの Markdown の記法で始まってしまう行は、表示が変わらないよう scope 表示を残します。release PR の本文は、release-please が生成したままです。
 
-`develop` への PR は squash でしかマージできず、PR タイトルだけがそのまま commit メッセージになります。PR タイトルは Conventional Commits の形式で書いてください。`develop` → `main` の PR は merge commit でしかマージできません。
+`develop` への PR は squash でしかマージできず、PR タイトルだけがそのまま commit メッセージになります。PR タイトルは Conventional Commits の形式で書いてください。`feat`・`fix`・`perf`・`revert` は、パッケージを使う人が気づく変更だけに使います。それ以外(コンパイル警告の解消など)は `chore`・`build`・`refactor`・`test`・`docs`・`ci` にすると、CHANGELOG に載らず、バージョンも上がりません。[PR title workflow](.github/workflows/pr-title.yml) が、形式と、ユーザー向けの変更の scope が既存のパッケージ名かどうかを確認します。`develop` → `main` の PR は merge commit でしかマージできません。
 
 PR タイトルは、その PR で変更したすべてのパッケージに適用されます。そのため、1 つの PR では 1 つのパッケージだけを変更し、複数のパッケージにまたがる変更は PR を分けてください。パッケージの `Tests` フォルダだけの変更は無視されます(隣にある `Tests.meta` は対象になるので、`Tests` フォルダを追加・削除する PR のタイトルは `test:` で始めてください)。そのパッケージに複数の項目(たとえば機能追加と修正)を記録したいときは、PR 本文に空行で区切って書くと、release-please は PR タイトルの代わりにこの内容を使います。
 
