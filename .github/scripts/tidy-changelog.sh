@@ -43,18 +43,21 @@ for file in "$@"; do
       label = substr(s, 5, len - 8)
       # ラベルにインラインの記法が入っていると、消したときにラベルの外の表示が壊れうるので消さない
       # (awk の実装による違いを避けるため、角括弧の文字クラスではなく index で調べる)
-      for (k = 1; k <= 8; k++) if (index(label, substr("`[]<>\\&_", k, 1)) > 0) return 0
+      for (k = 1; k <= 9; k++) if (index(label, substr("`[]<>\\&_|", k, 1)) > 0) return 0
       n = split(label, names, /, */)
       for (k = 1; k <= n; k++) if (tolower(names[k]) == tolower(scope)) return len
       return 0
     }
     # 項目の本文の先頭にあると、Markdown のブロックの記法として解釈される文字列か
-    function starts_block_syntax(body) {
+    function starts_block_syntax(body,   t) {
       if (body ~ /^([-+*]([ \t]|$)|[ \t>#<=|]|~~~|```|\*\*\*|___|---|_[ \t]+_[ \t]+_|[0-9]+[.)]([ \t]|$)|\[[ xX]\]|\[[^]]*\]:)/ || body == "") return 1
       # "-"・"*"・"_" と空白だけの行は区切り線になりうる("** ** **"、"-- -" など)
       if (body ~ /^[-*_ \t]+$/) return 1
-      # "[" で始まり "]:" を含むか "]" がない行は、リンクの参照定義(複数行にまたがるものも含む)になりうる
-      return body ~ /^\[/ && (index(body, "]:") > 0 || index(body, "]") == 0)
+      # "[" で始まり "]:" を含むか "]" がない行は、リンクの参照定義(複数行にまたがるものも含む)になりうる。
+      # エスケープした "\]" は "]" として数えない
+      t = body
+      gsub(/\\./, "", t)
+      return t ~ /^\[/ && (index(t, "]:") > 0 || index(t, "]") == 0)
     }
     function strip_scope(s,   len, stripped) {
       len = scope_label_length(s)
@@ -67,7 +70,8 @@ for file in "$@"; do
     }
     # release-please が付ける参照リンク(PR 番号か commit の SHA)かどうか
     function is_ref(link,   label) {
-      if (!match(link, /^\[[^]]*\]\([^)]*\)$/)) return 0
+      # URL に空白があるとリンクにならないので、参照リンクとして扱わない
+      if (!match(link, /^\[[^]]*\]\([^) \t]*\)$/)) return 0
       label = substr(link, 2, index(link, "]") - 2)
       if (label ~ /^#[0-9]+$/) return 1
       return label ~ /^[0-9a-f]+$/ && length(label) >= 7 && length(label) <= 40
@@ -79,7 +83,7 @@ for file in "$@"; do
       return n > 0
     }
     # 1 行の項目か("* " で始まり、区切り線 "* * *" ではない)。
-    # "*" の後の空白が 5 個以上か、タブを含む行は、項目の中の字下げコードになりうるので項目として扱わない
+    # "*" の後の空白が 5 個以上か、その空白の中にタブがある行は、項目の中の字下げコードになりうるので項目として扱わない
     function is_entry(s) {
       return s ~ /^\* / && s !~ /^\*[ \t]*\*[ \t]*\*[* \t]*$/ && s !~ /^\*     / && s !~ /^\* *\t/
     }
@@ -120,7 +124,8 @@ for file in "$@"; do
     function flush_block(keep,   i, j, simple, line, found, group, start, n, parts, k, count, texts, refs, eols, index_of) {
       if (bn == 0) return
       simple = !keep
-      for (i = 1; i <= bn && simple; i++) if (!is_entry(braw[i])) simple = 0
+      # 本文がブロックの記法(HTML・見出し・引用など)で始まる項目は、項目の中にブロックがあるので、まとめない
+      for (i = 1; i <= bn && simple; i++) if (!is_entry(braw[i]) || starts_block_syntax(substr(braw[i], 3))) simple = 0
       if (!simple) {
         for (i = 1; i <= bn; i++) {
           if (is_entry(braw[i])) printf "%s%s\n", strip_scope(braw[i]), beol[i]
@@ -177,6 +182,20 @@ for file in "$@"; do
       eol = (sub(/\r$/, "", raw)) ? "\r" : ""
     }
     frozen { print; next }
+    # 行の途中に単独の CR があると、Markdown ではそこで改行になり、行の区切りを判定しきれないので、後ろは書き換えない
+    index(raw, "\r") > 0 {
+      if (fence == "" && !in_html) freeze()
+      frozen = 1
+      print
+      next
+    }
+    # 項目の本文が空行をまたぐ HTML ブロック("* <!--"、"* <pre>" など)で始まる場合も、範囲を判定しきれないので後ろは書き換えない
+    fence == "" && !in_html && raw ~ /^\* / && html_kind(substr(raw, 3)) == 2 {
+      if (bn > 0 && blanks != "") flush_block(0)
+      freeze()
+      print
+      next
+    }
     # コードブロックの中は何も変えない
     fence != "" {
       print
