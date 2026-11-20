@@ -2,7 +2,7 @@ English | [日本語](README.ja.md)
 
 # muDashboard
 
-An Editor extension for laying out shortcuts to Project assets and web pages, plus labels, freely on a panel.
+An Editor extension for laying out shortcuts to Project assets, scene GameObjects and web pages, plus labels, freely on a panel.
 
 Save a panel per task as `<any name>.dashboard.json` and switch between them. Open the window from `Tools/muDashboard/Dashboard`.
 
@@ -47,11 +47,12 @@ The panel is an unbounded canvas with no scroll bars. In both modes, drag with t
 ### Use mode
 
 - Click an asset / folder shortcut to select it in the Project window.
+- Click a GameObject shortcut to select it in the Hierarchy. If its scene is not open, you are asked whether to open it (`Open Scene` / `Open Additive`).
 - Click a URL shortcut to open it in the default browser.
 - Click a menu command shortcut to run that menu item (Project / Hierarchy commands act on the current selection in those windows).
 - Click an action to run its linked elements in order (see [Actions](#actions)).
 - Drag a shortcut to drop the asset elsewhere, e.g. onto an Inspector field.
-- Right-click for `Copy Path` / `Copy URL` and `Open Asset`.
+- Right-click for `Copy Path` / `Copy URL` / `Copy Hierarchy Path` and `Open Asset` / `Open Scene`.
 
 ### Edit mode
 
@@ -74,7 +75,7 @@ An action runs several elements of the panel one after another.
 
 - In edit mode, drag from the round knob at the bottom of an action and trace over the elements to run. A line connects them in the traced order. Tracing again replaces the previous line; each element is added only once, and labels are ignored.
 - Hover or select an action to show the step numbers. The steps are also listed in the property panel on the right, where `Clear` removes them.
-- In use mode, click the action to run the steps in order: assets are selected in the Project window, URLs are opened, menu commands are executed. So "select an asset, then run a Project window command" works.
+- In use mode, click the action to run the steps in order: assets are selected in the Project window, GameObjects in the Hierarchy, URLs are opened, menu commands are executed. So "select an asset, then run a Project window command" works.
 - If a step fails (missing asset, invalid URL, unavailable menu command), the run stops there, the step is outlined in red and a notification shows the reason.
 - An action can include other actions; their steps run in place. A cycle (an action that ends up including itself) is reported as an error and nothing runs.
 - Deleting an element removes it from every action.
@@ -105,11 +106,12 @@ Running an action records its scene changes as one Undo step (`Action: <name>`).
 ## Adding shortcuts
 
 - Drag and drop folders or files from the Project window.
+- Drag and drop GameObjects from the Hierarchy (only from saved scenes).
 - Drag and drop a link or the address bar URL from a web browser. `.url` / `.webloc` internet shortcut files are accepted too.
 - Or copy a URL and press `Ctrl+V` (`Cmd+V` on macOS) on the panel.
 - In edit mode, copying a menu path such as `Window/General/Console`, `Assets/Create/Folder` or `GameObject/Create Empty` and pressing `Ctrl+V` adds a menu command shortcut.
 
-Assets are stored by GUID, so shortcuts follow moves and renames.
+Assets (pictures included) are stored only by GUID, so shortcuts follow moves and renames. GameObjects are stored only by GlobalObjectId and the scene's GUID, so they follow renames, reparenting and scene moves. Neither falls back to a lookup by path: if the GUID / id cannot be found (also when a regenerated `.meta` gave the asset a new GUID), the shortcut shows `(missing)`. While the scene is closed, the shortcut is grayed out with the name it was registered with and "(scene not open)"; clicking it asks whether to open the scene. A GameObject used as an action step fails if its scene is not open (actions never stop to ask).
 
 Make a shortcut 56px tall or more to show it as a tile with a large icon.
 
@@ -127,6 +129,7 @@ Make a shortcut 56px tall or more to show it as a tile with a large icon.
     "version": 1,
     "items": [
         { "id": "…", "kind": "asset", "guid": "…", "path": "Assets/Scenes", "x": 8, "y": 8, "width": 176, "height": 24, … },
+        { "id": "…", "kind": "scene-object", "globalId": "GlobalObjectId_V1-2-…", "guid": "<scene guid>", "path": "Assets/Scenes/Main.unity", "hierarchy": "Env/Trees/Oak", … },
         { "id": "…", "kind": "url", "url": "https://docs.unity3d.com/", "title": "Unity Docs", … },
         { "id": "…", "kind": "menu", "menu": "GameObject/Create Empty", … },
         { "id": "…", "kind": "label", "title": "Scenes", "fontSize": 14, … },

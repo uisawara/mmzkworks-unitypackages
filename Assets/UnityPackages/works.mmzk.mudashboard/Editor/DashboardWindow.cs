@@ -197,6 +197,9 @@ namespace Mmzkworks.muDashboard.Editor
 
         private void OnFocus() => ReloadIfChangedExternally();
 
+        // Scene object shortcuts change their look when scenes open / close or objects are renamed.
+        private void OnHierarchyChange() => Repaint();
+
         private void OnProjectChange()
         {
             if (string.IsNullOrEmpty(_fileGuid)) return;
@@ -813,7 +816,11 @@ namespace Mmzkworks.muDashboard.Editor
 
             var name = DisplayName(item, out var missing);
             var icon = Icon(item, missing);
-            var textColor = missing ? new Color(0.9f, 0.35f, 0.3f) : (pro ? new Color(0.85f, 0.85f, 0.85f) : Color.black);
+            // A GameObject whose scene is not open is grayed out (not an error); clicking it offers to open the scene.
+            var dimmed = !missing && item.kind == ShortcutItemKind.SceneObject && !DashboardSceneObjects.IsSceneOpen(item);
+            var textColor = missing ? new Color(0.9f, 0.35f, 0.3f)
+                : dimmed ? (pro ? new Color(0.5f, 0.5f, 0.5f) : new Color(0.55f, 0.55f, 0.55f))
+                : (pro ? new Color(0.85f, 0.85f, 0.85f) : Color.black);
 
             var labelStyle = _itemLabelStyle;
             labelStyle.fontSize = ScaledFont(item.fontSize > 0 ? item.fontSize : 0);
@@ -829,7 +836,7 @@ namespace Mmzkworks.muDashboard.Editor
                 var iconSize = Mathf.Min(inner.width, inner.height - lineH * 2f);
                 iconSize = Mathf.Max(Z(16f), iconSize);
                 var iconRect = new Rect(inner.center.x - iconSize * 0.5f, inner.y + Z(2f), iconSize, iconSize);
-                if (icon != null) GUI.DrawTexture(iconRect, icon, ScaleMode.ScaleToFit);
+                if (icon != null) DrawItemIcon(iconRect, icon, dimmed);
 
                 _tileLabelStyle.fontSize = ScaledFont(item.fontSize > 0 ? item.fontSize : 0, mini: true);
                 _tileLabelStyle.normal.textColor = textColor;
@@ -842,7 +849,7 @@ namespace Mmzkworks.muDashboard.Editor
                 var x = inner.x;
                 if (icon != null)
                 {
-                    GUI.DrawTexture(new Rect(x, inner.center.y - iconSize * 0.5f, iconSize, iconSize), icon, ScaleMode.ScaleToFit);
+                    DrawItemIcon(new Rect(x, inner.center.y - iconSize * 0.5f, iconSize, iconSize), icon, dimmed);
                     x += iconSize + Z(4f);
                 }
 
@@ -862,6 +869,14 @@ namespace Mmzkworks.muDashboard.Editor
                     labelStyle.Draw(textRect, new GUIContent(name), false, false, false, false);
                 }
             }
+        }
+
+        private static void DrawItemIcon(Rect r, Texture icon, bool dimmed)
+        {
+            var previous = GUI.color;
+            if (dimmed) GUI.color = new Color(previous.r, previous.g, previous.b, previous.a * 0.4f);
+            GUI.DrawTexture(r, icon, ScaleMode.ScaleToFit);
+            GUI.color = previous;
         }
 
         /// <summary>Corner radius of item frames (a gentle rounding; clamped for very small items).</summary>
@@ -1052,14 +1067,16 @@ namespace Mmzkworks.muDashboard.Editor
 
         // ------------------------------------------------------------------ item info
 
+        /// <summary>
+        /// Current path of the item's asset, looked up by its GUID only (follows moves / renames), or null when no asset
+        /// with that GUID exists. The stored <see cref="DashboardItem.path"/> is never used as a fallback; it is only
+        /// shown to tell which asset went missing.
+        /// </summary>
         internal static string ResolveAssetPath(DashboardItem item)
         {
-            if (!string.IsNullOrEmpty(item.guid))
-            {
-                var p = AssetDatabase.GUIDToAssetPath(item.guid);
-                if (!string.IsNullOrEmpty(p) && AssetExists(p)) return p;
-            }
-            return !string.IsNullOrEmpty(item.path) && AssetExists(item.path) ? item.path : null;
+            if (string.IsNullOrEmpty(item?.guid)) return null;
+            var p = AssetDatabase.GUIDToAssetPath(item.guid);
+            return !string.IsNullOrEmpty(p) && AssetExists(p) ? p : null;
         }
 
         private static bool AssetExists(string path) =>
@@ -1083,6 +1100,15 @@ namespace Mmzkworks.muDashboard.Editor
             }
             if (item.kind == ShortcutItemKind.Label)
                 return item.title;
+            if (item.kind == ShortcutItemKind.SceneObject)
+            {
+                // A closed scene is not an error; only a deleted scene or a vanished object in an open scene is.
+                var go = DashboardSceneObjects.Resolve(item);
+                missing = go == null && (DashboardSceneObjects.ScenePath(item) == null || DashboardSceneObjects.IsSceneOpen(item));
+                if (!string.IsNullOrEmpty(item.title)) return item.title;
+                var objectName = DashboardSceneObjects.ObjectName(item, go);
+                return missing ? $"{objectName} (missing)" : objectName;
+            }
 
             var path = ResolveAssetPath(item);
             missing = path == null;
@@ -1101,6 +1127,11 @@ namespace Mmzkworks.muDashboard.Editor
             {
                 var target = DashboardMenuPath.TargetLabel(DashboardMenuPath.TargetOf(item.menu));
                 return $"{target}: {DashboardMenuPath.ParentPath(item.menu)}";
+            }
+            if (item.kind == ShortcutItemKind.SceneObject)
+            {
+                var location = DashboardSceneObjects.Location(item, DashboardSceneObjects.Resolve(item));
+                return DashboardSceneObjects.IsSceneOpen(item) ? location : $"{location} (scene not open)";
             }
             var path = ResolveAssetPath(item) ?? item.path;
             return Path.GetDirectoryName(path)?.Replace('\\', '/') ?? "";
@@ -1125,6 +1156,12 @@ namespace Mmzkworks.muDashboard.Editor
                 case ShortcutItemKind.Menu:
                     return $"{DashboardMenuPath.TargetLabel(DashboardMenuPath.TargetOf(item.menu))} command: {item.menu}";
                 case ShortcutItemKind.Asset: return ResolveAssetPath(item) ?? $"Missing: {item.path}";
+                case ShortcutItemKind.SceneObject:
+                {
+                    var full = DashboardSceneObjects.FullPath(item, DashboardSceneObjects.Resolve(item));
+                    if (DashboardSceneObjects.ScenePath(item) == null) return $"Missing scene: {full}";
+                    return DashboardSceneObjects.IsSceneOpen(item) ? full : $"{full}{Environment.NewLine}Scene is not open. Click to open it.";
+                }
                 default: return null;
             }
         }
@@ -1143,6 +1180,8 @@ namespace Mmzkworks.muDashboard.Editor
                 }
                 case ShortcutItemKind.Asset:
                     return ResolveAssetPath(item) ?? $"(missing) {item.path}";
+                case ShortcutItemKind.SceneObject:
+                    return DashboardSceneObjects.FullPath(item, DashboardSceneObjects.Resolve(item));
                 case ShortcutItemKind.Url:
                     return item.url;
                 case ShortcutItemKind.Menu:
@@ -1211,6 +1250,12 @@ namespace Mmzkworks.muDashboard.Editor
                 case ShortcutItemKind.Asset:
                     if (missing) return EditorGUIUtility.IconContent("console.warnicon.sml").image;
                     return AssetDatabase.GetCachedIcon(ResolveAssetPath(item));
+                case ShortcutItemKind.SceneObject:
+                {
+                    if (missing) return EditorGUIUtility.IconContent("console.warnicon.sml").image;
+                    var go = DashboardSceneObjects.Resolve(item);
+                    return go != null ? EditorGUIUtility.ObjectContent(go, typeof(GameObject)).image : KindIcon(GameObjectIconNames);
+                }
                 case ShortcutItemKind.Url:
                     return KindIcon(UrlIconNames);
                 case ShortcutItemKind.Action:
@@ -1236,6 +1281,7 @@ namespace Mmzkworks.muDashboard.Editor
         private static readonly string[] MenuIconNames = { "_Menu", "Settings", "SettingsIcon" };
         private static readonly string[] ProjectIconNames = { "Project", "Folder Icon" };
         private static readonly string[] HierarchyIconNames = { "UnityEditor.SceneHierarchyWindow", "UnityEditor.HierarchyWindow" };
+        private static readonly string[] GameObjectIconNames = { "GameObject Icon", "d_GameObject Icon", "Prefab Icon" };
 
         private static readonly Dictionary<string[], Texture> KindIconCache = new Dictionary<string[], Texture>();
         private static bool _kindIconCacheIsPro;
@@ -1416,7 +1462,8 @@ namespace Mmzkworks.muDashboard.Editor
                             item.Rect = DashboardLayout.Resized(_opStartRect, delta);
                             break;
                         case PointerOp.Press when delta.magnitude > DragOutThreshold
-                                                  && (item.kind == ShortcutItemKind.Asset || item.kind == ShortcutItemKind.Url):
+                                                  && (item.kind == ShortcutItemKind.Asset || item.kind == ShortcutItemKind.Url
+                                                      || item.kind == ShortcutItemKind.SceneObject):
                             // Drag a shortcut out of the panel (e.g. into the Inspector or the Hierarchy).
                             StartDragOut(item);
                             EndOp();
@@ -1606,17 +1653,35 @@ namespace Mmzkworks.muDashboard.Editor
                 return;
             }
 
+            var sceneObjects = CollectDroppedSceneObjects(out var sceneError);
             var entries = CollectDropEntries(e.alt);
-            if (entries.Count == 0) return;
+            // Scene objects that cannot be stored (e.g. in an unsaved scene) are still accepted, so the drop can say why.
+            if (entries.Count == 0 && sceneObjects.Count == 0 && sceneError == null) return;
 
             DragAndDrop.visualMode = DragAndDropVisualMode.Link;
             if (e.type == EventType.DragPerform)
             {
                 DragAndDrop.AcceptDrag();
                 var pos = DashboardLayout.Snap(ToCanvas(canvasRect, e.mousePosition));
-                AddDropped(entries, pos);
+                AddDropped(sceneObjects, entries, pos);
+                if (sceneError != null) ShowNotification(new GUIContent(sceneError));
             }
             e.Use();
+        }
+
+        /// <summary>GameObjects dragged from the Hierarchy (or components of them), in drag order, without duplicates.</summary>
+        private static List<GameObject> CollectDroppedSceneObjects(out string error)
+        {
+            error = null;
+            var result = new List<GameObject>();
+            foreach (var obj in DragAndDrop.objectReferences ?? Array.Empty<Object>())
+            {
+                var go = DashboardSceneObjects.ToSceneGameObject(obj);
+                if (go == null || result.Contains(go)) continue;
+                if (DashboardSceneObjects.CanRegister(go, out var reason)) result.Add(go);
+                else error ??= reason;
+            }
+            return result;
         }
 
         private static List<DropEntry> CollectDropEntries(bool assetImagesAsPictures)
@@ -1680,6 +1745,15 @@ namespace Mmzkworks.muDashboard.Editor
                         ShowNotification(new GUIContent(runError));
                     };
                     break;
+                case ShortcutItemKind.SceneObject when DashboardSceneObjects.ScenePath(item) != null && !DashboardSceneObjects.IsSceneOpen(item):
+                    // Ask to open the scene outside OnGUI (dialog + scene change).
+                    EditorApplication.delayCall += () =>
+                    {
+                        if (this == null || !DashboardSceneObjects.AskToOpenScene(item)) return;
+                        if (!DashboardSceneObjects.TrySelect(item, out var openError)) ShowNotification(new GUIContent(openError));
+                        Repaint();
+                    };
+                    break;
                 default:
                     if (!TryActivateNow(item, this, out var error))
                         ShowNotification(new GUIContent(error));
@@ -1708,6 +1782,9 @@ namespace Mmzkworks.muDashboard.Editor
                     SelectInProject(obj);
                     return true;
                 }
+                case ShortcutItemKind.SceneObject:
+                    // As an action step the scene must already be open (no dialog in the middle of an action).
+                    return DashboardSceneObjects.TrySelect(item, out error);
                 case ShortcutItemKind.Url:
                     if (!DashboardDropParser.TryGetWebUrl(item.url, out var url))
                     {
@@ -1898,6 +1975,13 @@ namespace Mmzkworks.muDashboard.Editor
                 DragAndDrop.objectReferences = Array.Empty<Object>();
                 DragAndDrop.paths = new[] { item.url };
             }
+            else if (item.kind == ShortcutItemKind.SceneObject)
+            {
+                var go = DashboardSceneObjects.Resolve(item);
+                if (go == null) return;
+                DragAndDrop.objectReferences = new Object[] { go };
+                DragAndDrop.paths = Array.Empty<string>();
+            }
             else
             {
                 return;
@@ -1928,8 +2012,15 @@ namespace Mmzkworks.muDashboard.Editor
                     : hit.kind == ShortcutItemKind.Menu ? "Execute Command"
                     : hit.kind == ShortcutItemKind.Action ? "Run Action"
                     : hit.kind == ShortcutItemKind.Command ? "Run Command"
+                    : hit.kind == ShortcutItemKind.SceneObject ? "Select in Hierarchy"
                     : "Select in Project";
                 menu.AddItem(new GUIContent(activateLabel), false, () => Activate(hit));
+                if (hit.kind == ShortcutItemKind.SceneObject && DashboardSceneObjects.ScenePath(hit) != null
+                    && !DashboardSceneObjects.IsSceneOpen(hit))
+                {
+                    menu.AddItem(new GUIContent("Open Scene"), false, () => DashboardSceneObjects.OpenScene(hit, additive: false));
+                    menu.AddItem(new GUIContent("Open Scene Additive"), false, () => DashboardSceneObjects.OpenScene(hit, additive: true));
+                }
                 if (hit.kind == ShortcutItemKind.Asset)
                 {
                     menu.AddItem(new GUIContent("Open Asset"), false, () =>
@@ -1953,6 +2044,13 @@ namespace Mmzkworks.muDashboard.Editor
                         menu.AddItem(new GUIContent("Copy Menu Path"), false, () => EditorGUIUtility.systemCopyBuffer = hit.menu);
                         break;
                     case ShortcutItemKind.Command:
+                        break;
+                    case ShortcutItemKind.SceneObject:
+                        menu.AddItem(new GUIContent("Copy Hierarchy Path"), false, () =>
+                        {
+                            var go = DashboardSceneObjects.Resolve(hit);
+                            EditorGUIUtility.systemCopyBuffer = go != null ? ShortcutCommandUtil.HierarchyPath(go.transform) : hit.hierarchy;
+                        });
                         break;
                     case ShortcutItemKind.Action:
                         if (_editMode && hit.steps.Count > 0)
@@ -2075,10 +2173,17 @@ namespace Mmzkworks.muDashboard.Editor
             MarkDirty();
         }
 
-        private void AddDropped(List<DropEntry> entries, Vector2 pos)
+        private void AddDropped(List<GameObject> sceneObjects, List<DropEntry> entries, Vector2 pos)
         {
             var y = pos.y;
             var added = new List<string>();
+            foreach (var go in sceneObjects)
+            {
+                var item = NewSceneObjectItem(go, new Vector2(pos.x, y));
+                _doc.items.Add(item);
+                added.Add(item.id);
+                y += item.height + DashboardLayout.GridSize;
+            }
             foreach (var entry in entries)
             {
                 var p = new Vector2(pos.x, y);
@@ -2199,6 +2304,17 @@ namespace Mmzkworks.muDashboard.Editor
             path = path,
             Rect = new Rect(pos, DashboardLayout.DefaultShortcutSize)
         };
+
+        private static DashboardItem NewSceneObjectItem(GameObject go, Vector2 pos)
+        {
+            var item = new DashboardItem
+            {
+                id = DashboardItem.NewId(),
+                Rect = new Rect(pos, DashboardLayout.DefaultShortcutSize)
+            };
+            DashboardSceneObjects.Assign(item, go);
+            return item;
+        }
 
         private static DashboardItem NewUrlItem(string url, Vector2 pos) => new DashboardItem
         {
@@ -2393,6 +2509,31 @@ namespace Mmzkworks.muDashboard.Editor
                         }
                         item.title = EditorGUILayout.TextField(new GUIContent("Title", "Empty = asset name"), item.title);
                         break;
+
+                    case ShortcutItemKind.SceneObject:
+                    {
+                        using (new EditorGUI.DisabledScope(true))
+                            EditorGUILayout.TextField("Scene", DashboardSceneObjects.ScenePath(item) ?? $"(missing) {item.path}");
+                        var current = DashboardSceneObjects.Resolve(item);
+                        if (current != null || DashboardSceneObjects.IsSceneOpen(item))
+                        {
+                            var picked = (GameObject)EditorGUILayout.ObjectField(
+                                new GUIContent("Object", "Pick another GameObject in an open, saved scene"), current, typeof(GameObject), true);
+                            if (picked != current && picked != null)
+                            {
+                                var go = DashboardSceneObjects.ToSceneGameObject(picked);
+                                if (DashboardSceneObjects.CanRegister(go, out var reason)) DashboardSceneObjects.Assign(item, go);
+                                else ShowNotification(new GUIContent(reason));
+                            }
+                        }
+                        else
+                        {
+                            using (new EditorGUI.DisabledScope(true))
+                                EditorGUILayout.TextField(new GUIContent("Object", "Open the scene to change the object"), item.hierarchy);
+                        }
+                        item.title = EditorGUILayout.TextField(new GUIContent("Title", "Empty = object name"), item.title);
+                        break;
+                    }
 
                     case ShortcutItemKind.Action:
                         item.title = EditorGUILayout.TextField(new GUIContent("Title", "Empty = \"Action\""), item.title);

@@ -2,7 +2,7 @@
 
 # muDashboard
 
-Project のアセットや Web ページへのショートカットとラベルを、自由なレイアウトで並べられる Editor 拡張です。
+Project のアセット、シーンの GameObject、Web ページへのショートカットとラベルを、自由なレイアウトで並べられる Editor 拡張です。
 
 作業ごとにパネルを `<任意名>.dashboard.json` として保存し、切り替えて使えます。`Tools/muDashboard/Dashboard` からウィンドウを開きます。
 
@@ -47,11 +47,12 @@ Package Manager でこのパッケージを選び、`Samples` の `Example Dashb
 ### 利用モード
 
 - アセット / フォルダのショートカットをクリックすると、Project ウィンドウで選択されます。
+- GameObject のショートカットをクリックすると、Hierarchy で選択されます。そのシーンが開いていない場合は、`Open Scene` / `Open Additive` で開くか確認します。
 - URL のショートカットをクリックすると、標準ブラウザで開きます。
 - メニューコマンドのショートカットをクリックすると、そのメニューを実行します(Project / Hierarchy のコマンドはそれぞれのウィンドウの現在の選択に対して実行されます)。
 - Action をクリックすると、線でつないだ要素を順に実行します([Action](#action) を参照)。
 - ショートカットをドラッグすると、Inspector のフィールドなどへそのままドラッグ & ドロップできます。
-- 右クリックで `Copy Path` / `Copy URL` や `Open Asset` が使えます。
+- 右クリックで `Copy Path` / `Copy URL` / `Copy Hierarchy Path` や `Open Asset` / `Open Scene` が使えます。
 
 ### 編集モード
 
@@ -74,7 +75,7 @@ Package Manager でこのパッケージを選び、`Samples` の `Example Dashb
 
 - 編集モードで Action 下部の丸いノブからドラッグし、実行したい要素をなぞります。なぞった順に要素が線でつながります。もう一度なぞると線は置き換わります。同じ要素は 1 回だけ追加され、ラベルは対象外です。
 - Action にマウスを乗せるか選択すると、各要素に実行順の番号が表示されます。右側のプロパティにも一覧が出て、`Clear` で消せます。
-- 利用モードで Action をクリックすると、順に実行します。アセットは Project ウィンドウで選択、URL は開き、メニューコマンドは実行します。「アセットを選択 → Project ウィンドウ向けのコマンドを実行」のようにつなげられます。
+- 利用モードで Action をクリックすると、順に実行します。アセットは Project ウィンドウで、GameObject は Hierarchy で選択、URL は開き、メニューコマンドは実行します。「アセットを選択 → Project ウィンドウ向けのコマンドを実行」のようにつなげられます。
 - 途中で失敗すると(アセットが見つからない、URL が不正、メニューコマンドが実行できない)、そこで止まります。失敗した要素が赤枠で示され、理由が通知されます。
 - Action から別の Action をつなぐと、その中身がその位置で実行されます。自分自身を含む循環になっている場合はエラーとなり、何も実行しません。
 - 要素を削除すると、すべての Action からも外れます。
@@ -105,11 +106,12 @@ Action の実行によるシーンの変更は、Undo 1 回(`Action: <名前>`)�
 ## ショートカットの追加
 
 - Project ウィンドウからフォルダやファイルをドラッグ & ドロップします。
+- Hierarchy から GameObject をドラッグ & ドロップします(保存済みのシーンにあるものに限ります)。
 - Web ブラウザからリンク / アドレスバーの URL をドラッグ & ドロップします。`.url` / `.webloc` のインターネットショートカットファイルも受け付けます。
 - URL をコピーしてパネル上で `Ctrl+V`(macOS は `Cmd+V`)でも貼り付けられます。
 - 編集モードでは、`Window/General/Console`・`Assets/Create/Folder`・`GameObject/Create Empty` のようなメニューパスをコピーして `Ctrl+V` すると、メニューコマンドのショートカットとして貼り付けられます。
 
-アセットは GUID で記録するので、移動やリネームをしても追従します。
+アセット(画像を含む)は GUID だけで記録するので、移動やリネームをしても追従します。GameObject は GlobalObjectId とシーンの GUID だけで記録するので、リネーム・親の変更・シーンの移動にも追従します。どちらもパスで探し直すことはしないため、GUID / ID で見つからなければ `(missing)` になります(`.meta` を作り直して GUID が変わった場合も同じです)。シーンが開いていない間は、登録時の名前と「(scene not open)」でグレー表示になり、クリックするとシーンを開くか確認します。Action のステップにした GameObject は、シーンが開いていないと失敗します(Action の途中では確認ダイアログを出しません)。
 
 ショートカットは高さを 56px 以上にすると、大きなアイコンのタイル表示になります。
 
@@ -127,6 +129,7 @@ Action の実行によるシーンの変更は、Undo 1 回(`Action: <名前>`)�
     "version": 1,
     "items": [
         { "id": "…", "kind": "asset", "guid": "…", "path": "Assets/Scenes", "x": 8, "y": 8, "width": 176, "height": 24, … },
+        { "id": "…", "kind": "scene-object", "globalId": "GlobalObjectId_V1-2-…", "guid": "<scene guid>", "path": "Assets/Scenes/Main.unity", "hierarchy": "Env/Trees/Oak", … },
         { "id": "…", "kind": "url", "url": "https://docs.unity3d.com/", "title": "Unity Docs", … },
         { "id": "…", "kind": "menu", "menu": "GameObject/Create Empty", … },
         { "id": "…", "kind": "label", "title": "Scenes", "fontSize": 14, … },
