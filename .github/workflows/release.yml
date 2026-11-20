@@ -4,6 +4,8 @@ name: Release
 #   - release PR には、前回リリース以降にユーザー向けの変更(feat/fix/perf/revert)があったパッケージの
 #     CHANGELOG.md と package.json の version 更新が入る。対象パッケージは変更したファイルのパスで決まる。
 #   - 設定は release-please-config.json、各パッケージの現在の version は .release-please-manifest.json。
+#   - release PR の CHANGELOG.md は、自パッケージの scope 表示を消して同じ内容の行をまとめる commit を
+#     このワークフローが release ブランチに積んで整える(.github/scripts/tidy-changelog.sh)。
 # release PR を develop にマージすると、
 #   - "<name>/<version>" タグと GitHub Release を作成し、リリースノートにインストール方法を追記する。
 #   - develop → main の PR を開く(main は PR 必須のため。マージはリポジトリオーナーが行う)。
@@ -62,7 +64,16 @@ jobs:
             echo "No open release pull request."
             exit 0
           fi
-          git fetch origin "$branch"
+          # 確認してから取得するまでの間に PR がマージされ、ブランチが消えた場合は何もしない
+          closed_warning="::warning::The release pull request was merged or closed before its changelogs were tidied. If it was merged, the released CHANGELOG.md keeps the generated entries; develop is tidied again by the next release pull request."
+          if ! git fetch origin "$branch"; then
+            open="$(gh pr list --base develop --head "$branch" --state open --json number --jq 'length')"
+            if [ "$open" = "0" ]; then
+              echo "$closed_warning"
+              exit 0
+            fi
+            exit 1
+          fi
           base="$(git rev-parse "origin/$branch")"
           work="$RUNNER_TEMP/release-branch"
           git worktree add --detach "$work" "$base"
@@ -83,7 +94,7 @@ jobs:
           if ! git -C "$work" push --force-with-lease="refs/heads/$branch:$base" origin "HEAD:refs/heads/$branch"; then
             open="$(gh pr list --base develop --head "$branch" --state open --json number --jq 'length')"
             if [ "$open" = "0" ]; then
-              echo "::warning::The release pull request was closed before its changelogs were tidied. The released CHANGELOG.md keeps the generated entries; develop is tidied again by the next release pull request."
+              echo "$closed_warning"
               exit 0
             fi
             exit 1

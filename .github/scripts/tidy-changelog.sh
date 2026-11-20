@@ -4,14 +4,14 @@
 #   tidy-changelog.sh -s <scope> <file>...
 #
 #   - パッケージごとのファイルなので、行頭の scope 表示が <scope>(例: mudashboard)を含むときだけ消す
-#     ("* **mudashboard:** foo" → "* foo")。ほかの太字(本文の "**Note:**" など)は消さない。
+#     ("* **mudashboard:** foo" → "* foo")。ほかのパッケージの scope や、本文の "**Note:**" などは消さない。
 #     -s を省略したときは scope を消さない。
-#   - 箇条書きのまとまりごとに、末尾のリンク(PR の "([#12](...))" と commit の "([abc1234](...))")を除いた
-#     内容が同じ行を 1 行にまとめ、リンクを ", " 区切りで並べる
+#   - 箇条書きのまとまりごとに、末尾の参照リンク(PR の "([#12](...))" と commit の "([abc1234](...))")を
+#     除いた内容が同じ行を 1 行にまとめ、参照リンクを ", " 区切りで並べる。本文の普通のリンクは外さない。
 #     例: "* foo ([#12](u1)) ([abc1234](u2))" と "* foo ([def5678](u3))"
 #         → "* foo ([#12](u1), [abc1234](u2), [def5678](u3))"
-#   - 項目の下の字下げされた行(BREAKING CHANGES の説明など)は、その項目に付けたまま移動する。
-#     まとめた項目どうしで同じ内容の字下げ行は 1 回だけ残す。
+#   - 項目の下の字下げ行のまとまり(BREAKING CHANGES の説明など)は、その項目に付けたまま移動する。
+#     まとめた項目どうしで完全に同じまとまりは 1 回だけ残し、違うまとまりは空行をはさんで並べる。
 # 何度実行しても結果は同じになる。CRLF のファイルでも行末の改行コードを保つ。
 set -euo pipefail
 
@@ -24,9 +24,11 @@ while getopts "s:" opt; do
 done
 shift $((OPTIND - 1))
 
+tmp="$(mktemp)"
+trap 'rm -f "$tmp"' EXIT
+
 for file in "$@"; do
   [ -f "$file" ] || continue
-  tmp="$(mktemp)"
   awk -v scope="$scope" '
     # 行頭の "**a, b:** " が scope を含むときだけ取り除く
     function strip_scope(s,   label, names, n, k) {
@@ -38,15 +40,39 @@ for file in "$@"; do
       }
       return s
     }
+    # release-please が付ける参照リンク(PR 番号か commit の SHA)かどうか
+    function is_ref(link,   label) {
+      if (!match(link, /^\[[^]]*\]\([^)]*\)$/)) return 0
+      label = substr(link, 2, index(link, "]") - 2)
+      if (label ~ /^#[0-9]+$/) return 1
+      return label ~ /^[0-9a-f]+$/ && length(label) >= 7 && length(label) <= 40
+    }
+    # "[a](u), [b](u)" がすべて参照リンクなら 1 を返す
+    function all_refs(group,   n, parts, k) {
+      n = split(group, parts, ", ")
+      for (k = 1; k <= n; k++) if (!is_ref(parts[k])) return 0
+      return n > 0
+    }
     # refs[i] に、まだ含まれていないリンクだけを追加する
     function add_ref(i, ref,   n, parts, k) {
       n = split(refs[i], parts, ", ")
       for (k = 1; k <= n; k++) if (parts[k] == ref) return
       refs[i] = (refs[i] == "") ? ref : refs[i] ", " ref
     }
-    # 読み途中の項目の字下げ行を、まとめ先の項目に付ける(同じ内容がすでにあれば付けない)
-    function close_item() {
-      if (cur > 0 && cur_tail != "" && index(tails[cur], cur_tail) == 0) tails[cur] = tails[cur] cur_tail
+    # 読み途中の項目の字下げ行のまとまりを、まとめ先の項目に付ける
+    function close_item(   block, key) {
+      if (cur > 0 && cur_tail != "") {
+        # 先頭の空行の有無は比べない
+        key = cur_tail
+        sub(/^([ \t]*\r?\n)+/, "", key)
+        if (!((cur, key) in seen_tail)) {
+          seen_tail[cur, key] = 1
+          block = cur_tail
+          # 別の項目から来たまとまりは、空行をはさんで並べる(段落がつながらないように)
+          if (tails[cur] != "" && block !~ /^[ \t]*\r?\n/) block = eols[cur] "\n" block
+          tails[cur] = tails[cur] block
+        }
+      }
       cur = 0
       cur_tail = ""
     }
@@ -60,6 +86,7 @@ for file in "$@"; do
       }
       count = 0
       split("", index_of)
+      split("", seen_tail)
     }
     function print_blanks() {
       printf "%s", blanks
@@ -69,8 +96,8 @@ for file in "$@"; do
       raw = $0
       eol = (sub(/\r$/, "", raw)) ? "\r" : ""
     }
-    # 空行は、次に来る行が字下げ行(項目の続き)かどうかが分かるまで保留する
-    raw == "" {
+    # 空行(空白だけの行も含む)は、次に来る行が字下げ行(項目の続き)かどうかが分かるまで保留する
+    raw ~ /^[ \t]*$/ {
       blanks = blanks $0 "\n"
       next
     }
@@ -79,12 +106,15 @@ for file in "$@"; do
       if (blanks != "") { flush(); print_blanks() }
       close_item()
       line = strip_scope(raw)
-      # 末尾の "([label](url))" または "([label](url), [label](url), ...)" を順に外す
+      # 末尾の参照リンクの括弧 "([#12](u))" や "([abc1234](u), [def5678](u))" を順に外す
       found = ""
       while (match(line, / \((\[[^]]*\]\([^)]*\)(, )?)+\)$/)) {
+        # all_refs の中の match で RSTART が変わるので、先に位置を取っておく
+        start = RSTART
         group = substr(line, RSTART + 2, RLENGTH - 3)
+        if (!all_refs(group)) break
         found = (found == "") ? group : group ", " found
-        line = substr(line, 1, RSTART - 1)
+        line = substr(line, 1, start - 1)
       }
       if (line in index_of) {
         cur = index_of[line]
@@ -118,5 +148,4 @@ for file in "$@"; do
     }
   ' "$file" >"$tmp"
   cat "$tmp" >"$file"
-  rm -f "$tmp"
 done
