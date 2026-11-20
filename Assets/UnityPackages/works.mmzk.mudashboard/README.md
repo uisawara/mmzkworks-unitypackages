@@ -111,7 +111,7 @@ Running an action records its scene changes as one Undo step (`Action: <name>`).
 - Or copy a URL and press `Ctrl+V` (`Cmd+V` on macOS) on the panel.
 - In edit mode, copying a menu path such as `Window/General/Console`, `Assets/Create/Folder` or `GameObject/Create Empty` and pressing `Ctrl+V` adds a menu command shortcut.
 
-Assets are stored by GUID, so shortcuts follow moves and renames. GameObjects are stored only by GlobalObjectId and the scene's GUID, so they follow renames, reparenting and scene moves. There is no fallback lookup by path: if the id cannot be found, the shortcut shows `(missing)`. While the scene is closed, the shortcut is grayed out with the name it was registered with and "(scene not open)"; clicking it asks whether to open the scene. A GameObject used as an action step fails if its scene is not open (actions never stop to ask).
+Assets (pictures included) are stored only by GUID, so shortcuts follow moves and renames. GameObjects are stored only by GlobalObjectId and the scene's GUID, so they follow renames, reparenting and scene moves. Neither falls back to a lookup by path: if the GUID / id cannot be found (also when a regenerated `.meta` gave the asset a new GUID), the shortcut shows `(missing)`. While the scene is closed, the shortcut is grayed out with the name it was registered with and "(scene not open)"; clicking it asks whether to open the scene. A GameObject used as an action step fails if its scene is not open (actions never stop to ask).
 
 Make a shortcut 56px tall or more to show it as a tile with a large icon.
 

@@ -64,10 +64,10 @@ namespace Mmzkworks.muDashboard.Editor
         /// <summary>Label text, or the display name override for asset / URL items (empty = automatic).</summary>
         public string title = "";
 
-        /// <summary>Asset GUID (asset / image items; the scene's GUID for scene objects). Used first when resolving, so moves/renames are followed.</summary>
+        /// <summary>Asset GUID (asset / image items; the scene's GUID for scene objects). The only key used to resolve the asset, so moves/renames are followed.</summary>
         public string guid = "";
 
-        /// <summary>Asset path at the time it was registered (the scene's path for scene objects). Fallback when the GUID cannot be resolved.</summary>
+        /// <summary>Asset path at the time it was registered (the scene's path for scene objects). Display only: links resolve by GUID, never by this path.</summary>
         public string path = "";
 
         /// <summary>GlobalObjectId of a scene object (scene object items).</summary>

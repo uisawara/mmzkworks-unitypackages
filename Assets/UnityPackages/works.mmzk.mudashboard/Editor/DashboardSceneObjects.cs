@@ -74,12 +74,7 @@ namespace Mmzkworks.muDashboard.Editor
         /// Current path of the item's scene asset, looked up by its GUID (follows moves / renames),
         /// or null when no scene with that GUID exists.
         /// </summary>
-        public static string ScenePath(DashboardItem item)
-        {
-            if (string.IsNullOrEmpty(item?.guid)) return null;
-            var path = AssetDatabase.GUIDToAssetPath(item.guid);
-            return !string.IsNullOrEmpty(path) && File.Exists(path) ? path : null;
-        }
+        public static string ScenePath(DashboardItem item) => DashboardWindow.ResolveAssetPath(item);
 
         /// <summary>The loaded scene the item belongs to, or an invalid scene when it is not open.</summary>
         public static Scene LoadedScene(DashboardItem item)

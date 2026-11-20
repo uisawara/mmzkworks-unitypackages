@@ -1067,14 +1067,16 @@ namespace Mmzkworks.muDashboard.Editor
 
         // ------------------------------------------------------------------ item info
 
+        /// <summary>
+        /// Current path of the item's asset, looked up by its GUID only (follows moves / renames), or null when no asset
+        /// with that GUID exists. The stored <see cref="DashboardItem.path"/> is never used as a fallback; it is only
+        /// shown to tell which asset went missing.
+        /// </summary>
         internal static string ResolveAssetPath(DashboardItem item)
         {
-            if (!string.IsNullOrEmpty(item.guid))
-            {
-                var p = AssetDatabase.GUIDToAssetPath(item.guid);
-                if (!string.IsNullOrEmpty(p) && AssetExists(p)) return p;
-            }
-            return !string.IsNullOrEmpty(item.path) && AssetExists(item.path) ? item.path : null;
+            if (string.IsNullOrEmpty(item?.guid)) return null;
+            var p = AssetDatabase.GUIDToAssetPath(item.guid);
+            return !string.IsNullOrEmpty(p) && AssetExists(p) ? p : null;
         }
 
         private static bool AssetExists(string path) =>
