@@ -50,7 +50,12 @@
 
 ## リリース
 
-各パッケージの `package.json` の `version` を上げて main にマージすると、[Release workflow](.github/workflows/release.yml) が `<パッケージ名>/<version>` のタグと GitHub Release を自動で作成します。
+リリースは [Conventional Commits](https://www.conventionalcommits.org/ja/)(`feat(scope): ...`、`fix(scope): ...`)をもとに [release-please](https://github.com/googleapis/release-please) で管理しています。
+
+1. `develop` に PR をマージするたびに、[Release workflow](.github/workflows/release.yml) が release PR を作成・更新します。release PR には、前回のリリース以降に変更があったパッケージの `package.json` の `version` の更新と `CHANGELOG.md` の追記が入ります(1.0.0 未満では `feat` でマイナー、`fix` でパッチが上がります)。
+2. release PR をマージすると、更新されたパッケージごとに `<パッケージ名>/<version>` のタグと GitHub Release を作成し、`develop` → `main` の PR を開きます。
+
+`package.json` の `version` は手で編集しないでください。パッケージを追加するときは、`release-please-config.json` と `.release-please-manifest.json` に登録し、パッケージに `CHANGELOG.md`(と `.meta`)を追加します。
 
 特定バージョンをインストールするには、Git URL の末尾にタグを指定します。
 

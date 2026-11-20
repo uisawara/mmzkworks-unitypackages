@@ -1,36 +1,62 @@
 name: Release
 
+# develop への push(PR のマージ)のたびに release-please が release PR を作成・更新する。
+#   - release PR には、前回リリース以降に変更のあったパッケージの CHANGELOG.md と
+#     package.json の version 更新が入る(Conventional Commits の feat/fix などから決まる)。
+#   - 設定は release-please-config.json、各パッケージの現在の version は .release-please-manifest.json。
+# release PR を develop にマージすると、
+#   - "<name>/<version>" タグと GitHub Release を作成し、リリースノートにインストール方法を追記する。
+#   - develop → main の PR を開く(main は PR 必須のため。マージはリポジトリオーナーが行う)。
+
 on:
   push:
-    branches: [main]
-    paths:
-      - "Assets/UnityPackages/*/package.json"
+    branches: [develop]
   workflow_dispatch:
 
 permissions:
   contents: write
+  pull-requests: write
 
 concurrency:
   group: release
   cancel-in-progress: false
 
 jobs:
-  release:
-    # Tags and releases are only cut from main (a manual run on another branch does nothing).
-    if: github.ref == 'refs/heads/main'
+  release-please:
+    # release PR とリリースは develop からだけ作る(別ブランチでの手動実行は何もしない)
+    if: github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - id: release
+        uses: googleapis/release-please-action@v5
         with:
-          fetch-depth: 0
-          fetch-tags: true
+          target-branch: develop
 
-      - name: Configure git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - if: steps.release.outputs.releases_created == 'true'
+        uses: actions/checkout@v7
 
-      - name: Create tags and releases
+      - name: Add install instructions to release notes
+        if: steps.release.outputs.releases_created == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: bash .github/scripts/release.sh
+          PATHS_RELEASED: ${{ steps.release.outputs.paths_released }}
+        run: |
+          repo_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
+          for dir in $(jq -r '.[]' <<<"$PATHS_RELEASED"); do
+            tag="$(jq -r '.name + "/" + .version' "$dir/package.json")"
+            gh release view "$tag" --json body --jq .body > notes.md
+            if grep -q '^## Install' notes.md; then
+              echo "skip: $tag (already has install instructions)"
+              continue
+            fi
+            printf '\n## Install\n\n```\n%s?path=%s#%s\n```\n' "$repo_url" "$dir" "$tag" >> notes.md
+            gh release edit "$tag" --notes-file notes.md
+            echo "released: $tag" | tee -a "$GITHUB_STEP_SUMMARY"
+          done
+
+      - name: Open pull request from develop to main
+        if: steps.release.outputs.releases_created == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: bash .github/scripts/promote.sh

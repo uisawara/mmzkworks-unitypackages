@@ -1,0 +1,49 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "release-type": "node",
+  "include-component-in-tag": true,
+  "include-v-in-tag": false,
+  "tag-separator": "/",
+  "bump-minor-pre-major": true,
+  "packages": {
+    "Assets/UnityPackages/works.mmzk.muasmdefgraph": {
+      "component": "works.mmzk.muasmdefgraph"
+    },
+    "Assets/UnityPackages/works.mmzk.mudashboard": {
+      "component": "works.mmzk.mudashboard"
+    },
+    "Assets/UnityPackages/works.mmzk.mudatastore": {
+      "component": "works.mmzk.mudatastore"
+    },
+    "Assets/UnityPackages/works.mmzk.muhierarchy": {
+      "component": "works.mmzk.muhierarchy"
+    },
+    "Assets/UnityPackages/works.mmzk.mulogger": {
+      "component": "works.mmzk.mulogger"
+    },
+    "Assets/UnityPackages/works.mmzk.muprimitive": {
+      "component": "works.mmzk.muprimitive"
+    },
+    "Assets/UnityPackages/works.mmzk.muproject": {
+      "component": "works.mmzk.muproject"
+    },
+    "Assets/UnityPackages/works.mmzk.murefgraph": {
+      "component": "works.mmzk.murefgraph"
+    },
+    "Assets/UnityPackages/works.mmzk.muscenemanager": {
+      "component": "works.mmzk.muscenemanager"
+    },
+    "Assets/UnityPackages/works.mmzk.mushortcut": {
+      "component": "works.mmzk.mushortcut"
+    },
+    "Assets/UnityPackages/works.mmzk.mustorage": {
+      "component": "works.mmzk.mustorage"
+    },
+    "Assets/UnityPackages/works.mmzk.muunityextensions": {
+      "component": "works.mmzk.muunityextensions"
+    },
+    "Assets/UnityPackages/works.mmzk.muvalidation": {
+      "component": "works.mmzk.muvalidation"
+    }
+  }
+}

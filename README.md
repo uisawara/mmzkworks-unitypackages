@@ -51,7 +51,12 @@ English | [日本語](README.ja.md)
 
 ## Releases
 
-When a package's `version` in `package.json` is bumped and merged into main, the [Release workflow](.github/workflows/release.yml) creates a `<package-name>/<version>` tag and a GitHub Release automatically.
+Releases are managed with [release-please](https://github.com/googleapis/release-please) based on [Conventional Commits](https://www.conventionalcommits.org/) (`feat(scope): ...`, `fix(scope): ...`).
+
+1. Each time a pull request is merged into `develop`, the [Release workflow](.github/workflows/release.yml) opens or updates a release PR. It bumps `version` in `package.json` and updates `CHANGELOG.md` for every package that changed since its last release (`feat` → minor, `fix` → patch while below 1.0.0).
+2. Merging the release PR creates a `<package-name>/<version>` tag and a GitHub Release for each bumped package, and opens a pull request from `develop` to `main`.
+
+Do not edit `version` in `package.json` by hand. When adding a package, add it to `release-please-config.json` and `.release-please-manifest.json`, and add a `CHANGELOG.md` (with its `.meta`) to the package.
 
 To install a specific version, append the tag to the Git URL:
 
