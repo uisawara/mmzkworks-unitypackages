@@ -55,7 +55,7 @@
 1. `develop` に PR をマージするたびに、[Release workflow](.github/workflows/release.yml) が release PR を作成・更新します。release PR には、前回のリリース以降にユーザー向けのコミット(`feat`、`fix`、`perf`、`revert`)があったパッケージの `package.json` の `version` の更新と `CHANGELOG.md` の追記が入ります(1.0.0 未満では `feat` でマイナー、`fix` でパッチが上がります)。対象のパッケージは、commit の scope ではなく変更したファイルのパスで決まります。`docs`、`test`、`refactor`、`ci`、`chore` などのコミットだけではリリースされません。
 2. release PR をマージすると、更新されたパッケージごとに `<パッケージ名>/<version>` のタグと GitHub Release を作成し、`develop` → `main` の PR を開きます。
 
-`CHANGELOG.md` とリリースノートはパッケージごとに分かれているので、workflow が各行の scope 表示を、そのパッケージ自身を含むときだけ消します(muDashboard の CHANGELOG なら `**mudashboard:**`)。ほかのパッケージだけを指す scope 表示は残します。内容が同じ行は 1 行にまとめ、PR と commit へのリンクを `,` 区切りで並べます。ただし、複数行にわたる項目(続きの行・入れ子のリスト・コードブロック)を含む箇条書きは、行が別の項目に付かないよう、まとめずにそのまま残します。release PR の本文は、release-please が生成したままです。
+`CHANGELOG.md` とリリースノートはパッケージごとに分かれているので、workflow が各行の scope 表示を、そのパッケージ自身を含むときだけ消します(muDashboard の CHANGELOG なら `**mudashboard:**`)。ほかのパッケージだけを指す scope 表示は残します。空行をはさまずに並んだ 1 行だけの項目の中では、内容が同じ行を 1 行にまとめ、PR と commit へのリンクを 1 つの括弧に `,` 区切りで並べます。複数行にわたる項目(続きの行・入れ子のリスト・コードブロック・HTML)を含む並びは、行が別の項目に付かないよう、生成されたまま残します。また、scope 表示を消すと本文が `#` や `>` などの Markdown の記法で始まってしまう行は、表示が変わらないよう scope 表示を残します。release PR の本文は、release-please が生成したままです。
 
 `develop` への PR は squash でしかマージできず、PR タイトルだけがそのまま commit メッセージになります。PR タイトルは Conventional Commits の形式で書いてください。`develop` → `main` の PR は merge commit でしかマージできません。
 

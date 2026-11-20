@@ -6,15 +6,18 @@
 #   - パッケージごとのファイルなので、行頭が "* " の行で、scope 表示が <scope>(例: mudashboard)を含むときだけ、
 #     そのラベルごと消す("* **mudashboard:** foo" → "* foo"、"* **mudashboard, muhierarchy:** foo" → "* foo")。
 #     ほかのパッケージだけのラベルや、本文の "**Note:**" などは消さない。-s を省略したときは scope 表示を消さない。
+#     消すと本文が Markdown の記法("# "、"> "、"2. "、"<div>" など)で始まってしまう行は、表示が変わるので消さない。
 #     消した後にも同じ形のラベルが残るなら、それは本文なので、次の実行で消さないよう ":" を同じ表示の "&#58;" にする。
-#   - 1 行だけの項目("* " で始まる行)だけでできた箇条書きの中で、末尾の参照リンク
+#   - 空行をはさまずに並んだ 1 行だけの項目("* " で始まる行)の並びの中で、末尾の参照リンク
 #     (PR の "([#12](...))" と commit の "([abc1234](...))")を除いた内容が同じ行を、最初の位置の 1 行にまとめ、
-#     参照リンクを ", " 区切りで並べる。本文の普通のリンクは外さない。
+#     参照リンクを ", " 区切りの 1 つの括弧に並べる(まとめる行がなくても、この書き方にそろえる)。
+#     本文の普通のリンクは外さない。
 #     例: "* foo ([#12](u1)) ([abc1234](u2))" と "* foo ([def5678](u3))"
 #         → "* foo ([#12](u1), [abc1234](u2), [def5678](u3))"
-#   - 続きの行・入れ子・コードブロックなど、1 行で終わらない項目を含む箇条書きは、並びも中身もそのままにする
-#     (scope 表示の削除だけ行う)。項目の続きを別の項目に付け替えてしまわないため。
-#   - コードブロック("```" / "~~~")の中は書き換えない。判定に迷う行は書き換えない側に倒す。
+#   - 続きの行・入れ子・コードブロック・HTML を含む並び、直後に字下げされたまとまりが続く並びは、
+#     並びも中身もそのままにする(scope 表示の削除だけ行う)。項目の続きを別の項目に付け替えないため。
+#   - コードブロック("```" / "~~~")と HTML ブロックの中は書き換えない。
+#     コードブロックの閉じ方が開き方と合わないなど、構造を判定しきれない入力に出会ったら、そこから後ろは書き換えない。
 # 何度実行しても結果は同じになる。CRLF のファイルでも行末の改行コードを保つ。
 set -euo pipefail
 
@@ -42,13 +45,18 @@ for file in "$@"; do
       for (k = 1; k <= n; k++) if (tolower(names[k]) == tolower(scope)) return len
       return 0
     }
-    function strip_scope(s,   len) {
+    # 項目の本文の先頭にあると、Markdown のブロックの記法として解釈される文字列か
+    function starts_block_syntax(body) {
+      return body ~ /^([-+*]([ \t]|$)|[ \t>#<=|]|~~~|```|\*\*\*|___|---|[0-9]+[.)]([ \t]|$)|\[[ xX]\])/ || body == ""
+    }
+    function strip_scope(s,   len, stripped) {
       len = scope_label_length(s)
       if (len == 0) return s
-      s = "* " substr(s, len + 1)
-      len = scope_label_length(s)
-      if (len > 0) s = "* **" substr(s, 5, len - 8) "&#58;** " substr(s, len + 1)
-      return s
+      stripped = "* " substr(s, len + 1)
+      if (starts_block_syntax(substr(stripped, 3))) return s
+      len = scope_label_length(stripped)
+      if (len > 0) stripped = "* **" substr(stripped, 5, len - 8) "&#58;** " substr(stripped, len + 1)
+      return stripped
     }
     # release-please が付ける参照リンク(PR 番号か commit の SHA)かどうか
     function is_ref(link,   label) {
@@ -67,27 +75,37 @@ for file in "$@"; do
     function is_entry(s) {
       return s ~ /^\* / && s !~ /^\*[ \t]*\*[ \t]*\*[* \t]*$/
     }
+    function indent_of(s) {
+      match(s, /^ */)
+      return RLENGTH
+    }
     # コードブロックの開始行なら、その記号("```" や "~~~~")を返す(字下げは 3 スペースまで)
-    function fence_open(s,   t, marker) {
+    function fence_open(s,   marker) {
       if (!match(s, /^(   |  | )?(```+|~~~+)/)) return ""
-      t = substr(s, 1, RLENGTH)
-      marker = t
+      marker = substr(s, 1, RLENGTH)
       sub(/^ */, "", marker)
       # "```" の後ろに "`" がある行は、インラインのコードでありコードブロックではない
       if (substr(marker, 1, 1) == "`" && index(substr(s, RLENGTH + 1), "`") > 0) return ""
       return marker
     }
-    # 開いているコードブロックを閉じる行かどうか(同じ記号で、同じ長さ以上。字下げは 3 スペースまで)
-    function fence_closes(s,   t) {
-      if (!match(s, /^(   |  | )?(`+|~+)[ \t]*$/)) return 0
+    # 開いているコードブロックの閉じる記号だけの行か(同じ記号で、同じ長さ以上)
+    function is_fence_close(s,   t) {
       t = s
-      sub(/^ */, "", t)
+      sub(/^[ \t]*/, "", t)
       sub(/[ \t]*$/, "", t)
-      return substr(t, 1, 1) == substr(fence, 1, 1) && length(t) >= length(fence)
+      return t ~ /^(`+|~+)$/ && substr(t, 1, 1) == substr(fence, 1, 1) && length(t) >= length(fence)
     }
-    # リストを終わらせるだけで、項目の続きにはならない行(見出し、<details> / <summary>)
-    function ends_list(s) {
-      return s ~ /^#(#?#?#?#?#?)([ \t]|$)/ || tolower(s) ~ /^<\/?(details|summary)([ \t>]|\/?>|$)/
+    # HTML ブロックの開始行か。2: 空行をまたいで続く種類(<pre> や <!-- など)、1: 次の空行まで続く種類、0: どちらでもない
+    function html_kind(s,   t) {
+      t = tolower(s)
+      if (t ~ /^(   |  | )?<(pre|script|style|textarea)([ \t>]|$)/) return 2
+      if (t ~ /^(   |  | )?<(!--|\?|![a-z]|!\[cdata\[)/) return 2
+      if (t ~ /^(   |  | )?<\/?[a-z]/) return 1
+      return 0
+    }
+    # 見出しはリストを終わらせるだけで、項目の続きにはならない
+    function is_heading(s) {
+      return s ~ /^(   |  | )?#(#?#?#?#?#?)([ \t]|$)/
     }
     # 溜めているまとまり(空行で区切られた行の並び)を出力する。
     # 1 行の項目だけでできていて、keep でなければ、同じ内容の項目をまとめる。
@@ -140,14 +158,36 @@ for file in "$@"; do
       printf "%s", blanks
       blanks = ""
     }
+    # 構造を判定しきれない入力に出会ったら、ここから後ろは書き換えない
+    function freeze() {
+      flush_block(1)
+      print_blanks()
+      frozen = 1
+    }
     {
       raw = $0
       eol = (sub(/\r$/, "", raw)) ? "\r" : ""
     }
+    frozen { print; next }
     # コードブロックの中は何も変えない
     fence != "" {
       print
-      if (fence_closes(raw)) fence = ""
+      if (raw ~ /^[ \t]*$/) next
+      ind = indent_of(raw)
+      if (is_fence_close(raw) && ind <= fence_indent + 3) {
+        # 開いたときと違う字下げで閉じた場合は、どこで閉じたかの解釈がずれうるので、後ろは書き換えない
+        if (ind != fence_indent) frozen = 1
+        fence = ""
+      } else if (ind < fence_indent) {
+        # 項目の中のコードブロックより浅い行が来た(項目が終わった可能性がある)
+        frozen = 1
+      }
+      next
+    }
+    # 次の HTML ブロックの区切り(空行)まで、何も変えない
+    in_html {
+      print
+      if (raw ~ /^[ \t]*$/) in_html = 0
       next
     }
     # 空行(空白だけの行も含む)は、次の行が来るまで保留する。
@@ -165,9 +205,26 @@ for file in "$@"; do
       flush_block(1)
       print
       fence = marker
+      fence_indent = indent_of(raw)
       next
     }
-    ends_list(raw) {
+    # "* ```" のように項目がコードブロックで始まる行は、閉じる位置の解釈がずれうるので、後ろは書き換えない
+    raw ~ /^\* +(```|~~~)/ {
+      freeze()
+      print
+      next
+    }
+    (kind = html_kind(raw)) > 0 {
+      if (kind == 2) {
+        freeze()
+      } else {
+        flush_block(1)
+        in_html = 1
+      }
+      print
+      next
+    }
+    is_heading(raw) {
       flush_block(0)
       print
       next
