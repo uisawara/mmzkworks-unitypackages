@@ -1,36 +1,82 @@
 name: Release
 
+# develop への push(PR のマージ)のたびに release-please が release PR を作成・更新する。
+#   - release PR には、前回リリース以降にユーザー向けの変更(feat/fix/perf/revert)があったパッケージの
+#     CHANGELOG.md と package.json の version 更新が入る。対象パッケージは変更したファイルのパスで決まる。
+#   - 設定は release-please-config.json、各パッケージの現在の version は .release-please-manifest.json。
+# release PR を develop にマージすると、
+#   - "<name>/<version>" タグと GitHub Release を作成し、リリースノートにインストール方法を追記する。
+#   - develop → main の PR を開く(main は PR 必須のため。マージはリポジトリオーナーが行う)。
+# 手動実行(workflow_dispatch)するときは、ブランチに develop を選ぶ(既定の main では何もしない)。
+
 on:
   push:
-    branches: [main]
-    paths:
-      - "Assets/UnityPackages/*/package.json"
+    branches: [develop]
   workflow_dispatch:
 
 permissions:
   contents: write
+  issues: write
+  pull-requests: write
 
 concurrency:
   group: release
   cancel-in-progress: false
 
 jobs:
-  release:
-    # Tags and releases are only cut from main (a manual run on another branch does nothing).
-    if: github.ref == 'refs/heads/main'
+  release-please:
+    # release PR とリリースは develop からだけ作る(別ブランチでの手動実行は何もしない)
+    if: github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - id: release
+        uses: googleapis/release-please-action@v5
         with:
+          target-branch: develop
+
+      # 以降のステップは release-please の結果ではなく、Release と main の状態から毎回判定する。
+      # release-please のステップが失敗しても(job は失敗のまま)実行し、
+      # Re-run や次の push で、インストール方法の追記と develop → main の PR 作成をやり直せるようにする。
+
+      # 起動したコミットではなく最新の develop を見る。
+      # main に取り込み済みかを判定するため、全ブランチとタグを取得する。
+      - if: ${{ !cancelled() }}
+        uses: actions/checkout@v7
+        with:
+          ref: develop
           fetch-depth: 0
-          fetch-tags: true
 
-      - name: Configure git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-      - name: Create tags and releases
+      - id: notes
+        name: Add install instructions to release notes
+        if: ${{ !cancelled() }}
         env:
           GH_TOKEN: ${{ github.token }}
-        run: bash .github/scripts/release.sh
+        run: |
+          repo_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
+          promote=false
+          # 最新の package.json の version だけでなく、最近の Release をすべて確認する
+          # (前のリリースで追記に失敗したまま、次のリリースが出た場合も回収する)
+          tags="$(gh release list --limit 100 --exclude-drafts --json tagName --jq '.[].tagName')"
+          for tag in $tags; do
+            name="${tag%%/*}"
+            dir="Assets/UnityPackages/$name"
+            [ -f "$dir/package.json" ] || continue
+            gh release view "$tag" --json body --jq .body > notes.md
+            if ! grep -q '^## Install' notes.md; then
+              printf '\n## Install\n\n```\n%s?path=%s#%s\n```\n' "$repo_url" "$dir" "$tag" >> notes.md
+              gh release edit "$tag" --notes-file notes.md
+              echo "released: $tag" | tee -a "$GITHUB_STEP_SUMMARY"
+            fi
+            # リリース済みの version がまだ main に入っていなければ、develop → main の PR が必要
+            if ! git merge-base --is-ancestor "refs/tags/$tag" origin/main; then
+              promote=true
+            fi
+          done
+          echo "promote=$promote" >> "$GITHUB_OUTPUT"
+
+      - name: Open pull request from develop to main
+        if: ${{ !cancelled() && steps.notes.outputs.promote == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: bash .github/scripts/promote.sh
