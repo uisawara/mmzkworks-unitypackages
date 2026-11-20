@@ -1,0 +1,77 @@
+name: PR title
+
+# develop への PR は squash でマージし、PR タイトルがそのまま commit メッセージになる。
+# release-please はその commit メッセージ(Conventional Commits)から CHANGELOG とバージョンを決めるので、
+# PR タイトルの形を検査する。
+# type は「UPM パッケージを取り込むユーザーに影響するか」で選ぶ。
+#   - CHANGELOG に載り、バージョンが上がる: feat / fix / perf / revert
+#     パッケージとして配布されるコードやアセットの変更で、ユーザーの手元に影響するもの
+#     (機能追加、不具合修正、コンパイル警告の解消など)
+#   - CHANGELOG に載らない: docs / style / refactor / test / build / ci / chore
+#     CI・リポジトリの道具・開発用の Unity プロジェクト・テストなど、ユーザーが取り込むパッケージと関係ないもの
+# なお release-please は変更したファイルのパスで CHANGELOG を振り分けるので、パッケージの外だけを変えた PR は
+# type に関係なくどの CHANGELOG にも載らない。
+# 影響するかどうかの判断は PR の作成者が行う。ここでは形と scope の名前だけを確かめる。
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+    branches: [develop]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: Assets/UnityPackages
+
+      - name: Check PR title
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          fail() {
+            echo "::error title=PR title::$1"
+            {
+              echo "### PR タイトルを直してください"
+              echo
+              echo "$1"
+              echo
+              echo '- 形: `<type>(<scope>): <説明>` または `<type>: <説明>`(破壊的変更は `<type>!:`)'
+              echo '- CHANGELOG に載る(パッケージを取り込むユーザーに影響する。コンパイル警告の解消も含む): `feat` / `fix` / `perf` / `revert`'
+              echo '- CHANGELOG に載らない(CI・リポジトリの道具・テストなど、取り込むパッケージと関係ない): `docs` / `style` / `refactor` / `test` / `build` / `ci` / `chore`'
+              echo '- scope にはパッケージ名から `works.mmzk.` を除いたもの(例: `mudashboard`)を書く'
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          }
+
+          # GitHub が squash の commit に付ける " (#123)" は、マージ後に付くので PR タイトルには含まれない
+          re='^([a-z]+)(\(([^()]+)\))?(!)?: (.+)$'
+          [[ "$TITLE" =~ $re ]] || fail "Conventional Commits の形になっていません: $TITLE"
+          type="${BASH_REMATCH[1]}"
+          scopes="${BASH_REMATCH[3]}"
+
+          case "$type" in
+            feat|fix|perf|revert) user_facing=1 ;;
+            docs|style|refactor|test|build|ci|chore) user_facing=0 ;;
+            *) fail "type \`$type\` は使えません" ;;
+          esac
+
+          # CHANGELOG に載る変更の scope は、パッケージ名と一致している必要がある
+          # (一致しないと、そのパッケージの CHANGELOG に scope 表示が残る)
+          if [ "$user_facing" = 1 ] && [ -n "$scopes" ]; then
+            IFS=',' read -ra names <<<"$scopes"
+            for name in "${names[@]}"; do
+              name="$(echo "$name" | xargs)"
+              [ -d "Assets/UnityPackages/works.mmzk.$name" ] || fail "scope \`$name\` に当たるパッケージ Assets/UnityPackages/works.mmzk.$name がありません"
+            done
+          fi
+
+          if [ "$user_facing" = 1 ]; then
+            echo "OK: CHANGELOG に載る変更です($type)" | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo "OK: CHANGELOG に載らない変更です($type)" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
