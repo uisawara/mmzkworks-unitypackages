@@ -56,6 +56,8 @@ Releases are managed with [release-please](https://github.com/googleapis/release
 1. Each time a pull request is merged into `develop`, the [Release workflow](.github/workflows/release.yml) opens or updates a release PR. It bumps `version` in `package.json` and updates `CHANGELOG.md` for every package with user-facing commits (`feat`, `fix`, `perf`, `revert`) since its last release (`feat` → minor, `fix` → patch while below 1.0.0). Packages are matched by the paths of the changed files, not by the commit scope. Commits such as `docs`, `test`, `refactor`, `ci` and `chore` alone do not trigger a release.
 2. Merging the release PR creates a `<package-name>/<version>` tag and a GitHub Release for each bumped package, and opens a pull request from `develop` to `main`.
 
+The workflow removes the scope (such as `**mudashboard:**`) and duplicate entries from each package's `CHANGELOG.md` and release notes, since each file covers a single package. The release PR description still shows them.
+
 Pull requests into `develop` can only be squash-merged, and the PR title alone becomes the commit message, so write the title as a Conventional Commit. The pull request from `develop` to `main` can only be merged with a merge commit.
 
 The PR title is applied to every package the PR touches, so keep each PR to one package; split changes to several packages into separate PRs. Changes only under a package's `Tests` folder are ignored (the `Tests.meta` file next to it is not, so start the title with `test:` when adding or removing a `Tests` folder). To record more than one entry for the package (for example a feature and a fix), list them in the PR description, separated by blank lines; they replace the PR title for release-please:

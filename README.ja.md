@@ -55,6 +55,8 @@
 1. `develop` に PR をマージするたびに、[Release workflow](.github/workflows/release.yml) が release PR を作成・更新します。release PR には、前回のリリース以降にユーザー向けのコミット(`feat`、`fix`、`perf`、`revert`)があったパッケージの `package.json` の `version` の更新と `CHANGELOG.md` の追記が入ります(1.0.0 未満では `feat` でマイナー、`fix` でパッチが上がります)。対象のパッケージは、commit の scope ではなく変更したファイルのパスで決まります。`docs`、`test`、`refactor`、`ci`、`chore` などのコミットだけではリリースされません。
 2. release PR をマージすると、更新されたパッケージごとに `<パッケージ名>/<version>` のタグと GitHub Release を作成し、`develop` → `main` の PR を開きます。
 
+`CHANGELOG.md` とリリースノートはパッケージごとに分かれているので、workflow が各行の scope 表示(`**mudashboard:**` など)と重複した行を消します。release PR の本文には残ります。
+
 `develop` への PR は squash でしかマージできず、PR タイトルだけがそのまま commit メッセージになります。PR タイトルは Conventional Commits の形式で書いてください。`develop` → `main` の PR は merge commit でしかマージできません。
 
 PR タイトルは、その PR で変更したすべてのパッケージに適用されます。そのため、1 つの PR では 1 つのパッケージだけを変更し、複数のパッケージにまたがる変更は PR を分けてください。パッケージの `Tests` フォルダだけの変更は無視されます(隣にある `Tests.meta` は対象になるので、`Tests` フォルダを追加・削除する PR のタイトルは `test:` で始めてください)。そのパッケージに複数の項目(たとえば機能追加と修正)を記録したいときは、PR 本文に空行で区切って書くと、release-please は PR タイトルの代わりにこの内容を使います。

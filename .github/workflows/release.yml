@@ -63,6 +63,8 @@ jobs:
             [ -f "$dir/package.json" ] || continue
             gh release view "$tag" --json body --jq .body > notes.md
             if ! grep -q '^## Install' notes.md; then
+              # リリースノートは release PR の本文から作られるため、CHANGELOG と同じように整える
+              bash .github/scripts/tidy-changelog.sh notes.md
               printf '\n## Install\n\n```\n%s?path=%s#%s\n```\n' "$repo_url" "$dir" "$tag" >> notes.md
               gh release edit "$tag" --notes-file notes.md
               echo "released: $tag" | tee -a "$GITHUB_STEP_SUMMARY"
@@ -80,3 +82,32 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: bash .github/scripts/promote.sh
+
+      # release PR の CHANGELOG.md から scope 表示と重複行を消す commit を release ブランチに積む。
+      # release-please は PR 本文が変わらない限り release ブランチを書き換えないので、この commit は残る。
+      # 新しい変更で release-please がブランチを作り直したときは、同じ run のこのステップで整え直す。
+      - name: Tidy changelogs in release pull request
+        if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          branch=release-please--branches--develop
+          open="$(gh pr list --base develop --head "$branch" --state open --json number --jq 'length')"
+          if [ "$open" = "0" ]; then
+            echo "No open release pull request."
+            exit 0
+          fi
+          tidy="$RUNNER_TEMP/tidy-changelog.sh"
+          cp .github/scripts/tidy-changelog.sh "$tidy"
+          git fetch origin "$branch"
+          git switch -C "$branch" "origin/$branch"
+          bash "$tidy" Assets/UnityPackages/*/CHANGELOG.md
+          if git diff --quiet; then
+            echo "Changelogs are already tidy."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -qam "chore: tidy changelogs"
+          git push origin "HEAD:$branch"
+          echo "Tidied changelogs in the release pull request." | tee -a "$GITHUB_STEP_SUMMARY"
