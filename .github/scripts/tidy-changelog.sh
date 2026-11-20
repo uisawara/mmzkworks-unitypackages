@@ -5,7 +5,8 @@
 #
 #   - パッケージごとのファイルなので、行頭の scope 表示が <scope>(例: mudashboard)を含むときだけ、
 #     そのラベルごと消す("* **mudashboard:** foo" → "* foo"、"* **mudashboard, muhierarchy:** foo" → "* foo")。
-#     ほかのパッケージだけのラベルや、本文の "**Note:**" などは消さない。-s を省略したときは何も消さない。
+#     ほかのパッケージだけのラベルや、本文の "**Note:**" などは消さない。-s を省略したときは scope 表示を消さない
+#     (同じ内容の行のまとめは行う)。
 #   - 箇条書きのまとまりごとに、末尾の参照リンク(PR の "([#12](...))" と commit の "([abc1234](...))")を
 #     除いた内容が同じ行を 1 行にまとめ、参照リンクを ", " 区切りで並べる。本文の普通のリンクは外さない。
 #     例: "* foo ([#12](u1)) ([abc1234](u2))" と "* foo ([def5678](u3))"
@@ -13,6 +14,7 @@
 #   - 項目の下の続きの行(字下げ行と、空行なしで続く字下げなしの行。BREAKING CHANGES の説明など)は、
 #     その項目に付けたまま移動する。字下げなしの行には、表示が変わらない 2 スペースの字下げを付ける。
 #     まとめた項目どうしで完全に同じまとまりは 1 回だけ残し、違うまとまりは空行をはさんで並べる。
+#   - コードブロック("```" / "~~~")の中は書き換えない。
 # 何度実行しても結果は同じになる。CRLF のファイルでも行末の改行コードを保つ。
 set -euo pipefail
 
@@ -46,9 +48,9 @@ for file in "$@"; do
       if (len == 0) return s
       s = "* " substr(s, len + 1)
       # 取り除いた後も同じ形のラベルが残るなら、それは本文なので、次の実行で消さないよう
-      # 見た目が同じ "__a:__ " に書き換える
+      # ":" を見た目が同じ文字参照 "&#58;" に書き換える("**a&#58;** " は "**a:** " と同じ表示)
       len = scope_label_length(s)
-      if (len > 0) s = "* __" substr(s, 5, len - 8) ":__ " substr(s, len + 1)
+      if (len > 0) s = "* **" substr(s, 5, len - 8) "&#58;** " substr(s, len + 1)
       return s
     }
     # release-please が付ける参照リンク(PR 番号か commit の SHA)かどうか
@@ -103,9 +105,60 @@ for file in "$@"; do
       printf "%s", blanks
       blanks = ""
     }
+    # CommonMark で、空行なしでも段落を中断して新しいブロックを始める行かどうか
+    # (字下げすると表示が変わる "===" の行と表の行も含める)
+    function interrupts_paragraph(s) {
+      if (s ~ /^#(#?#?#?#?#?)([ \t]|$)/) return 1                    # 見出し
+      if (s ~ /^>/) return 1                                         # 引用
+      if (s ~ /^[-+*][ \t]/) return 1                                # 箇条書き
+      if (s ~ /^1[.)]([ \t]|$)/) return 1                            # 1 から始まる番号付きリスト
+      if (s ~ /^(-[ \t]*-[ \t]*-[- \t]*|_[ \t]*_[ \t]*_[_ \t]*|\*[ \t]*\*[ \t]*\*[* \t]*)$/) return 1  # 区切り線
+      if (s ~ /^=+[ \t]*$/) return 1                                 # 見出しの下線
+      if (s ~ /^\|/) return 1                                        # 表
+      if (s ~ /^<!--/ || s ~ /^<[?!]/) return 1                      # HTML のコメントなど
+      if (tolower(s) ~ /^<\/?(address|article|aside|blockquote|body|details|dialog|dd|div|dl|dt|fieldset|figcaption|figure|footer|form|h[1-6]|header|hr|li|main|nav|ol|p|pre|script|section|style|summary|table|tbody|td|textarea|tfoot|th|thead|tr|ul)([ \t>]|\/?>|$)/) return 1  # HTML のブロック
+      return 0
+    }
+    # コードブロックの開始行なら、その記号("```" や "~~~~")を返す
+    function fence_open(s,   t) {
+      t = s
+      sub(/^[ \t]*/, "", t)
+      if (match(t, /^(```+|~~~+)/)) return substr(t, 1, RLENGTH)
+      return ""
+    }
+    # 開いているコードブロックを閉じる行かどうか(同じ記号で、同じ長さ以上)
+    function fence_closes(s,   t) {
+      t = s
+      sub(/^[ \t]*/, "", t)
+      sub(/[ \t]*$/, "", t)
+      return t ~ /^(`+|~+)$/ && substr(t, 1, 1) == substr(fence, 1, 1) && length(t) >= length(fence)
+    }
     {
       raw = $0
       eol = (sub(/\r$/, "", raw)) ? "\r" : ""
+    }
+    # コードブロックの中は何も変えない(項目の続きの中にあれば、その項目と一緒に動かす)
+    fence != "" {
+      if (fence_in_tail) cur_tail = cur_tail $0 "\n"
+      else print
+      if (fence_closes(raw)) { fence = ""; fence_in_tail = 0 }
+      next
+    }
+    (marker = fence_open(raw)) != "" {
+      fence = marker
+      if (cur > 0 && raw ~ /^[ \t]/) {
+        # 字下げされたコードブロックは、項目の続き
+        cur_tail = cur_tail blanks $0 "\n"
+        blanks = ""
+        fence_in_tail = 1
+      } else {
+        # 字下げのないコードブロックは、箇条書きのまとまりを終わらせる
+        flush()
+        print_blanks()
+        print
+        fence_in_tail = 0
+      }
+      next
     }
     # 空行(空白だけの行も含む)は、次に来る行が字下げ行(項目の続き)かどうかが分かるまで保留する
     raw ~ /^[ \t]*$/ {
@@ -149,8 +202,9 @@ for file in "$@"; do
     }
     # 項目のすぐ下(空行なし)の字下げなしの行は、Markdown では前の項目の続きになる
     # (BREAKING CHANGES の説明の 2 行目以降など)。移動しても項目の続きのままになるよう、
-    # 表示が変わらない 2 スペースの字下げを付けて項目に付ける。見出し・HTML・区切り線は除く。
-    cur > 0 && blanks == "" && raw !~ /^(#|<|---)/ {
+    # 表示が変わらない 2 スペースの字下げを付けて項目に付ける。
+    # CommonMark で空行なしでも段落を中断して新しいブロックを始める行は、続きにしない(その場で出力する)。
+    cur > 0 && blanks == "" && !interrupts_paragraph(raw) {
       cur_tail = cur_tail "  " $0 "\n"
       next
     }
