@@ -46,6 +46,46 @@ jobs:
           ref: develop
           fetch-depth: 0
 
+      # release PR の CHANGELOG.md から scope 表示と重複行を消す commit を release ブランチに積む。
+      # release-please は PR 本文が変わらない限り release ブランチを書き換えないので、この commit は残る。
+      # 新しい変更で release-please がブランチを作り直したときは、同じ run のこのステップで整え直す。
+      # 整う前の release PR がマージされる隙間を短くするため、checkout の直後に実行する。
+      # 後続のステップが develop のファイルを使えるよう、release ブランチは別の worktree で扱う。
+      - name: Tidy changelogs in release pull request
+        if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          branch=release-please--branches--develop
+          open="$(gh pr list --base develop --head "$branch" --state open --json number --jq 'length')"
+          if [ "$open" = "0" ]; then
+            echo "No open release pull request."
+            exit 0
+          fi
+          git fetch origin "$branch"
+          base="$(git rev-parse "origin/$branch")"
+          work="$RUNNER_TEMP/release-branch"
+          git worktree add --detach "$work" "$base"
+          bash .github/scripts/tidy-changelog.sh "$work"/Assets/UnityPackages/*/CHANGELOG.md
+          if git -C "$work" diff --quiet; then
+            echo "Changelogs are already tidy."
+            exit 0
+          fi
+          git -C "$work" -c user.name="github-actions[bot]" \
+            -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -qam "chore: tidy changelogs"
+          # 取得したときから release ブランチが動いた・消えた(PR がマージされた)場合は push しない。
+          # 消えたブランチを作り直したり、新しい内容を上書きしたりしないようにする。
+          if ! git -C "$work" push --force-with-lease="refs/heads/$branch:$base" origin "HEAD:refs/heads/$branch"; then
+            open="$(gh pr list --base develop --head "$branch" --state open --json number --jq 'length')"
+            if [ "$open" = "0" ]; then
+              echo "::warning::The release pull request was merged before its changelogs were tidied. Fix the released CHANGELOG.md by hand if needed."
+              exit 0
+            fi
+            exit 1
+          fi
+          echo "Tidied changelogs in the release pull request." | tee -a "$GITHUB_STEP_SUMMARY"
+
       - id: notes
         name: Add install instructions to release notes
         if: ${{ !cancelled() }}
@@ -82,32 +122,3 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: bash .github/scripts/promote.sh
-
-      # release PR の CHANGELOG.md から scope 表示と重複行を消す commit を release ブランチに積む。
-      # release-please は PR 本文が変わらない限り release ブランチを書き換えないので、この commit は残る。
-      # 新しい変更で release-please がブランチを作り直したときは、同じ run のこのステップで整え直す。
-      - name: Tidy changelogs in release pull request
-        if: ${{ !cancelled() }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          branch=release-please--branches--develop
-          open="$(gh pr list --base develop --head "$branch" --state open --json number --jq 'length')"
-          if [ "$open" = "0" ]; then
-            echo "No open release pull request."
-            exit 0
-          fi
-          tidy="$RUNNER_TEMP/tidy-changelog.sh"
-          cp .github/scripts/tidy-changelog.sh "$tidy"
-          git fetch origin "$branch"
-          git switch -C "$branch" "origin/$branch"
-          bash "$tidy" Assets/UnityPackages/*/CHANGELOG.md
-          if git diff --quiet; then
-            echo "Changelogs are already tidy."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -qam "chore: tidy changelogs"
-          git push origin "HEAD:$branch"
-          echo "Tidied changelogs in the release pull request." | tee -a "$GITHUB_STEP_SUMMARY"
