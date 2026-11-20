@@ -34,35 +34,34 @@ jobs:
         with:
           target-branch: develop
 
+      # 以降のステップは release-please の結果ではなく、Release と main の状態から毎回判定する。
+      # release-please のステップが失敗しても(job は失敗のまま)実行し、
+      # Re-run や次の push で、インストール方法の追記と develop → main の PR 作成をやり直せるようにする。
+
       # 起動したコミットではなく最新の develop を見る。
-      # 待機中に release PR がマージされ、この run でリリースされた場合も version を正しく読めるようにする。
       # main に取り込み済みかを判定するため、全ブランチとタグを取得する。
-      - uses: actions/checkout@v7
+      - if: ${{ !cancelled() }}
+        uses: actions/checkout@v7
         with:
           ref: develop
           fetch-depth: 0
 
-      # releases_created は release を作った run でしか true にならないため、
-      # 「その run で何をしたか」ではなく、Release と main の状態から毎回判定する。
-      # 途中で失敗して Re-run した場合も、追記と develop → main の PR 作成をやり直せる。
       - id: notes
         name: Add install instructions to release notes
+        if: ${{ !cancelled() }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           repo_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
           promote=false
-          for manifest in Assets/UnityPackages/*/package.json; do
-            dir="$(dirname "$manifest")"
-            tag="$(jq -r '.name + "/" + .version' "$manifest")"
-            if ! gh release view "$tag" --json body --jq .body > notes.md 2> err.txt; then
-              # 未リリースの version は飛ばし、それ以外のエラー(認証・レート制限など)は失敗させる
-              if grep -q 'release not found' err.txt; then
-                continue
-              fi
-              cat err.txt >&2
-              exit 1
-            fi
+          # 最新の package.json の version だけでなく、最近の Release をすべて確認する
+          # (前のリリースで追記に失敗したまま、次のリリースが出た場合も回収する)
+          tags="$(gh release list --limit 100 --exclude-drafts --json tagName --jq '.[].tagName')"
+          for tag in $tags; do
+            name="${tag%%/*}"
+            dir="Assets/UnityPackages/$name"
+            [ -f "$dir/package.json" ] || continue
+            gh release view "$tag" --json body --jq .body > notes.md
             if ! grep -q '^## Install' notes.md; then
               printf '\n## Install\n\n```\n%s?path=%s#%s\n```\n' "$repo_url" "$dir" "$tag" >> notes.md
               gh release edit "$tag" --notes-file notes.md
@@ -76,7 +75,7 @@ jobs:
           echo "promote=$promote" >> "$GITHUB_OUTPUT"
 
       - name: Open pull request from develop to main
-        if: steps.notes.outputs.promote == 'true'
+        if: ${{ !cancelled() && steps.notes.outputs.promote == 'true' }}
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}

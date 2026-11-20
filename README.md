@@ -58,7 +58,7 @@ Releases are managed with [release-please](https://github.com/googleapis/release
 
 Pull requests into `develop` can only be squash-merged, and the PR title alone becomes the commit message, so write the title as a Conventional Commit. The pull request from `develop` to `main` can only be merged with a merge commit.
 
-The PR title is applied to every package the PR touches, so keep each PR to one package; split changes to several packages into separate PRs. Changes only under a package's `Tests` folder are ignored. To record more than one entry for the package (for example a feature and a fix), list them in the PR description, separated by blank lines; they replace the PR title for release-please:
+The PR title is applied to every package the PR touches, so keep each PR to one package; split changes to several packages into separate PRs. Changes only under a package's `Tests` folder are ignored (the `Tests.meta` file next to it is not, so start the title with `test:` when adding or removing a `Tests` folder). To record more than one entry for the package (for example a feature and a fix), list them in the PR description, separated by blank lines; they replace the PR title for release-please:
 
 ```
 BEGIN_COMMIT_OVERRIDE
@@ -67,6 +67,10 @@ feat(mudashboard): ...
 fix(mudashboard): ...
 END_COMMIT_OVERRIDE
 ```
+
+Write these markers in a PR description only when you mean to use them; even a mention in passing makes release-please replace the PR title with the rest of the description.
+
+If the pull request from `develop` to `main` is closed without merging, it is opened again on the next push to `develop` while released versions are not yet on `main`.
 
 Do not edit `version` in `package.json` by hand. When adding a package:
 

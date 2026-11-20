@@ -25,6 +25,13 @@ body="$(mktemp)"
     --jq '.commits[] | select(.parents | length == 1) | "- \(.commit.message | split("\n")[0]) (\(.sha[0:7]))"'
 } >"$body"
 
-url=$(gh pr create --base main --head develop --title "Promote develop to main" --body-file "$body")
+if ! url=$(gh pr create --base main --head develop --title "Promote develop to main" --body-file "$body"); then
+  # release workflow と promote workflow が同時に作ろうとした場合は、先に作られた PR を使う
+  url=$(gh pr list --base main --head develop --state open --json url --jq '.[0].url // empty')
+  if [ -z "$url" ]; then
+    echo "Failed to open a pull request from develop to main." >&2
+    exit 1
+  fi
+fi
 rm -f "$body"
 echo "Opened: $url" | tee -a "${GITHUB_STEP_SUMMARY:-/dev/null}"
