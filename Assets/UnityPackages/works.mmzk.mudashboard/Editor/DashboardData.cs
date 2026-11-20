@@ -21,12 +21,19 @@ namespace Mmzkworks.muDashboard.Editor
         /// <summary>A picture (a texture asset referenced by <see cref="DashboardItem.guid"/> / path). Not clickable.</summary>
         public const string Image = "image";
 
+        /// <summary>
+        /// A GameObject in a scene (<see cref="DashboardItem.globalId"/>; the scene asset in guid / path,
+        /// the hierarchy path in <see cref="DashboardItem.hierarchy"/>).
+        /// </summary>
+        public const string SceneObject = "scene-object";
+
         public static bool IsValid(string kind) =>
-            kind == Asset || kind == Url || kind == Label || kind == Menu || kind == Action || kind == Command || kind == Image;
+            kind == Asset || kind == Url || kind == Label || kind == Menu || kind == Action || kind == Command || kind == Image
+            || kind == SceneObject;
 
         /// <summary>Kinds that do something when clicked / run as an action step (labels and images are decoration).</summary>
         public static bool IsRunnable(string kind) =>
-            kind == Asset || kind == Url || kind == Menu || kind == Action || kind == Command;
+            kind == Asset || kind == Url || kind == Menu || kind == Action || kind == Command || kind == SceneObject;
     }
 
     /// <summary>One argument of a command item. A list of these stands in for a dictionary (JsonUtility cannot store one).</summary>
@@ -57,11 +64,17 @@ namespace Mmzkworks.muDashboard.Editor
         /// <summary>Label text, or the display name override for asset / URL items (empty = automatic).</summary>
         public string title = "";
 
-        /// <summary>Asset GUID (asset items). Used first when resolving, so moves/renames are followed.</summary>
+        /// <summary>Asset GUID (asset / image items; the scene's GUID for scene objects). Used first when resolving, so moves/renames are followed.</summary>
         public string guid = "";
 
-        /// <summary>Asset path at the time it was registered (asset items). Fallback when the GUID cannot be resolved.</summary>
+        /// <summary>Asset path at the time it was registered (the scene's path for scene objects). Fallback when the GUID cannot be resolved.</summary>
         public string path = "";
+
+        /// <summary>GlobalObjectId of a scene object (scene object items).</summary>
+        public string globalId = "";
+
+        /// <summary>Hierarchy path of a scene object when it was registered, e.g. "Env/Trees/Oak" (scene object items).</summary>
+        public string hierarchy = "";
 
         public string url = "";
 
@@ -300,6 +313,8 @@ namespace Mmzkworks.muDashboard.Editor
                 item.title ??= "";
                 item.guid ??= "";
                 item.path ??= "";
+                item.globalId ??= "";
+                item.hierarchy ??= "";
                 item.url ??= "";
                 item.menu ??= "";
                 item.steps ??= new List<string>();
