@@ -66,7 +66,11 @@ jobs:
           base="$(git rev-parse "origin/$branch")"
           work="$RUNNER_TEMP/release-branch"
           git worktree add --detach "$work" "$base"
-          bash .github/scripts/tidy-changelog.sh "$work"/Assets/UnityPackages/*/CHANGELOG.md
+          # scope は commit の書き方に合わせ、パッケージ名から "works.mmzk." を除いたもの(例: mudashboard)
+          for changelog in "$work"/Assets/UnityPackages/*/CHANGELOG.md; do
+            pkg="$(basename "$(dirname "$changelog")")"
+            bash .github/scripts/tidy-changelog.sh -s "${pkg#works.mmzk.}" "$changelog"
+          done
           if git -C "$work" diff --quiet; then
             echo "Changelogs are already tidy."
             exit 0
@@ -79,7 +83,7 @@ jobs:
           if ! git -C "$work" push --force-with-lease="refs/heads/$branch:$base" origin "HEAD:refs/heads/$branch"; then
             open="$(gh pr list --base develop --head "$branch" --state open --json number --jq 'length')"
             if [ "$open" = "0" ]; then
-              echo "::warning::The release pull request was merged before its changelogs were tidied. Fix the released CHANGELOG.md by hand if needed."
+              echo "::warning::The release pull request was closed before its changelogs were tidied. The released CHANGELOG.md keeps the generated entries; develop is tidied again by the next release pull request."
               exit 0
             fi
             exit 1
@@ -104,7 +108,7 @@ jobs:
             gh release view "$tag" --json body --jq .body > notes.md
             if ! grep -q '^## Install' notes.md; then
               # リリースノートは release PR の本文から作られるため、CHANGELOG と同じように整える
-              bash .github/scripts/tidy-changelog.sh notes.md
+              bash .github/scripts/tidy-changelog.sh -s "${name#works.mmzk.}" notes.md
               printf '\n## Install\n\n```\n%s?path=%s#%s\n```\n' "$repo_url" "$dir" "$tag" >> notes.md
               gh release edit "$tag" --notes-file notes.md
               echo "released: $tag" | tee -a "$GITHUB_STEP_SUMMARY"
