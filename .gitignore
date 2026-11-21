@@ -125,3 +125,5 @@ Desktop.ini
 /ProjectSettings/muAsmdefgraph.json
 /ProjectSettings/AsmdefGraphNodeOffsets.json
 
+# Promo image/video sources (local only)
+/docs/promo/
