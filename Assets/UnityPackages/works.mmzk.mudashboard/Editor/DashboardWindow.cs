@@ -2559,14 +2559,6 @@ namespace Mmzkworks.muDashboard.Editor
 
                 item.fontSize = Mathf.Clamp(EditorGUILayout.IntField(new GUIContent("Font", "0 = default"), item.fontSize, GUILayout.Width(108f)), 0, 64);
 
-                using (new EditorGUILayout.HorizontalScope())
-                {
-                    var r = EditorGUILayout.RectField("Rect", item.Rect);
-                    r.width = Mathf.Max(DashboardLayout.MinWidth, r.width);
-                    r.height = Mathf.Max(DashboardLayout.MinHeight, r.height);
-                    item.Rect = r;
-                }
-
                 if (EditorGUI.EndChangeCheck())
                 {
                     // Keep the in-memory model consistent with what was saved before (null-safe strings).
