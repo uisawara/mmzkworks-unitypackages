@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/uisawara/mmzkworks-unitypackages/compare/works.mmzk.mudashboard/0.2.0...works.mmzk.mudashboard/0.3.0) (2026-11-21)
+
+
+### Features
+
+* **mudashboard:** プロパティパネルから Rect 欄をなくす ([21280aa](https://github.com/uisawara/mmzkworks-unitypackages/commit/21280aa903301c30502015294c6f16ca699df05d))
+
 ## [0.2.0](https://github.com/uisawara/mmzkworks-unitypackages/compare/works.mmzk.mudashboard/0.1.0...works.mmzk.mudashboard/0.2.0) (2026-11-20)
 
 
