@@ -58,7 +58,7 @@ The panel is an unbounded canvas with no scroll bars. In both modes, drag with t
 
 - Drag shortcuts and labels to move them, drag the bottom-right corner to resize (snaps to an 8px grid).
 - Drag on empty space to box select several elements (`Shift` / `Ctrl` (`Cmd`) adds to the selection, `Shift` / `Ctrl`-click toggles one, `Ctrl+A` selects all). Drag any selected element to move them together; `Delete`, `Duplicate` and the right-click menu apply to the whole selection.
-- Edit the selected element's text, URL, title, font size and rect in the property panel on the right. Drag the panel's left edge to resize it.
+- Edit the selected element's text, URL, title and font size in the property panel on the right. Drag the panel's left edge to resize it.
 - `+ Label` adds a label and `+ URL` adds a URL shortcut (uses the clipboard if it contains a URL).
 - `+ Menu` (or `Add Menu Command Here...` in the right-click menu) opens a searchable picker of menu commands, grouped into `Editor Menu`, `Project Window (Assets)` and `Hierarchy Window (GameObject)`.
 - `+ Command` (or `Add Command Here...` in the right-click menu) adds an automation command (see [Commands](#commands)).
