@@ -17,6 +17,7 @@ namespace Mmzkworks.muDashboard.Editor
             { ShortcutCommandCategory.GameObject, new[] { "GameObject Icon", "GameObject On Icon" } },
             { ShortcutCommandCategory.Scene, new[] { "SceneAsset Icon" } },
             { ShortcutCommandCategory.Asset, new[] { "Folder Icon", "FolderEmpty Icon" } },
+            { ShortcutCommandCategory.Dashboard, new[] { "TextAsset Icon" } },
         };
 
         private static readonly Dictionary<string, Texture> Cache = new Dictionary<string, Texture>();
@@ -64,6 +65,8 @@ namespace Mmzkworks.muDashboard.Editor
                     return AssetDatabase.GetCachedIcon("Assets");
                 case ShortcutCommandCategory.Scene:
                     return TypeIcon(typeof(SceneAsset));
+                case ShortcutCommandCategory.Dashboard:
+                    return TypeIcon(typeof(TextAsset));
                 default:
                     return TypeIcon(typeof(GameObject));
             }

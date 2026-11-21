@@ -1,0 +1,90 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "release-type": "node",
+  "include-component-in-tag": true,
+  "include-v-in-tag": false,
+  "tag-separator": "/",
+  "bump-minor-pre-major": true,
+  "last-release-sha": "0554c8eea40efe6c529b52224a610b87242724d2",
+  "include-v-in-release-name": false,
+  "packages": {
+    "Assets/UnityPackages/works.mmzk.muasmdefgraph": {
+      "component": "works.mmzk.muasmdefgraph",
+      "exclude-paths": [
+        "Assets/UnityPackages/works.mmzk.muasmdefgraph/Tests"
+      ]
+    },
+    "Assets/UnityPackages/works.mmzk.mudashboard": {
+      "component": "works.mmzk.mudashboard",
+      "exclude-paths": [
+        "Assets/UnityPackages/works.mmzk.mudashboard/Tests"
+      ]
+    },
+    "Assets/UnityPackages/works.mmzk.mudatastore": {
+      "component": "works.mmzk.mudatastore",
+      "exclude-paths": [
+        "Assets/UnityPackages/works.mmzk.mudatastore/Tests"
+      ]
+    },
+    "Assets/UnityPackages/works.mmzk.muhierarchy": {
+      "component": "works.mmzk.muhierarchy",
+      "exclude-paths": [
+        "Assets/UnityPackages/works.mmzk.muhierarchy/Tests"
+      ]
+    },
+    "Assets/UnityPackages/works.mmzk.mulogger": {
+      "component": "works.mmzk.mulogger",
+      "exclude-paths": [
+        "Assets/UnityPackages/works.mmzk.mulogger/Tests"
+      ]
+    },
+    "Assets/UnityPackages/works.mmzk.muprimitive": {
+      "component": "works.mmzk.muprimitive",
+      "exclude-paths": [
+        "Assets/UnityPackages/works.mmzk.muprimitive/Tests"
+      ]
+    },
+    "Assets/UnityPackages/works.mmzk.muproject": {
+      "component": "works.mmzk.muproject",
+      "exclude-paths": [
+        "Assets/UnityPackages/works.mmzk.muproject/Tests"
+      ]
+    },
+    "Assets/UnityPackages/works.mmzk.murefgraph": {
+      "component": "works.mmzk.murefgraph",
+      "exclude-paths": [
+        "Assets/UnityPackages/works.mmzk.murefgraph/Tests"
+      ]
+    },
+    "Assets/UnityPackages/works.mmzk.muscenemanager": {
+      "component": "works.mmzk.muscenemanager",
+      "exclude-paths": [
+        "Assets/UnityPackages/works.mmzk.muscenemanager/Tests"
+      ]
+    },
+    "Assets/UnityPackages/works.mmzk.mushortcut": {
+      "component": "works.mmzk.mushortcut",
+      "exclude-paths": [
+        "Assets/UnityPackages/works.mmzk.mushortcut/Tests"
+      ]
+    },
+    "Assets/UnityPackages/works.mmzk.mustorage": {
+      "component": "works.mmzk.mustorage",
+      "exclude-paths": [
+        "Assets/UnityPackages/works.mmzk.mustorage/Tests"
+      ]
+    },
+    "Assets/UnityPackages/works.mmzk.muunityextensions": {
+      "component": "works.mmzk.muunityextensions",
+      "exclude-paths": [
+        "Assets/UnityPackages/works.mmzk.muunityextensions/Tests"
+      ]
+    },
+    "Assets/UnityPackages/works.mmzk.muvalidation": {
+      "component": "works.mmzk.muvalidation",
+      "exclude-paths": [
+        "Assets/UnityPackages/works.mmzk.muvalidation/Tests"
+      ]
+    }
+  }
+}

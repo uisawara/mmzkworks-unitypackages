@@ -50,7 +50,35 @@
 
 ## リリース
 
-各パッケージの `package.json` の `version` を上げて main にマージすると、[Release workflow](.github/workflows/release.yml) が `<パッケージ名>/<version>` のタグと GitHub Release を自動で作成します。
+リリースは [Conventional Commits](https://www.conventionalcommits.org/ja/)(`feat(scope): ...`、`fix(scope): ...`)をもとに [release-please](https://github.com/googleapis/release-please) で管理しています。
+
+1. `develop` に PR をマージするたびに、[Release workflow](.github/workflows/release.yml) が release PR を作成・更新します。release PR には、前回のリリース以降にユーザー向けのコミット(`feat`、`fix`、`perf`、`revert`)があったパッケージの `package.json` の `version` の更新と `CHANGELOG.md` の追記が入ります(1.0.0 未満では `feat` でマイナー、`fix` でパッチが上がります)。対象のパッケージは、commit の scope ではなく変更したファイルのパスで決まります。`docs`、`test`、`refactor`、`ci`、`chore` などのコミットだけではリリースされません。
+2. release PR をマージすると、更新されたパッケージごとに `<パッケージ名>/<version>` のタグと GitHub Release を作成し、`develop` → `main` の PR を開きます。
+
+`CHANGELOG.md` とリリースノートはパッケージごとに分かれているので、workflow が各行の scope 表示を、そのパッケージ自身を含むときだけ消します(muDashboard の CHANGELOG なら `**mudashboard:**`)。ほかのパッケージだけを指す scope 表示は残します。空行をはさまずに並んだ 1 行だけの項目の中では、内容が同じ行を 1 行にまとめ、PR と commit へのリンクを 1 つの括弧に `,` 区切りで並べます。複数行にわたる項目(続きの行・入れ子のリスト・コードブロック・HTML)や、本文が Markdown のブロックの記法で始まる項目を含む並びは、行が別の項目に付かないよう、生成されたまま残します(scope 表示は消します)。安全に解釈できない構造(`<pre>`、HTML のコメント、開き方と閉じ方の合わないコードブロックなど)があれば、そこから後ろはすべて生成されたまま残します。また、scope 表示を消すと本文が `#` や `>` などの Markdown の記法で始まってしまう行は、表示が変わらないよう scope 表示を残します。release PR の本文は、release-please が生成したままです。
+
+`develop` への PR は squash でしかマージできず、PR タイトルだけがそのまま commit メッセージになります。PR タイトルは Conventional Commits の形式で書いてください。`develop` → `main` の PR は merge commit でしかマージできません。
+
+PR タイトルは、その PR で変更したすべてのパッケージに適用されます。そのため、1 つの PR では 1 つのパッケージだけを変更し、複数のパッケージにまたがる変更は PR を分けてください。パッケージの `Tests` フォルダだけの変更は無視されます(隣にある `Tests.meta` は対象になるので、`Tests` フォルダを追加・削除する PR のタイトルは `test:` で始めてください)。そのパッケージに複数の項目(たとえば機能追加と修正)を記録したいときは、PR 本文に空行で区切って書くと、release-please は PR タイトルの代わりにこの内容を使います。
+
+```
+BEGIN_COMMIT_OVERRIDE
+feat(mudashboard): ...
+
+fix(mudashboard): ...
+END_COMMIT_OVERRIDE
+```
+
+この目印の文字列は、使うとき以外は PR 本文に書かないでください。説明のつもりで書いただけでも、release-please は PR タイトルの代わりに本文の続きを使ってしまいます。
+
+`develop` → `main` の PR をマージせずに閉じると、リリース済みの version が `main` に入るまで、`develop` に push するたびに作り直されます。
+
+`package.json` の `version` は手で編集しないでください。パッケージを追加するときは、次の 2 つを行います。
+
+- `release-please-config.json` に `"initial-version": "0.1.0"` と、`Tests` フォルダを指定した `"exclude-paths"` を付けて登録し、`.release-please-manifest.json` には `"0.0.0"` で登録する
+- パッケージに空の `CHANGELOG.md`(と `.meta`)を追加する
+
+`release-please-config.json` の `last-release-sha` は消さないでください。release-please が履歴を読み始める位置を示していて、消すと muAsmdefgraph と muRefgraph でリリース済みの commit を再び拾ってしまいます。
 
 特定バージョンをインストールするには、Git URL の末尾にタグを指定します。
 

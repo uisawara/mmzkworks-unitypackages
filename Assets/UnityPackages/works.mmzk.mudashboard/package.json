@@ -1,8 +1,8 @@
 {
   "name": "works.mmzk.mudashboard",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "displayName": "muDashboard",
-  "description": "Free-layout dashboard of shortcuts to Project assets, URLs, menu commands, automation commands and actions, with labels and images",
+  "description": "Free-layout dashboard of shortcuts to Project assets, scene GameObjects, URLs, menu commands, automation commands and actions, with labels and images",
   "unity": "2022.3",
   "license": "MIT",
   "author": {
