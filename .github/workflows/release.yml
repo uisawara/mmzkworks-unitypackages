@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - id: release
-        uses: googleapis/release-please-action@v5
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         with:
           target-branch: develop
 
@@ -43,7 +43,7 @@ jobs:
       # 起動したコミットではなく最新の develop を見る。
       # main に取り込み済みかを判定するため、全ブランチとタグを取得する。
       - if: ${{ !cancelled() }}
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: develop
           fetch-depth: 0
