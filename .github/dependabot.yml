@@ -1,0 +1,16 @@
+# ワークフローの Action はコミット SHA で固定しているので、更新は Dependabot の PR で受け取る。
+# PR は develop に向ける(main は develop からの PR でだけ更新する)。
+# PR タイトルは pr-title workflow の検査を通るよう "ci(deps): ..." にする。
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: develop
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: ci
+      include: scope
